@@ -1,6 +1,7 @@
 # project
 .superpowers/
 node_modules/
+lib/generated/
 .env
 .env.local
 *.db

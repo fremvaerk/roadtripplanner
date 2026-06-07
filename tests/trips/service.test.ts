@@ -1,5 +1,6 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/lib/generated/prisma/client";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import {
   createTrip,
   getTrip,
@@ -9,7 +10,11 @@ import {
 } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaLibSql({
+    url: process.env.DATABASE_URL ?? "file:./test.db",
+  }),
+});
 
 beforeEach(async () => {
   await prisma.poi.deleteMany();

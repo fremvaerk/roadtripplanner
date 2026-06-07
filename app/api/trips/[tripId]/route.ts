@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getTrip, updateTrip, deleteTrip } from "@/lib/trips/service";
 import { updateTripSchema } from "@/lib/trips/schema";

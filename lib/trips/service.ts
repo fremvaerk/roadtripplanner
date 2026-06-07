@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/lib/generated/prisma/client";
 import type { CreateTripData, UpdateTripInput } from "@/lib/trips/schema";
 
 export async function createTrip(prisma: PrismaClient, data: CreateTripData) {
