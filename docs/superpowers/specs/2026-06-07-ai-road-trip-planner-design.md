@@ -294,3 +294,18 @@ manual planner; 3–4 are where the AI shines.
 Multi-user/accounts beyond simple single-user, bookings/reservations, per-POI
 cost tracking, native mobile app, offline mode. Revisit after the core tool is in
 real use.
+
+### Security note — authorization is deferred (precondition for public deployment)
+
+There is intentionally **no authentication and no per-trip ownership** yet: every
+API route (`/api/trips/*`, `/api/pois/*`) operates on any id with no session or
+`ownerId` check. This is acceptable while the app is a **single-user tool run
+locally / behind a private URL** — there is no second principal to authorize
+against. It is an IDOR by construction, uniform across all routes.
+
+**Hard precondition:** before any **publicly reachable deployment**, add
+authentication and scope every itinerary operation to the owning user
+(e.g. `prisma.trip.findFirst({ where: { id, ownerId: session.userId } })` and
+ownership checks on POI mutations). Do not expose these endpoints to the internet
+without that. Tracked here so an automated security review flag (IDOR on the POI
+routes) isn't silently re-acknowledged and lost.
