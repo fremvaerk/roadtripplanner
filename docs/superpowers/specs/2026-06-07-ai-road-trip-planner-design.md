@@ -25,6 +25,30 @@ control points, and choose where to spend each night.
 - **AI scope:** full draft + suggestion pool + copilot — all three, phased.
 - **Persistence:** real backend + database (cross-device, single user).
 
+## Technical Stack
+
+Latest stable versions as of 2026-06; pin known-good latest rather than blind
+`@latest`, to avoid fresh-major breakage.
+
+| Concern | Library |
+|---|---|
+| Runtime + package manager + test runner | **Bun** |
+| Framework | **Next.js 15 (App Router) + React 19** |
+| UI components | **shadcn/ui** (Radix UI primitives + Tailwind CSS v4) — components copied into the repo, owned/editable |
+| Google Maps in React | **`@vis.gl/react-google-maps`** (Google vis.gl team's modern wrapper) |
+| ORM / DB | **Prisma 6**, SQLite (dev) → Postgres (deploy) |
+| Drag & drop | **dnd-kit** (sortable + cross-container days ↔ pool) |
+| Server state / fetching | **TanStack Query** (caching, optimistic updates, rollback) |
+| Client UI state | **Zustand** |
+| AI | **`@anthropic-ai/sdk`** (streaming + tool-use, server-side) |
+| Validation / schemas | **Zod** (API + AI structured-output) |
+
+Notes:
+- shadcn/ui is the UI toolkit: a CLI that copies Radix-based, Tailwind-styled
+  component source into the project — not a runtime dependency.
+- Bun is the package manager / scripts / test runner; Next.js runs through its own
+  (Node-compatible) toolchain under Bun. No pure-Bun runtime assumption.
+
 ## Architecture
 
 A single Next.js app, three layers:
@@ -45,9 +69,9 @@ SERVER (Next route handlers)
   SQLite→Postgres   |   Claude API   |   Google Maps Platform
 ```
 
-**Stack:** Next.js (React) full-stack monolith. Server route handlers are the
-backend. Prisma ORM with SQLite locally → Postgres on deploy. Google Maps JS SDK
-in the browser for display; Places + Routes APIs called server-side so API keys
+**Stack:** see Technical Stack above. Next.js (React) full-stack monolith; server
+route handlers are the backend. Google Maps rendered via
+`@vis.gl/react-google-maps`; Places + Routes APIs called server-side so API keys
 never reach the client. Claude API server-side with streaming.
 
 ### Keystone idea: shared itinerary operations
