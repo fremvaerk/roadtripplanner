@@ -14,25 +14,5 @@ export default async function TripPage({
   const trip = await getTrip(prisma, tripId);
   if (!trip) notFound();
 
-  return (
-    <PlannerShell
-      trip={{
-        id: trip.id,
-        title: trip.title,
-        startName: trip.startName,
-        startLat: trip.startLat,
-        startLng: trip.startLng,
-        endName: trip.endName,
-        endLat: trip.endLat,
-        endLng: trip.endLng,
-        isRoundTrip: trip.isRoundTrip,
-        days: trip.days.map((d) => ({
-          id: d.id,
-          dayIndex: d.dayIndex,
-          pois: d.pois.map((p) => ({ id: p.id, name: p.name })),
-        })),
-        pois: trip.pois.map((p) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })),
-      }}
-    />
-  );
+  return <PlannerShell tripId={tripId} />;
 }
