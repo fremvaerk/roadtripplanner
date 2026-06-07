@@ -32,7 +32,7 @@ export function PlannerShell({ trip }: { trip: TripView }) {
   }));
 
   return (
-    <div className="flex h-[calc(100vh-0px)] w-full">
+    <div className="flex h-screen w-full">
       <div className="relative flex-1">
         <TripMap start={start} end={end} pois={pois} />
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   APIProvider,
   Map,
@@ -22,7 +22,11 @@ export function TripMap({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
-  const path: MapPoint[] = [start, ...pois, ...(end ? [end] : [])];
+  // Memoize so RoutePolyline/FitBounds effects don't tear down on every render.
+  const path: MapPoint[] = useMemo(
+    () => [start, ...pois, ...(end ? [end] : [])],
+    [start, end, pois],
+  );
 
   if (!apiKey) {
     return (

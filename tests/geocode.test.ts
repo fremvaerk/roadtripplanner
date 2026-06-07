@@ -40,7 +40,17 @@ describe("geocodePlace", () => {
     await expect(geocodePlace("Florence", "fake-key")).rejects.toBeInstanceOf(GeocodeError);
   });
 
-  test("throws GeocodeError when no API key is provided", async () => {
+  test("throws GeocodeError when the API key is an empty string", async () => {
     await expect(geocodePlace("Florence", "")).rejects.toBeInstanceOf(GeocodeError);
+  });
+
+  test("throws GeocodeError when no key is set (default arg, missing env)", async () => {
+    const saved = process.env.GOOGLE_MAPS_SERVER_KEY;
+    delete process.env.GOOGLE_MAPS_SERVER_KEY;
+    try {
+      await expect(geocodePlace("Florence")).rejects.toBeInstanceOf(GeocodeError);
+    } finally {
+      if (saved !== undefined) process.env.GOOGLE_MAPS_SERVER_KEY = saved;
+    }
   });
 });

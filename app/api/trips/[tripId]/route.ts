@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getTrip, updateTrip, deleteTrip } from "@/lib/trips/service";
 import { updateTripSchema } from "@/lib/trips/schema";
 
 type Ctx = { params: Promise<{ tripId: string }> };
+
+function isNotFound(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025";
+}
 
 export async function GET(_req: Request, { params }: Ctx) {
   const { tripId } = await params;
@@ -19,12 +24,22 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const trip = await updateTrip(prisma, tripId, parsed.data);
-  return NextResponse.json(trip);
+  try {
+    const trip = await updateTrip(prisma, tripId, parsed.data);
+    return NextResponse.json(trip);
+  } catch (e) {
+    if (isNotFound(e)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw e;
+  }
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const { tripId } = await params;
-  await deleteTrip(prisma, tripId);
-  return new NextResponse(null, { status: 204 });
+  try {
+    await deleteTrip(prisma, tripId);
+    return new NextResponse(null, { status: 204 });
+  } catch (e) {
+    if (isNotFound(e)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw e;
+  }
 }

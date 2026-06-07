@@ -22,7 +22,7 @@ export function TripForm() {
     const payload = {
       title: String(form.get("title") ?? ""),
       startName: String(form.get("startName") ?? ""),
-      endName: String(form.get("endName") ?? ""),
+      endName: isRoundTrip ? undefined : String(form.get("endName") ?? ""),
       description: String(form.get("description") ?? ""),
       dayCount: String(form.get("dayCount") ?? "1"),
       isRoundTrip,
