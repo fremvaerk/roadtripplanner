@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { removePoi } from "@/lib/itinerary/operations";
+import { removePoi, movePoi, setOvernight, ItineraryError } from "@/lib/itinerary/operations";
+import { patchPoiSchema } from "@/lib/itinerary/schema";
 
 type Ctx = { params: Promise<{ poiId: string }> };
 
@@ -11,6 +12,31 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     await removePoi(prisma, poiId);
     return new NextResponse(null, { status: 204 });
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    throw e;
+  }
+}
+
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { poiId } = await params;
+  const body = await req.json().catch(() => null);
+  const parsed = patchPoiSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const data = parsed.data;
+  try {
+    const poi =
+      data.op === "move"
+        ? await movePoi(prisma, poiId, { dayId: data.dayId, orderInDay: data.orderInDay })
+        : await setOvernight(prisma, poiId, data.isOvernight);
+    return NextResponse.json(poi);
+  } catch (e) {
+    if (e instanceof ItineraryError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }

@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { addPoiSchema } from "@/lib/itinerary/schema";
+import { addPoiSchema, patchPoiSchema } from "@/lib/itinerary/schema";
 
 describe("addPoiSchema", () => {
   const base = { name: "Uffizi", lat: 43.768, lng: 11.255 };
@@ -30,5 +30,23 @@ describe("addPoiSchema", () => {
 
   test("rejects an unknown source", () => {
     expect(addPoiSchema.safeParse({ ...base, source: "bogus" }).success).toBe(false);
+  });
+});
+
+describe("patchPoiSchema", () => {
+  test("accepts a move op (day target)", () => {
+    expect(patchPoiSchema.safeParse({ op: "move", dayId: "d1", orderInDay: 2 }).success).toBe(true);
+  });
+  test("accepts a move op to the pool (null day)", () => {
+    expect(patchPoiSchema.safeParse({ op: "move", dayId: null, orderInDay: 0 }).success).toBe(true);
+  });
+  test("accepts an overnight op", () => {
+    expect(patchPoiSchema.safeParse({ op: "overnight", isOvernight: true }).success).toBe(true);
+  });
+  test("rejects an unknown op", () => {
+    expect(patchPoiSchema.safeParse({ op: "bogus" }).success).toBe(false);
+  });
+  test("rejects a negative orderInDay", () => {
+    expect(patchPoiSchema.safeParse({ op: "move", dayId: "d1", orderInDay: -1 }).success).toBe(false);
   });
 });
