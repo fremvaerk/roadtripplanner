@@ -99,3 +99,29 @@ export async function movePoi(
     return tx.poi.findUnique({ where: { id: poiId } });
   });
 }
+
+export async function setOvernight(
+  prisma: PrismaClient,
+  poiId: string,
+  value: boolean,
+) {
+  const poi = await prisma.poi.findUnique({ where: { id: poiId } });
+  if (!poi) throw new ItineraryError("POI not found");
+
+  if (value) {
+    if (!poi.dayId) {
+      throw new ItineraryError("Only a place assigned to a day can be the overnight");
+    }
+    await prisma.$transaction([
+      prisma.poi.updateMany({
+        where: { dayId: poi.dayId, isOvernight: true },
+        data: { isOvernight: false },
+      }),
+      prisma.poi.update({ where: { id: poiId }, data: { isOvernight: true } }),
+    ]);
+  } else {
+    await prisma.poi.update({ where: { id: poiId }, data: { isOvernight: false } });
+  }
+
+  return prisma.poi.findUnique({ where: { id: poiId } });
+}
