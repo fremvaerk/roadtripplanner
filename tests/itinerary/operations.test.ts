@@ -191,3 +191,29 @@ describe("setOvernight", () => {
     await expect(setOvernight(prisma, a.id, true)).rejects.toBeInstanceOf(ItineraryError);
   });
 });
+
+describe("movePoi + overnight interaction", () => {
+  test("moving an overnight POI to a different day clears its overnight flag", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const day1 = trip.days[0].id;
+    const day2 = trip.days[1].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId: day1 });
+    await setOvernight(prisma, a.id, true);
+
+    await movePoi(prisma, a.id, { dayId: day2, orderInDay: 0 });
+
+    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
+  });
+
+  test("reordering an overnight POI within the same day keeps its overnight flag", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const day1 = trip.days[0].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId: day1 });
+    await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId: day1 });
+    await setOvernight(prisma, a.id, true);
+
+    await movePoi(prisma, a.id, { dayId: day1, orderInDay: 1 });
+
+    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(true);
+  });
+});

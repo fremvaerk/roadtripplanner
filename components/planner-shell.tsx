@@ -69,6 +69,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     const poiId = event.operation?.source?.id;
     if (poiId == null) return;
     const next = move(groups, event) as Record<string, string[]>;
+    if (next === groups) return; // dnd-kit returns the same reference on a no-op drop
     let destKey: string | undefined;
     let destIndex = 0;
     for (const [key, ids] of Object.entries(next)) {

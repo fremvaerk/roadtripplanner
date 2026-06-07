@@ -47,6 +47,18 @@ describe("applyMove", () => {
     expect(inDay.map((p) => p.id)).toEqual(["c", "a", "b"]);
   });
 
+  test("moving an overnight POI to a different day clears its overnight flag", () => {
+    const t = trip([poi("a", "d1", 0, { isOvernight: true })]);
+    const out = applyMove(t, "a", "d2", 0);
+    expect(out.pois.find((p) => p.id === "a")!.isOvernight).toBe(false);
+  });
+
+  test("reordering an overnight POI within the same day keeps its overnight flag", () => {
+    const t = trip([poi("a", "d1", 0, { isOvernight: true }), poi("b", "d1", 1)]);
+    const out = applyMove(t, "a", "d1", 1);
+    expect(out.pois.find((p) => p.id === "a")!.isOvernight).toBe(true);
+  });
+
   test("returns the trip unchanged for an unknown poiId", () => {
     const t = trip([poi("a", "d1", 0)]);
     expect(applyMove(t, "zzz", "d2", 0)).toBe(t);
