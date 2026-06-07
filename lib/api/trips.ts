@@ -55,3 +55,30 @@ export async function deletePoi(poiId: string): Promise<void> {
   const res = await fetch(`/api/pois/${poiId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to remove place (${res.status})`);
 }
+
+export async function patchPoiMove(
+  poiId: string,
+  dayId: string | null,
+  orderInDay: number,
+): Promise<PoiDetail> {
+  const res = await fetch(`/api/pois/${poiId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "move", dayId, orderInDay }),
+  });
+  if (!res.ok) throw new Error(`Failed to move place (${res.status})`);
+  return res.json();
+}
+
+export async function patchPoiOvernight(
+  poiId: string,
+  isOvernight: boolean,
+): Promise<PoiDetail> {
+  const res = await fetch(`/api/pois/${poiId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "overnight", isOvernight }),
+  });
+  if (!res.ok) throw new Error(`Failed to set overnight (${res.status})`);
+  return res.json();
+}
