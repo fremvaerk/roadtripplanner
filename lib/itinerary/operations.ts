@@ -1,5 +1,13 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 
+/** Thrown when an operation is given input that's invalid for the target trip. */
+export class ItineraryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ItineraryError";
+  }
+}
+
 export type AddPoiInput = {
   name: string;
   lat: number;
@@ -17,6 +25,12 @@ export async function addPoi(
 ) {
   let orderInDay: number | null = null;
   if (input.dayId) {
+    // Ensure the target day belongs to this trip (the FK alone only proves the
+    // day exists, not that it's the same trip).
+    const day = await prisma.day.findFirst({
+      where: { id: input.dayId, tripId },
+    });
+    if (!day) throw new ItineraryError("Day does not belong to this trip");
     orderInDay = await prisma.poi.count({ where: { dayId: input.dayId } });
   }
   return prisma.poi.create({

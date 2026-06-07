@@ -1,5 +1,6 @@
 "use client";
 
+import { APIProvider } from "@vis.gl/react-google-maps";
 import { TripMap, type MapPoint } from "@/components/trip-map";
 import { PlaceSearch } from "@/components/place-search";
 import { useTrip } from "@/hooks/use-trip";
@@ -31,6 +32,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     id: p.id,
   }));
   const pool = trip.pois.filter((p) => p.dayId === null);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
   function handleAddFromMap(input: AddPoiInput) {
     addPoi.mutate({
@@ -44,10 +46,17 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   }
 
   return (
-    <div className="flex h-screen w-full">
-      <div className="relative flex-1">
-        <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} />
-      </div>
+    <APIProvider apiKey={apiKey}>
+      <div className="flex h-screen w-full">
+        <div className="relative flex-1">
+          {apiKey ? (
+            <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} />
+          ) : (
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.
+            </div>
+          )}
+        </div>
 
       <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
         <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
@@ -107,6 +116,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           ))}
         </div>
       </aside>
-    </div>
+      </div>
+    </APIProvider>
   );
 }

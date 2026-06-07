@@ -14,6 +14,7 @@ export function PlaceSearch({ tripId }: { tripId: string }) {
     google.maps.places.PlacePrediction[]
   >([]);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const reqId = useRef(0);
 
   async function onChange(input: string) {
     setValue(input);
@@ -24,11 +25,13 @@ export function PlaceSearch({ tripId }: { tripId: string }) {
     if (!sessionToken.current) {
       sessionToken.current = new placesLib.AutocompleteSessionToken();
     }
+    const id = ++reqId.current;
     const { suggestions } =
       await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input,
         sessionToken: sessionToken.current,
       });
+    if (id !== reqId.current) return; // a newer keystroke superseded this response
     setPredictions(
       suggestions
         .map((s) => s.placePrediction)

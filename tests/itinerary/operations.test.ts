@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, removePoi } from "@/lib/itinerary/operations";
+import { addPoi, removePoi, ItineraryError } from "@/lib/itinerary/operations";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
@@ -65,6 +65,16 @@ describe("addPoi", () => {
     const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
     expect(a.orderInDay).toBe(0);
     expect(b.orderInDay).toBe(1);
+  });
+
+  test("rejects a dayId that belongs to a different trip", async () => {
+    const tripA = await createTrip(prisma, sampleTrip());
+    const tripB = await createTrip(prisma, sampleTrip());
+    const foreignDayId = tripB.days[0].id;
+    await expect(
+      addPoi(prisma, tripA.id, { name: "X", lat: 1, lng: 1, dayId: foreignDayId }),
+    ).rejects.toBeInstanceOf(ItineraryError);
+    expect(await prisma.poi.count()).toBe(0);
   });
 });
 
