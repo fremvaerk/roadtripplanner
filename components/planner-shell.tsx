@@ -1,48 +1,94 @@
 "use client";
 
 import { TripMap, type MapPoint } from "@/components/trip-map";
+import { PlaceSearch } from "@/components/place-search";
+import { useTrip } from "@/hooks/use-trip";
+import { useAddPoi, useRemovePoi } from "@/hooks/use-poi-mutations";
+import { Button } from "@/components/ui/button";
+import type { AddPoiInput } from "@/lib/itinerary/operations";
 
-type Day = { id: string; dayIndex: number; pois: { id: string; name: string }[] };
+export function PlannerShell({ tripId }: { tripId: string }) {
+  const { data: trip, isLoading, isError } = useTrip(tripId);
+  const addPoi = useAddPoi(tripId);
+  const removePoi = useRemovePoi(tripId);
 
-type TripView = {
-  id: string;
-  title: string;
-  startName: string;
-  startLat: number;
-  startLng: number;
-  endName: string | null;
-  endLat: number | null;
-  endLng: number | null;
-  isRoundTrip: boolean;
-  days: Day[];
-  pois: { id: string; name: string; lat: number; lng: number }[];
-};
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">Loading trip…</div>;
+  }
+  if (isError || !trip) {
+    return <div className="flex h-screen items-center justify-center text-sm text-red-600">Couldn’t load this trip.</div>;
+  }
 
-export function PlannerShell({ trip }: { trip: TripView }) {
   const start: MapPoint = { lat: trip.startLat, lng: trip.startLng, name: trip.startName };
   const end: MapPoint | null =
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
-  const pois: MapPoint[] = trip.pois.map((p) => ({
+  const poiPoints: MapPoint[] = trip.pois.map((p) => ({
     lat: p.lat,
     lng: p.lng,
     name: p.name,
     id: p.id,
   }));
+  const pool = trip.pois.filter((p) => p.dayId === null);
+
+  function handleAddFromMap(input: AddPoiInput) {
+    addPoi.mutate({
+      name: input.name,
+      lat: input.lat,
+      lng: input.lng,
+      placeId: input.placeId ?? undefined,
+      category: input.category ?? undefined,
+      source: "map",
+    });
+  }
 
   return (
     <div className="flex h-screen w-full">
       <div className="relative flex-1">
-        <TripMap start={start} end={end} pois={pois} />
+        <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} />
       </div>
 
-      <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">
+      <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
         <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           {trip.startName}
           {end ? ` → ${end.name}` : " (round trip)"}
         </p>
+
+        <div className="mb-4">
+          <PlaceSearch tripId={tripId} />
+        </div>
+
+        <div className="mb-4">
+          <div className="mb-2 text-sm font-medium">
+            Unassigned places ({pool.length})
+          </div>
+          {pool.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Search above or click a place on the map to add it.
+            </p>
+          ) : (
+            <ul className="space-y-1">
+              {pool.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                >
+                  <span className="truncate">{p.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removePoi.mutate(p.id)}
+                    aria-label={`Remove ${p.name}`}
+                  >
+                    ✕
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="space-y-3">
           {trip.days.map((day) => (
