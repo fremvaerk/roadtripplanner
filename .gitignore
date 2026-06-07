@@ -7,3 +7,4 @@ lib/generated/
 *.db
 *.db-journal
 .next/
+.playwright-mcp/
