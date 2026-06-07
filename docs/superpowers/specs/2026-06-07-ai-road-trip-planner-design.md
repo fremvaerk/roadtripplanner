@@ -260,14 +260,25 @@ build it."* → planner.
 
 ## Build Phases
 
-- **Phase 0 — Foundation:** Next.js + Prisma + SQLite scaffold; Trip/Day/Poi
-  models; map rendering of pins + route; trip CRUD. *Create a trip, see a map.*
-- **Phase 1 — Manual planner (spine):** intake wizard → planner shell; shared
-  itinerary operations; add via search autocomplete + clickable map POIs; drag
-  between days/pool; overnights; reorder; per-day drive time. *Plan a trip by hand.*
+- **Phase 0 — Foundation:** ✅ done. Next.js + Bun + Prisma 7 (SQLite, libSQL
+  adapter) + shadcn/ui scaffold; Trip/Day/Poi models; map rendering of pins +
+  straight-line route; trip CRUD. *Create a trip, see a map.*
+- **Phase 1 — Manual planner (spine).** Split into two plans:
+  - **Phase 1a:** client data layer (TanStack Query); shared itinerary operations
+    (`addPoi`/`removePoi`); add places via Places-Autocomplete search **and**
+    clickable map POIs; render the unassigned pool. *Add real places to a trip.*
+  - **Phase 1b:** drag/drop between days and pool + reorder (dnd-kit); overnight
+    (🌙) toggling that moves day boundaries. *Organize places into days by hand.*
+  - **Deferred:** per-day **drive time** → Phase 2 (needs the Routes API, which
+    lands there); the post-intake **mode picker** (Draft/Suggest/Empty) → Phase 3
+    (it drives AI). Phase 1 intake creates the trip and goes straight to the planner.
+  - **Note:** the search box uses the **new Places API** (`AutocompleteSuggestion`/
+    `Place.fetchFields`), since the legacy `places.Autocomplete` widget is closed to
+    new API customers (March 2025). Places still resolve to the same placeId/lat/lng.
 - **Phase 2 — Routing/day-split engine:** pure engine + "Build route & split into
-  days" + Re-split, overnight-anchored, drive-cap-enforced; draggable via-points.
-  *Dump POIs → ordered, day-split trip.*
+  days" + Re-split, overnight-anchored, drive-cap-enforced; draggable via-points;
+  **real road route polyline + per-day drive time** (Routes/Directions API,
+  replacing the Phase 0 straight line). *Dump POIs → ordered, day-split trip.*
 - **Phase 3 — AI draft & suggest:** mode picker; `/api/ai/draft` and
   `/api/ai/suggest` resolving names → Places → engine. *The AI first impression.*
 - **Phase 4 — AI copilot:** streaming chat with tool-use wired to itinerary
