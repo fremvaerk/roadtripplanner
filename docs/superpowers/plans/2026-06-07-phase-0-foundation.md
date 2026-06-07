@@ -1,0 +1,1320 @@
+# Phase 0 — Foundation Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Stand up the project skeleton — Bun + Next.js + Prisma + shadcn/ui — with a Trip/Day/Poi database, trip CRUD, and a Google map that renders a trip's start/end pins and a connecting route line. End state: you can create a trip in the UI and see it on a map.
+
+**Architecture:** A single Next.js (App Router) app. Server route handlers are the backend. A thin, dependency-injected service layer wraps Prisma so the CRUD logic is unit-testable against a temporary SQLite database with no network. Geocoding (place name → lat/lng) is an isolated, mockable helper. The map is a client component built on `@vis.gl/react-google-maps`.
+
+**Tech Stack:** Bun (package manager + test runner), Next.js 15 (App Router) + React 19, TypeScript, Tailwind CSS v4 + shadcn/ui, Prisma 6 + SQLite, `@vis.gl/react-google-maps`, Zod.
+
+---
+
+## File Structure
+
+Created/modified by this phase:
+
+```
+package.json                         scripts, deps
+.env.example                         committed template for env vars
+.env                                 local secrets (gitignored)
+prisma/schema.prisma                 Trip / Day / Poi models
+lib/db.ts                            Prisma client singleton
+lib/geocode.ts                       place name → {lat,lng,placeId} (isolated, mockable)
+lib/trips/schema.ts                  Zod input schemas + shared types
+lib/trips/service.ts                 trip CRUD service (takes a PrismaClient)
+app/api/trips/route.ts               GET list, POST create
+app/api/trips/[tripId]/route.ts      GET, PATCH, DELETE
+app/page.tsx                         home: list trips + "New trip"
+app/trips/new/page.tsx               create-trip page
+app/trips/[tripId]/page.tsx          trip planner page (server-fetches trip)
+components/trip-form.tsx             create-trip form (client)
+components/trip-map.tsx              map with pins + route line (client)
+components/planner-shell.tsx         Phase-0 planner layout (map + day list)
+components/ui/*                       shadcn components (generated)
+tests/trips/schema.test.ts           Zod schema unit tests
+tests/geocode.test.ts                geocode helper unit tests (mocked fetch)
+tests/trips/service.test.ts          service CRUD tests (temp SQLite)
+```
+
+Responsibility boundaries:
+- `lib/geocode.ts` — only translates a query string into coordinates; no DB, no app logic.
+- `lib/trips/service.ts` — only DB reads/writes for trips; takes a `PrismaClient` argument (no network, no global), so tests inject a test client.
+- API handlers — orchestrate: validate (Zod) → geocode → call service. No business logic of their own.
+- Components — presentation only; data comes in as props.
+
+---
+
+## Task 1: Scaffold the Next.js + Bun project
+
+The project root already contains `.git`, `docs/`, `.gitignore`, `.remember/`, `.superpowers/`, so `create-next-app` can't run directly in it (it refuses non-empty dirs). Scaffold into a temp dir and copy in.
+
+**Files:**
+- Create: entire Next.js scaffold (package.json, tsconfig.json, next.config.ts, app/, etc.)
+- Modify: `.gitignore`
+
+- [ ] **Step 1: Scaffold into a temp directory**
+
+Run:
+```bash
+cd /Users/ala/workspace/personal
+bun create next-app@latest roadtripplanner-scaffold \
+  --ts --tailwind --app --no-src-dir --turbopack \
+  --import-alias "@/*" --use-bun --eslint --yes
+```
+Expected: a new `roadtripplanner-scaffold/` directory with a Next.js app and `node_modules`.
+
+- [ ] **Step 2: Copy scaffold into the project (excluding git + node_modules)**
+
+Run:
+```bash
+cd /Users/ala/workspace/personal
+rsync -a --exclude='.git' --exclude='node_modules' --exclude='.gitignore' \
+  roadtripplanner-scaffold/ roadtripplanner/
+rm -rf roadtripplanner-scaffold
+cd roadtripplanner
+bun install
+```
+Expected: `app/`, `package.json`, `tsconfig.json`, `next.config.ts`, etc. now exist in the project; `bun install` completes.
+
+- [ ] **Step 3: Append project-specific ignores to .gitignore**
+
+Ensure `.gitignore` contains these lines (append any missing — `node_modules`, `.next`, `.env*` may already be there from the scaffold):
+```
+# project
+.superpowers/
+.env
+.env.local
+*.db
+*.db-journal
+```
+
+- [ ] **Step 4: Verify the dev server boots**
+
+Run:
+```bash
+bun run dev
+```
+Expected: Next.js starts on http://localhost:3000 with the default page. Stop it with Ctrl-C.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "chore: scaffold Next.js + Bun project"
+```
+
+---
+
+## Task 2: Add Tailwind/shadcn UI components
+
+create-next-app already configured Tailwind v4. Initialize shadcn and add the components the trip form needs.
+
+**Files:**
+- Create: `components.json`, `components/ui/*`, `lib/utils.ts` (generated by shadcn)
+
+- [ ] **Step 1: Initialize shadcn/ui**
+
+Run:
+```bash
+bunx shadcn@latest init -d -b neutral
+```
+Expected: creates `components.json`, `lib/utils.ts`, and updates `app/globals.css` with theme variables. (If it reports a React 19 peer-dependency prompt, accept the suggested resolution.)
+
+- [ ] **Step 2: Add the components**
+
+Run:
+```bash
+bunx shadcn@latest add button input textarea label card checkbox
+```
+Expected: files appear under `components/ui/` (button.tsx, input.tsx, textarea.tsx, label.tsx, card.tsx, checkbox.tsx).
+
+- [ ] **Step 3: Verify the build still type-checks**
+
+Run:
+```bash
+bun run build
+```
+Expected: build succeeds (no type errors).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "chore: add shadcn/ui and base components"
+```
+
+---
+
+## Task 3: Add Prisma with the Trip/Day/Poi schema
+
+**Files:**
+- Create: `prisma/schema.prisma`, `lib/db.ts`, `.env`, `.env.example`
+- Modify: `package.json` (scripts)
+
+> **SQLite note:** SQLite does not support Prisma `enum` types or the `Json` scalar reliably across versions, so `source`/`status`/`category` are `String`, and JSON-shaped fields (`params`, `openingHours`) are stored as serialized `String`.
+
+- [ ] **Step 1: Add Prisma dependencies**
+
+Run:
+```bash
+bun add -d prisma
+bun add @prisma/client
+```
+
+- [ ] **Step 2: Create `prisma/schema.prisma`**
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Trip {
+  id           String    @id @default(cuid())
+  title        String
+  startName    String
+  startLat     Float
+  startLng     Float
+  startPlaceId String?
+  endName      String?
+  endLat       Float?
+  endLng       Float?
+  endPlaceId   String?
+  isRoundTrip  Boolean   @default(false)
+  description  String
+  startDate    DateTime?
+  params       String? // serialized JSON
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  days         Day[]
+  pois         Poi[]
+}
+
+model Day {
+  id       String    @id @default(cuid())
+  tripId   String
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayIndex Int
+  date     DateTime?
+  notes    String?
+  pois     Poi[]
+
+  @@unique([tripId, dayIndex])
+}
+
+model Poi {
+  id           String   @id @default(cuid())
+  tripId       String
+  trip         Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayId        String?
+  day          Day?     @relation(fields: [dayId], references: [id], onDelete: SetNull)
+  orderInDay   Int?
+  isOvernight  Boolean  @default(false)
+  name         String
+  lat          Float
+  lng          Float
+  placeId      String?
+  category     String?
+  source       String   @default("user") // ai | user | search | map
+  rating       Float?
+  photoRef     String?
+  address      String?
+  openingHours String? // serialized JSON
+  aiReason     String?
+  userNote     String?
+  status       String   @default("accepted") // suggested | accepted
+  createdAt    DateTime @default(now())
+}
+```
+
+- [ ] **Step 3: Create `.env.example` (committed) and `.env` (local)**
+
+`.env.example`:
+```
+# SQLite database (Prisma reads this from .env)
+DATABASE_URL="file:./dev.db"
+
+# Google Maps — browser key (Maps JS), restrict by HTTP referrer
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
+# Optional Map ID for Advanced Markers (use "DEMO_MAP_ID" for local dev)
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID="DEMO_MAP_ID"
+
+# Google Maps — server key (Geocoding/Places/Routes), restrict by IP/API
+GOOGLE_MAPS_SERVER_KEY=""
+```
+
+Then:
+```bash
+cp .env.example .env
+```
+Fill `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and `GOOGLE_MAPS_SERVER_KEY` in `.env` with real keys (Maps JavaScript API + Geocoding API enabled in Google Cloud).
+
+- [ ] **Step 4: Create the Prisma client singleton `lib/db.ts`**
+
+```ts
+import { PrismaClient } from "@prisma/client";
+
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+- [ ] **Step 5: Add scripts to `package.json`**
+
+Merge these into the `"scripts"` block (keep the existing `dev`/`build`/`start`/`lint`):
+```json
+{
+  "scripts": {
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate",
+    "test:db": "DATABASE_URL=\"file:./test.db\" prisma db push --skip-generate --accept-data-loss",
+    "test": "bun run test:db && DATABASE_URL=\"file:./test.db\" bun test"
+  }
+}
+```
+
+- [ ] **Step 6: Generate the client and create the dev database**
+
+Run:
+```bash
+bunx prisma generate
+bunx prisma db push
+```
+Expected: `@prisma/client` generated; `prisma/dev.db` created with the three tables.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat: add Prisma schema (Trip/Day/Poi) and client"
+```
+
+---
+
+## Task 4: Trip input schemas (Zod) — TDD
+
+**Files:**
+- Create: `lib/trips/schema.ts`
+- Test: `tests/trips/schema.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/trips/schema.test.ts`:
+```ts
+import { test, expect, describe } from "bun:test";
+import { createTripSchema, updateTripSchema } from "@/lib/trips/schema";
+
+describe("createTripSchema", () => {
+  const base = {
+    title: "Tuscany Loop",
+    startName: "Florence, Italy",
+    endName: "Rome, Italy",
+    description: "A relaxed week of food and art.",
+    dayCount: 6,
+  };
+
+  test("accepts a valid one-way trip", () => {
+    const r = createTripSchema.safeParse(base);
+    expect(r.success).toBe(true);
+  });
+
+  test("rejects a missing title", () => {
+    const r = createTripSchema.safeParse({ ...base, title: "" });
+    expect(r.success).toBe(false);
+  });
+
+  test("requires an end location unless round trip", () => {
+    const r = createTripSchema.safeParse({ ...base, endName: undefined });
+    expect(r.success).toBe(false);
+  });
+
+  test("allows missing end location for a round trip", () => {
+    const r = createTripSchema.safeParse({ ...base, endName: undefined, isRoundTrip: true });
+    expect(r.success).toBe(true);
+  });
+
+  test("coerces dayCount from a string and defaults to 1", () => {
+    const r = createTripSchema.safeParse({ ...base, dayCount: "3" });
+    expect(r.success && r.data.dayCount).toBe(3);
+    const d = createTripSchema.safeParse({ ...base, dayCount: undefined });
+    expect(d.success && d.data.dayCount).toBe(1);
+  });
+});
+
+describe("updateTripSchema", () => {
+  test("accepts a partial patch", () => {
+    const r = updateTripSchema.safeParse({ title: "New name" });
+    expect(r.success).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `bun test tests/trips/schema.test.ts`
+Expected: FAIL — cannot resolve `@/lib/trips/schema`.
+
+- [ ] **Step 3: Implement `lib/trips/schema.ts`**
+
+```ts
+import { z } from "zod";
+
+export const createTripSchema = z
+  .object({
+    title: z.string().min(1, "Title is required"),
+    startName: z.string().min(1, "Start location is required"),
+    endName: z.string().min(1).optional(),
+    isRoundTrip: z.boolean().default(false),
+    description: z.string().min(1, "Description is required"),
+    startDate: z.string().optional(),
+    dayCount: z.coerce.number().int().min(1).max(60).default(1),
+  })
+  .refine((d) => d.isRoundTrip || !!d.endName, {
+    message: "End location is required unless this is a round trip",
+    path: ["endName"],
+  });
+
+export const updateTripSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+});
+
+export type CreateTripInput = z.infer<typeof createTripSchema>;
+export type UpdateTripInput = z.infer<typeof updateTripSchema>;
+
+export type ResolvedLocation = {
+  name: string;
+  lat: number;
+  lng: number;
+  placeId: string | null;
+};
+
+export type CreateTripData = {
+  title: string;
+  description: string;
+  isRoundTrip: boolean;
+  startDate: Date | null;
+  dayCount: number;
+  start: ResolvedLocation;
+  end: ResolvedLocation | null;
+};
+```
+
+- [ ] **Step 4: Add Zod dependency and run the test**
+
+Run:
+```bash
+bun add zod
+bun test tests/trips/schema.test.ts
+```
+Expected: PASS (all 7 assertions green).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/trips/schema.ts tests/trips/schema.test.ts package.json bun.lock
+git commit -m "feat: add trip Zod schemas with tests"
+```
+
+---
+
+## Task 5: Geocoding helper — TDD
+
+**Files:**
+- Create: `lib/geocode.ts`
+- Test: `tests/geocode.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/geocode.test.ts`:
+```ts
+import { test, expect, describe, afterEach } from "bun:test";
+import { geocodePlace, GeocodeError } from "@/lib/geocode";
+
+const realFetch = globalThis.fetch;
+afterEach(() => {
+  globalThis.fetch = realFetch;
+});
+
+function mockFetch(payload: unknown, ok = true, status = 200) {
+  globalThis.fetch = (async () =>
+    ({ ok, status, json: async () => payload }) as Response) as typeof fetch;
+}
+
+describe("geocodePlace", () => {
+  test("returns a resolved location on OK", async () => {
+    mockFetch({
+      status: "OK",
+      results: [
+        {
+          formatted_address: "Florence, Metropolitan City of Florence, Italy",
+          place_id: "ChIJrdbSgKZWKhMRAyrH7xd51ZM",
+          geometry: { location: { lat: 43.7696, lng: 11.2558 } },
+        },
+      ],
+    });
+    const r = await geocodePlace("Florence", "fake-key");
+    expect(r.lat).toBeCloseTo(43.7696);
+    expect(r.lng).toBeCloseTo(11.2558);
+    expect(r.placeId).toBe("ChIJrdbSgKZWKhMRAyrH7xd51ZM");
+    expect(r.name).toContain("Florence");
+  });
+
+  test("throws GeocodeError on ZERO_RESULTS", async () => {
+    mockFetch({ status: "ZERO_RESULTS", results: [] });
+    await expect(geocodePlace("asdfqwer", "fake-key")).rejects.toBeInstanceOf(GeocodeError);
+  });
+
+  test("throws GeocodeError on HTTP failure", async () => {
+    mockFetch({}, false, 500);
+    await expect(geocodePlace("Florence", "fake-key")).rejects.toBeInstanceOf(GeocodeError);
+  });
+
+  test("throws GeocodeError when no API key is provided", async () => {
+    await expect(geocodePlace("Florence", "")).rejects.toBeInstanceOf(GeocodeError);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `bun test tests/geocode.test.ts`
+Expected: FAIL — cannot resolve `@/lib/geocode`.
+
+- [ ] **Step 3: Implement `lib/geocode.ts`**
+
+```ts
+import type { ResolvedLocation } from "@/lib/trips/schema";
+
+const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
+
+export class GeocodeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GeocodeError";
+  }
+}
+
+export async function geocodePlace(
+  query: string,
+  apiKey: string | undefined = process.env.GOOGLE_MAPS_SERVER_KEY,
+): Promise<ResolvedLocation> {
+  if (!apiKey) throw new GeocodeError("Missing GOOGLE_MAPS_SERVER_KEY");
+
+  const url = `${GEOCODE_URL}?address=${encodeURIComponent(query)}&key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new GeocodeError(`Geocoding request failed (HTTP ${res.status})`);
+
+  const data = (await res.json()) as {
+    status: string;
+    results?: Array<{
+      formatted_address?: string;
+      place_id?: string;
+      geometry: { location: { lat: number; lng: number } };
+    }>;
+  };
+
+  if (data.status !== "OK" || !data.results?.length) {
+    throw new GeocodeError(`Could not find location "${query}" (${data.status})`);
+  }
+
+  const r = data.results[0];
+  return {
+    name: r.formatted_address ?? query,
+    lat: r.geometry.location.lat,
+    lng: r.geometry.location.lng,
+    placeId: r.place_id ?? null,
+  };
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `bun test tests/geocode.test.ts`
+Expected: PASS (4 assertions).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/geocode.ts tests/geocode.test.ts
+git commit -m "feat: add geocoding helper with tests"
+```
+
+---
+
+## Task 6: Trip service layer (CRUD) — TDD
+
+**Files:**
+- Create: `lib/trips/service.ts`
+- Test: `tests/trips/service.test.ts`
+
+> Tests run against a temporary SQLite database. The `test` script (Task 3, Step 5) runs `prisma db push` to `file:./test.db` and sets `DATABASE_URL` to it before `bun test`. Prisma resolves the relative `file:` path against the `prisma/` schema directory, so both push and runtime use `prisma/test.db`. The full `bun run test` command (not `bun test`) is what wires this up.
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/trips/service.test.ts`:
+```ts
+import { test, expect, describe, beforeEach, afterAll } from "bun:test";
+import { PrismaClient } from "@prisma/client";
+import {
+  createTrip,
+  getTrip,
+  listTrips,
+  updateTrip,
+  deleteTrip,
+} from "@/lib/trips/service";
+import type { CreateTripData } from "@/lib/trips/schema";
+
+const prisma = new PrismaClient();
+
+beforeEach(async () => {
+  await prisma.poi.deleteMany();
+  await prisma.day.deleteMany();
+  await prisma.trip.deleteMany();
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+function sampleData(overrides: Partial<CreateTripData> = {}): CreateTripData {
+  return {
+    title: "Tuscany Loop",
+    description: "Relaxed week of food and art.",
+    isRoundTrip: false,
+    startDate: null,
+    dayCount: 3,
+    start: { name: "Florence", lat: 43.77, lng: 11.25, placeId: "p_start" },
+    end: { name: "Rome", lat: 41.9, lng: 12.5, placeId: "p_end" },
+    ...overrides,
+  };
+}
+
+describe("trip service", () => {
+  test("createTrip stores the trip and seeds empty days", async () => {
+    const trip = await createTrip(prisma, sampleData());
+    expect(trip.id).toBeTruthy();
+    expect(trip.startName).toBe("Florence");
+    expect(trip.endLat).toBeCloseTo(41.9);
+    expect(trip.days).toHaveLength(3);
+    expect(trip.days.map((d) => d.dayIndex)).toEqual([0, 1, 2]);
+  });
+
+  test("createTrip leaves end fields null for a round trip", async () => {
+    const trip = await createTrip(
+      prisma,
+      sampleData({ isRoundTrip: true, end: null, dayCount: 1 }),
+    );
+    expect(trip.isRoundTrip).toBe(true);
+    expect(trip.endName).toBeNull();
+    expect(trip.endLat).toBeNull();
+  });
+
+  test("getTrip returns the trip with ordered days", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const trip = await getTrip(prisma, created.id);
+    expect(trip).not.toBeNull();
+    expect(trip!.days).toHaveLength(3);
+  });
+
+  test("getTrip returns null for an unknown id", async () => {
+    expect(await getTrip(prisma, "nope")).toBeNull();
+  });
+
+  test("listTrips returns all trips, newest first", async () => {
+    await createTrip(prisma, sampleData({ title: "A" }));
+    await createTrip(prisma, sampleData({ title: "B" }));
+    const trips = await listTrips(prisma);
+    expect(trips).toHaveLength(2);
+  });
+
+  test("updateTrip changes title and description", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const updated = await updateTrip(prisma, created.id, { title: "Renamed" });
+    expect(updated.title).toBe("Renamed");
+  });
+
+  test("deleteTrip removes the trip and cascades days", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await deleteTrip(prisma, created.id);
+    expect(await getTrip(prisma, created.id)).toBeNull();
+    expect(await prisma.day.count()).toBe(0);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `bun run test`
+Expected: FAIL — cannot resolve `@/lib/trips/service`.
+
+- [ ] **Step 3: Implement `lib/trips/service.ts`**
+
+```ts
+import type { PrismaClient } from "@prisma/client";
+import type { CreateTripData, UpdateTripInput } from "@/lib/trips/schema";
+
+export async function createTrip(prisma: PrismaClient, data: CreateTripData) {
+  return prisma.trip.create({
+    data: {
+      title: data.title,
+      description: data.description,
+      isRoundTrip: data.isRoundTrip,
+      startDate: data.startDate,
+      startName: data.start.name,
+      startLat: data.start.lat,
+      startLng: data.start.lng,
+      startPlaceId: data.start.placeId,
+      endName: data.end?.name ?? null,
+      endLat: data.end?.lat ?? null,
+      endLng: data.end?.lng ?? null,
+      endPlaceId: data.end?.placeId ?? null,
+      days: {
+        create: Array.from({ length: data.dayCount }, (_, i) => ({ dayIndex: i })),
+      },
+    },
+    include: {
+      days: { orderBy: { dayIndex: "asc" } },
+      pois: true,
+    },
+  });
+}
+
+export async function getTrip(prisma: PrismaClient, id: string) {
+  return prisma.trip.findUnique({
+    where: { id },
+    include: {
+      days: {
+        orderBy: { dayIndex: "asc" },
+        include: { pois: { orderBy: { orderInDay: "asc" } } },
+      },
+      pois: true,
+    },
+  });
+}
+
+export async function listTrips(prisma: PrismaClient) {
+  return prisma.trip.findMany({ orderBy: { updatedAt: "desc" } });
+}
+
+export async function updateTrip(
+  prisma: PrismaClient,
+  id: string,
+  patch: UpdateTripInput,
+) {
+  return prisma.trip.update({ where: { id }, data: patch });
+}
+
+export async function deleteTrip(prisma: PrismaClient, id: string) {
+  return prisma.trip.delete({ where: { id } });
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `bun run test`
+Expected: PASS — all suites (schema, geocode, service) green.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/trips/service.ts tests/trips/service.test.ts package.json
+git commit -m "feat: add trip CRUD service with tests"
+```
+
+---
+
+## Task 7: Trip API route handlers
+
+**Files:**
+- Create: `app/api/trips/route.ts`, `app/api/trips/[tripId]/route.ts`
+
+- [ ] **Step 1: Create `app/api/trips/route.ts`**
+
+```ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { createTripSchema } from "@/lib/trips/schema";
+import { createTrip, listTrips } from "@/lib/trips/service";
+import { geocodePlace, GeocodeError } from "@/lib/geocode";
+
+export async function GET() {
+  const trips = await listTrips(prisma);
+  return NextResponse.json(trips);
+}
+
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  const parsed = createTripSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const input = parsed.data;
+
+  try {
+    const start = await geocodePlace(input.startName);
+    const end =
+      !input.isRoundTrip && input.endName ? await geocodePlace(input.endName) : null;
+
+    const trip = await createTrip(prisma, {
+      title: input.title,
+      description: input.description,
+      isRoundTrip: input.isRoundTrip,
+      startDate: input.startDate ? new Date(input.startDate) : null,
+      dayCount: input.dayCount,
+      start,
+      end,
+    });
+    return NextResponse.json(trip, { status: 201 });
+  } catch (e) {
+    if (e instanceof GeocodeError) {
+      return NextResponse.json({ error: e.message }, { status: 422 });
+    }
+    throw e;
+  }
+}
+```
+
+- [ ] **Step 2: Create `app/api/trips/[tripId]/route.ts`**
+
+> In Next.js 15, the dynamic `params` is a Promise and must be awaited.
+
+```ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getTrip, updateTrip, deleteTrip } from "@/lib/trips/service";
+import { updateTripSchema } from "@/lib/trips/schema";
+
+type Ctx = { params: Promise<{ tripId: string }> };
+
+export async function GET(_req: Request, { params }: Ctx) {
+  const { tripId } = await params;
+  const trip = await getTrip(prisma, tripId);
+  if (!trip) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(trip);
+}
+
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { tripId } = await params;
+  const body = await req.json().catch(() => null);
+  const parsed = updateTripSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
+  const trip = await updateTrip(prisma, tripId, parsed.data);
+  return NextResponse.json(trip);
+}
+
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const { tripId } = await params;
+  await deleteTrip(prisma, tripId);
+  return new NextResponse(null, { status: 204 });
+}
+```
+
+- [ ] **Step 3: Manually verify the endpoints**
+
+Start the dev server (`bun run dev`), then in another terminal:
+```bash
+curl -s -X POST http://localhost:3000/api/trips \
+  -H 'content-type: application/json' \
+  -d '{"title":"Test","startName":"Florence, Italy","endName":"Rome, Italy","description":"test trip","dayCount":2}' | head -c 400
+echo
+curl -s http://localhost:3000/api/trips | head -c 400
+```
+Expected: POST returns a 201 JSON trip with an `id` and 2 `days` (requires a valid `GOOGLE_MAPS_SERVER_KEY` in `.env`); GET returns an array containing it. Stop the dev server.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add app/api/trips
+git commit -m "feat: add trip API route handlers"
+```
+
+---
+
+## Task 8: Home page + create-trip form
+
+**Files:**
+- Create: `components/trip-form.tsx`, `app/trips/new/page.tsx`
+- Modify: `app/page.tsx`
+
+- [ ] **Step 1: Create the form component `components/trip-form.tsx`**
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+
+export function TripForm() {
+  const router = useRouter();
+  const [isRoundTrip, setIsRoundTrip] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    const form = new FormData(e.currentTarget);
+    const payload = {
+      title: String(form.get("title") ?? ""),
+      startName: String(form.get("startName") ?? ""),
+      endName: String(form.get("endName") ?? ""),
+      description: String(form.get("description") ?? ""),
+      dayCount: String(form.get("dayCount") ?? "1"),
+      isRoundTrip,
+    };
+
+    try {
+      const res = await fetch("/api/trips", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(typeof data.error === "string" ? data.error : "Could not create trip.");
+        setSubmitting(false);
+        return;
+      }
+      const trip = await res.json();
+      router.push(`/trips/${trip.id}`);
+    } catch {
+      setError("Network error. Please try again.");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 max-w-xl">
+      <div className="space-y-2">
+        <Label htmlFor="title">Trip title</Label>
+        <Input id="title" name="title" placeholder="Tuscany Loop" required />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="startName">Start location</Label>
+        <Input id="startName" name="startName" placeholder="Florence, Italy" required />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="isRoundTrip"
+          checked={isRoundTrip}
+          onCheckedChange={(v) => setIsRoundTrip(v === true)}
+        />
+        <Label htmlFor="isRoundTrip">Round trip (end where I start)</Label>
+      </div>
+
+      {!isRoundTrip && (
+        <div className="space-y-2">
+          <Label htmlFor="endName">End location</Label>
+          <Input id="endName" name="endName" placeholder="Rome, Italy" />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="dayCount">Number of days</Label>
+        <Input id="dayCount" name="dayCount" type="number" min={1} max={60} defaultValue={1} />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">What's the trip?</Label>
+        <Textarea
+          id="description"
+          name="description"
+          rows={4}
+          placeholder="A relaxed week of Tuscan food, hilltop towns, and art. Avoid highways where possible."
+          required
+        />
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <Button type="submit" disabled={submitting}>
+        {submitting ? "Creating…" : "Create trip"}
+      </Button>
+    </form>
+  );
+}
+```
+
+- [ ] **Step 2: Create `app/trips/new/page.tsx`**
+
+```tsx
+import { TripForm } from "@/components/trip-form";
+
+export default function NewTripPage() {
+  return (
+    <main className="mx-auto max-w-3xl p-8">
+      <h1 className="mb-6 text-2xl font-semibold">Plan a new road trip</h1>
+      <TripForm />
+    </main>
+  );
+}
+```
+
+- [ ] **Step 3: Replace `app/page.tsx` with a trip list**
+
+```tsx
+import Link from "next/link";
+import { prisma } from "@/lib/db";
+import { listTrips } from "@/lib/trips/service";
+import { Button } from "@/components/ui/button";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const trips = await listTrips(prisma);
+
+  return (
+    <main className="mx-auto max-w-3xl p-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Your road trips</h1>
+        <Button asChild>
+          <Link href="/trips/new">New trip</Link>
+        </Button>
+      </div>
+
+      {trips.length === 0 ? (
+        <p className="text-muted-foreground">No trips yet. Create your first one.</p>
+      ) : (
+        <ul className="space-y-2">
+          {trips.map((t) => (
+            <li key={t.id}>
+              <Link
+                href={`/trips/${t.id}`}
+                className="block rounded-md border p-4 hover:bg-accent"
+              >
+                <div className="font-medium">{t.title}</div>
+                <div className="text-sm text-muted-foreground">
+                  {t.startName}
+                  {t.endName ? ` → ${t.endName}` : " (round trip)"}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
+```
+
+- [ ] **Step 4: Verify type-check/build**
+
+Run: `bun run build`
+Expected: build succeeds.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/page.tsx app/trips/new components/trip-form.tsx
+git commit -m "feat: add home trip list and create-trip form"
+```
+
+---
+
+## Task 9: Trip map + planner page
+
+**Files:**
+- Create: `components/trip-map.tsx`, `components/planner-shell.tsx`, `app/trips/[tripId]/page.tsx`
+
+- [ ] **Step 1: Add dependencies**
+
+Run:
+```bash
+bun add @vis.gl/react-google-maps
+bun add -d @types/google.maps
+```
+
+- [ ] **Step 2: Create `components/trip-map.tsx`**
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  Pin,
+  useMap,
+} from "@vis.gl/react-google-maps";
+
+export type MapPoint = { lat: number; lng: number; name: string; id?: string };
+
+export function TripMap({
+  start,
+  end,
+  pois = [],
+}: {
+  start: MapPoint;
+  end?: MapPoint | null;
+  pois?: MapPoint[];
+}) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+  const path: MapPoint[] = [start, ...pois, ...(end ? [end] : [])];
+
+  if (!apiKey) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to show the map.
+      </div>
+    );
+  }
+
+  return (
+    <APIProvider apiKey={apiKey}>
+      <Map
+        defaultCenter={{ lat: start.lat, lng: start.lng }}
+        defaultZoom={7}
+        mapId={mapId}
+        gestureHandling="greedy"
+        style={{ width: "100%", height: "100%" }}
+      >
+        <AdvancedMarker position={start} title={start.name}>
+          <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
+        </AdvancedMarker>
+
+        {pois.map((p, i) => (
+          <AdvancedMarker key={p.id ?? i} position={p} title={p.name}>
+            <Pin />
+          </AdvancedMarker>
+        ))}
+
+        {end && (
+          <AdvancedMarker position={end} title={end.name}>
+            <Pin background="#dc2626" borderColor="#b91c1c" glyphColor="#ffffff" />
+          </AdvancedMarker>
+        )}
+
+        <RoutePolyline path={path} />
+        <FitBounds points={path} />
+      </Map>
+    </APIProvider>
+  );
+}
+
+function RoutePolyline({ path }: { path: MapPoint[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || path.length < 2) return;
+    const line = new google.maps.Polyline({
+      path: path.map((p) => ({ lat: p.lat, lng: p.lng })),
+      geodesic: true,
+      strokeColor: "#2563eb",
+      strokeOpacity: 0.85,
+      strokeWeight: 3,
+    });
+    line.setMap(map);
+    return () => line.setMap(null);
+  }, [map, path]);
+  return null;
+}
+
+function FitBounds({ points }: { points: MapPoint[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || points.length === 0) return;
+    const bounds = new google.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+    if (points.length === 1) {
+      map.setCenter({ lat: points[0].lat, lng: points[0].lng });
+      map.setZoom(10);
+    } else {
+      map.fitBounds(bounds, 64);
+    }
+  }, [map, points]);
+  return null;
+}
+```
+
+- [ ] **Step 3: Create `components/planner-shell.tsx`**
+
+> Phase-0 version of the map-first layout: big map on the left, a simple day list on the right. Drag/drop, chat, and the pool come in later phases.
+
+```tsx
+"use client";
+
+import { TripMap, type MapPoint } from "@/components/trip-map";
+
+type Day = { id: string; dayIndex: number; pois: { id: string; name: string }[] };
+
+type TripView = {
+  id: string;
+  title: string;
+  startName: string;
+  startLat: number;
+  startLng: number;
+  endName: string | null;
+  endLat: number | null;
+  endLng: number | null;
+  isRoundTrip: boolean;
+  days: Day[];
+  pois: { id: string; name: string; lat: number; lng: number }[];
+};
+
+export function PlannerShell({ trip }: { trip: TripView }) {
+  const start: MapPoint = { lat: trip.startLat, lng: trip.startLng, name: trip.startName };
+  const end: MapPoint | null =
+    trip.endLat != null && trip.endLng != null
+      ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
+      : null;
+  const pois: MapPoint[] = trip.pois.map((p) => ({
+    lat: p.lat,
+    lng: p.lng,
+    name: p.name,
+    id: p.id,
+  }));
+
+  return (
+    <div className="flex h-[calc(100vh-0px)] w-full">
+      <div className="relative flex-1">
+        <TripMap start={start} end={end} pois={pois} />
+      </div>
+
+      <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">
+        <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {trip.startName}
+          {end ? ` → ${end.name}` : " (round trip)"}
+        </p>
+
+        <div className="space-y-3">
+          {trip.days.map((day) => (
+            <div key={day.id} className="rounded-md border p-3">
+              <div className="mb-2 text-sm font-medium">Day {day.dayIndex + 1}</div>
+              {day.pois.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No stops yet.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {day.pois.map((p) => (
+                    <li key={p.id}>{p.name}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Create `app/trips/[tripId]/page.tsx`**
+
+```tsx
+import { notFound } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { getTrip } from "@/lib/trips/service";
+import { PlannerShell } from "@/components/planner-shell";
+
+export const dynamic = "force-dynamic";
+
+export default async function TripPage({
+  params,
+}: {
+  params: Promise<{ tripId: string }>;
+}) {
+  const { tripId } = await params;
+  const trip = await getTrip(prisma, tripId);
+  if (!trip) notFound();
+
+  return (
+    <PlannerShell
+      trip={{
+        id: trip.id,
+        title: trip.title,
+        startName: trip.startName,
+        startLat: trip.startLat,
+        startLng: trip.startLng,
+        endName: trip.endName,
+        endLat: trip.endLat,
+        endLng: trip.endLng,
+        isRoundTrip: trip.isRoundTrip,
+        days: trip.days.map((d) => ({
+          id: d.id,
+          dayIndex: d.dayIndex,
+          pois: d.pois.map((p) => ({ id: p.id, name: p.name })),
+        })),
+        pois: trip.pois.map((p) => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng })),
+      }}
+    />
+  );
+}
+```
+
+- [ ] **Step 5: Verify build**
+
+Run: `bun run build`
+Expected: build succeeds.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add components/trip-map.tsx components/planner-shell.tsx app/trips/[tripId] package.json bun.lock
+git commit -m "feat: add trip map and planner shell"
+```
+
+---
+
+## Task 10: End-to-end manual verification
+
+**Files:** none (verification only)
+
+- [ ] **Step 1: Confirm environment**
+
+Ensure `.env` has real values for `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (Maps JavaScript API enabled) and `GOOGLE_MAPS_SERVER_KEY` (Geocoding API enabled), and `DATABASE_URL="file:./dev.db"`.
+
+- [ ] **Step 2: Run the full test suite**
+
+Run: `bun run test`
+Expected: all suites pass (schema, geocode, service).
+
+- [ ] **Step 3: Manual smoke test**
+
+Run `bun run dev`, then in the browser:
+1. Open http://localhost:3000 → "Your road trips", empty state.
+2. Click **New trip** → fill title, start "Florence, Italy", end "Rome, Italy", 3 days, a description → **Create trip**.
+3. You should land on `/trips/<id>` showing a Google map with a green start pin, red end pin, a blue line between them, and a right-hand list of Day 1–3 (each "No stops yet").
+4. Go back to `/` → the trip appears in the list.
+
+Expected: all four steps work. If the map area shows the "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" message, the browser key is missing/misconfigured.
+
+- [ ] **Step 4: Final commit (if any docs/notes changed)**
+
+```bash
+git add -A
+git commit -m "docs: phase 0 verified" --allow-empty
+```
+
+---
+
+## Phase 0 Done — Definition of Done
+
+- `bun run test` passes (schema, geocode, service suites).
+- `bun run build` succeeds.
+- You can create a trip via the UI and see start/end pins + route line on a Google map, with an empty per-day list.
+- Trip data persists in SQLite and survives a server restart.
+
+**Next:** Phase 1 — Manual planner (intake wizard, shared itinerary operations, add places via search autocomplete + clickable map POIs, drag between days/pool, overnights, per-day drive time).
