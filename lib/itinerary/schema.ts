@@ -11,3 +11,17 @@ export const addPoiSchema = z.object({
 });
 
 export type AddPoiBody = z.infer<typeof addPoiSchema>;
+
+export const patchPoiSchema = z.discriminatedUnion("op", [
+  z.object({
+    op: z.literal("move"),
+    dayId: z.string().nullable(),
+    orderInDay: z.number().int().min(0),
+  }),
+  z.object({
+    op: z.literal("overnight"),
+    isOvernight: z.boolean(),
+  }),
+]);
+
+export type PatchPoiBody = z.infer<typeof patchPoiSchema>;
