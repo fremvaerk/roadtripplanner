@@ -8,6 +8,8 @@ import {
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
+import type { AddPoiInput } from "@/lib/itinerary/operations";
+import { categoryFromTypes } from "@/lib/places/category";
 
 export type MapPoint = { lat: number; lng: number; name: string; id?: string };
 
@@ -15,10 +17,12 @@ export function TripMap({
   start,
   end,
   pois = [],
+  onAddPlace,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
   pois?: MapPoint[];
+  onAddPlace?: (input: AddPoiInput) => void;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
@@ -44,6 +48,23 @@ export function TripMap({
         mapId={mapId}
         gestureHandling="greedy"
         style={{ width: "100%", height: "100%" }}
+        onClick={async (ev) => {
+          const placeId = ev.detail.placeId;
+          if (!placeId || !onAddPlace) return;
+          ev.stop();
+          const place = new google.maps.places.Place({ id: placeId });
+          await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+          const loc = place.location;
+          if (!loc) return;
+          onAddPlace({
+            name: place.displayName ?? "Unnamed place",
+            lat: loc.lat(),
+            lng: loc.lng(),
+            placeId: place.id ?? null,
+            category: categoryFromTypes(place.types ?? []),
+            source: "map",
+          });
+        }}
       >
         <AdvancedMarker position={start} title={start.name}>
           <Pin background="#16a34a" borderColor="#15803d" glyphColor="#ffffff" />
