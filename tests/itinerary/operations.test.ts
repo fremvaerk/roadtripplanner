@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, removePoi, ItineraryError } from "@/lib/itinerary/operations";
+import { addPoi, removePoi, ItineraryError, movePoi } from "@/lib/itinerary/operations";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
@@ -84,5 +84,73 @@ describe("removePoi", () => {
     const poi = await addPoi(prisma, trip.id, { name: "X", lat: 1, lng: 2 });
     await removePoi(prisma, poi.id);
     expect(await prisma.poi.count()).toBe(0);
+  });
+});
+
+describe("movePoi", () => {
+  test("moves a pool POI into a day at the given index and re-indexes", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const dayId = trip.days[0].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
+    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
+    const c = await addPoi(prisma, trip.id, { name: "C", lat: 3, lng: 3 }); // pool
+
+    await movePoi(prisma, c.id, { dayId, orderInDay: 1 });
+
+    const inDay = await prisma.poi.findMany({
+      where: { dayId },
+      orderBy: { orderInDay: "asc" },
+    });
+    expect(inDay.map((p) => p.id)).toEqual([a.id, c.id, b.id]);
+    expect(inDay.map((p) => p.orderInDay)).toEqual([0, 1, 2]);
+  });
+
+  test("moves a day POI to the pool, clearing day/order/overnight and re-indexing the source day", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const dayId = trip.days[0].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
+    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
+
+    await movePoi(prisma, a.id, { dayId: null, orderInDay: 0 });
+
+    const moved = await prisma.poi.findUnique({ where: { id: a.id } });
+    expect(moved?.dayId).toBeNull();
+    expect(moved?.orderInDay).toBeNull();
+    const remaining = await prisma.poi.findUnique({ where: { id: b.id } });
+    expect(remaining?.orderInDay).toBe(0);
+  });
+
+  test("reorders within the same day", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const dayId = trip.days[0].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
+    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
+    const c = await addPoi(prisma, trip.id, { name: "C", lat: 3, lng: 3, dayId });
+
+    await movePoi(prisma, c.id, { dayId, orderInDay: 0 });
+
+    const inDay = await prisma.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
+    expect(inDay.map((p) => p.id)).toEqual([c.id, a.id, b.id]);
+  });
+
+  test("clamps an out-of-range index to the end of the day", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const dayId = trip.days[0].id;
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
+    const c = await addPoi(prisma, trip.id, { name: "C", lat: 3, lng: 3 });
+
+    await movePoi(prisma, c.id, { dayId, orderInDay: 99 });
+
+    const inDay = await prisma.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
+    expect(inDay.map((p) => p.id)).toEqual([a.id, c.id]);
+  });
+
+  test("rejects moving into a day from a different trip", async () => {
+    const tripA = await createTrip(prisma, sampleTrip());
+    const tripB = await createTrip(prisma, sampleTrip());
+    const poi = await addPoi(prisma, tripA.id, { name: "A", lat: 1, lng: 1 });
+    await expect(
+      movePoi(prisma, poi.id, { dayId: tripB.days[0].id, orderInDay: 0 }),
+    ).rejects.toBeInstanceOf(ItineraryError);
   });
 });

@@ -52,3 +52,50 @@ export async function addPoi(
 export async function removePoi(prisma: PrismaClient, poiId: string) {
   return prisma.poi.delete({ where: { id: poiId } });
 }
+
+export async function movePoi(
+  prisma: PrismaClient,
+  poiId: string,
+  target: { dayId: string | null; orderInDay: number },
+) {
+  return prisma.$transaction(async (tx) => {
+    const poi = await tx.poi.findUnique({ where: { id: poiId } });
+    if (!poi) throw new ItineraryError("POI not found");
+    const oldDayId = poi.dayId;
+    const { dayId } = target;
+
+    if (dayId) {
+      const day = await tx.day.findFirst({ where: { id: dayId, tripId: poi.tripId } });
+      if (!day) throw new ItineraryError("Day does not belong to this trip");
+      const siblings = await tx.poi.findMany({
+        where: { dayId, id: { not: poiId } },
+        orderBy: { orderInDay: "asc" },
+        select: { id: true },
+      });
+      const ids = siblings.map((s) => s.id);
+      const index = Math.max(0, Math.min(target.orderInDay, ids.length));
+      ids.splice(index, 0, poiId);
+      for (let i = 0; i < ids.length; i++) {
+        await tx.poi.update({ where: { id: ids[i] }, data: { dayId, orderInDay: i } });
+      }
+    } else {
+      await tx.poi.update({
+        where: { id: poiId },
+        data: { dayId: null, orderInDay: null, isOvernight: false },
+      });
+    }
+
+    if (oldDayId && oldDayId !== dayId) {
+      const src = await tx.poi.findMany({
+        where: { dayId: oldDayId },
+        orderBy: { orderInDay: "asc" },
+        select: { id: true },
+      });
+      for (let i = 0; i < src.length; i++) {
+        await tx.poi.update({ where: { id: src[i].id }, data: { orderInDay: i } });
+      }
+    }
+
+    return tx.poi.findUnique({ where: { id: poiId } });
+  });
+}
