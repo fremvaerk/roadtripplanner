@@ -1,6 +1,10 @@
+# project
 .superpowers/
 node_modules/
+lib/generated/
 .env
 .env.local
 *.db
+*.db-journal
 .next/
+.playwright-mcp/
