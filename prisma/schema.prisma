@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Trip {
+  id           String    @id @default(cuid())
+  title        String
+  startName    String
+  startLat     Float
+  startLng     Float
+  startPlaceId String?
+  endName      String?
+  endLat       Float?
+  endLng       Float?
+  endPlaceId   String?
+  isRoundTrip  Boolean   @default(false)
+  description  String
+  startDate    DateTime?
+  params       String? // serialized JSON
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  days         Day[]
+  pois         Poi[]
+}
+
+model Day {
+  id       String    @id @default(cuid())
+  tripId   String
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayIndex Int
+  date     DateTime?
+  notes    String?
+  pois     Poi[]
+
+  @@unique([tripId, dayIndex])
+}
+
+model Poi {
+  id           String   @id @default(cuid())
+  tripId       String
+  trip         Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  dayId        String?
+  day          Day?     @relation(fields: [dayId], references: [id], onDelete: SetNull)
+  orderInDay   Int?
+  isOvernight  Boolean  @default(false)
+  name         String
+  lat          Float
+  lng          Float
+  placeId      String?
+  category     String?
+  source       String   @default("user") // ai | user | search | map
+  rating       Float?
+  photoRef     String?
+  address      String?
+  openingHours String? // serialized JSON
+  aiReason     String?
+  userNote     String?
+  status       String   @default("accepted") // suggested | accepted
+  createdAt    DateTime @default(now())
+}
