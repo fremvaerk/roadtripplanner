@@ -321,3 +321,26 @@ export async function updateNight(
 export async function clearNight(prisma: PrismaClient, dayId: string) {
   return prisma.nightStop.deleteMany({ where: { dayId } });
 }
+
+export async function addDay(prisma: PrismaClient, tripId: string) {
+  const dayIndex = await prisma.day.count({ where: { tripId } });
+  return prisma.day.create({ data: { tripId, dayIndex } });
+}
+
+export async function removeDay(prisma: PrismaClient, dayId: string) {
+  return prisma.$transaction(async (tx) => {
+    const day = await tx.day.findUnique({ where: { id: dayId } });
+    if (!day) throw new ItineraryError("Day not found");
+    await tx.poi.updateMany({ where: { dayId }, data: { dayId: null, orderInDay: null } });
+    await tx.day.delete({ where: { id: dayId } });
+    const remaining = await tx.day.findMany({
+      where: { tripId: day.tripId },
+      orderBy: { dayIndex: "asc" },
+    });
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].dayIndex !== i) {
+        await tx.day.update({ where: { id: remaining[i].id }, data: { dayIndex: i } });
+      }
+    }
+  });
+}

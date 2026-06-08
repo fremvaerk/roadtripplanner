@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
-import type { CreateTripData, UpdateTripInput } from "@/lib/trips/schema";
+import type { CreateTripData } from "@/lib/trips/schema";
 
 export async function createTrip(prisma: PrismaClient, data: CreateTripData) {
   return prisma.trip.create({
@@ -49,7 +49,7 @@ export async function listTrips(prisma: PrismaClient) {
 export async function updateTrip(
   prisma: PrismaClient,
   id: string,
-  patch: UpdateTripInput,
+  patch: { title?: string; description?: string; startDate?: Date | null },
 ) {
   return prisma.trip.update({ where: { id }, data: patch });
 }

@@ -39,6 +39,7 @@ export type TripDetail = {
   endLat: number | null;
   endLng: number | null;
   isRoundTrip: boolean;
+  startDate: string | null;
   days: DayDetail[];
   pois: PoiDetail[];
   poiGroups: TripGroup[];
@@ -210,4 +211,23 @@ export async function updateNightRequest(
 export async function clearNightRequest(dayId: string): Promise<void> {
   const res = await fetch(`/api/days/${dayId}/night`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to clear night (${res.status})`);
+}
+
+export async function addDayRequest(tripId: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/days`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to add day (${res.status})`);
+}
+
+export async function removeDayRequest(dayId: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to remove day (${res.status})`);
+}
+
+export async function setStartDateRequest(tripId: string, startDate: string | null): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ startDate }),
+  });
+  if (!res.ok) throw new Error(`Failed to set start date (${res.status})`);
 }

@@ -83,6 +83,14 @@ describe("trip service", () => {
     expect(updated.title).toBe("Renamed");
   });
 
+  test("updateTrip sets and clears startDate", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const set = await updateTrip(prisma, created.id, { startDate: new Date("2026-06-09T00:00:00.000Z") });
+    expect(set.startDate?.toISOString().slice(0, 10)).toBe("2026-06-09");
+    const cleared = await updateTrip(prisma, created.id, { startDate: null });
+    expect(cleared.startDate).toBeNull();
+  });
+
   test("deleteTrip removes the trip and cascades days", async () => {
     const created = await createTrip(prisma, sampleData());
     await deleteTrip(prisma, created.id);
