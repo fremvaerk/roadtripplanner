@@ -44,4 +44,27 @@ describe("updateTripSchema", () => {
     expect(updateTripSchema.safeParse({ startDate: "banana" }).success).toBe(false);
     expect(updateTripSchema.safeParse({ startDate: "2026-6-9" }).success).toBe(false);
   });
+
+  test("accepts a start patch", () => {
+    const r = updateTripSchema.safeParse({
+      start: { name: "Pisa", lat: 43.72, lng: 10.4, placeId: null },
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("accepts finish open/round without a place", () => {
+    expect(updateTripSchema.safeParse({ finish: { mode: "open" } }).success).toBe(true);
+    expect(updateTripSchema.safeParse({ finish: { mode: "round" } }).success).toBe(true);
+  });
+
+  test("accepts finish place with a place", () => {
+    const r = updateTripSchema.safeParse({
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: null } },
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("rejects finish place without a place", () => {
+    expect(updateTripSchema.safeParse({ finish: { mode: "place" } }).success).toBe(false);
+  });
 });

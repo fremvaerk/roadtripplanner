@@ -85,6 +85,45 @@ describe("trip service", () => {
     expect(cleared.startDate).toBeNull();
   });
 
+  test("updateTrip sets the start location", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const updated = await updateTrip(prisma, created.id, {
+      start: { name: "Pisa", lat: 43.72, lng: 10.4, placeId: "p_pisa" },
+    });
+    expect(updated.startName).toBe("Pisa");
+    expect(updated.startLat).toBeCloseTo(43.72);
+    expect(updated.startPlaceId).toBe("p_pisa");
+  });
+
+  test("updateTrip finish=place sets end and clears round trip", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const updated = await updateTrip(prisma, created.id, {
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: "p_rome" } },
+    });
+    expect(updated.isRoundTrip).toBe(false);
+    expect(updated.endName).toBe("Rome");
+    expect(updated.endLat).toBeCloseTo(41.9);
+  });
+
+  test("updateTrip finish=round sets round trip and clears end", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await updateTrip(prisma, created.id, {
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: null } },
+    });
+    const updated = await updateTrip(prisma, created.id, { finish: { mode: "round" } });
+    expect(updated.isRoundTrip).toBe(true);
+    expect(updated.endName).toBeNull();
+    expect(updated.endLat).toBeNull();
+  });
+
+  test("updateTrip finish=open clears both round trip and end", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await updateTrip(prisma, created.id, { finish: { mode: "round" } });
+    const updated = await updateTrip(prisma, created.id, { finish: { mode: "open" } });
+    expect(updated.isRoundTrip).toBe(false);
+    expect(updated.endName).toBeNull();
+  });
+
   test("deleteTrip removes the trip and cascades days", async () => {
     const created = await createTrip(prisma, sampleData());
     await deleteTrip(prisma, created.id);

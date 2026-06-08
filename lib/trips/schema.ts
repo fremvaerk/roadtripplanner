@@ -2,6 +2,13 @@ import { z } from "zod";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be a YYYY-MM-DD date");
 
+const placeInput = z.object({
+  name: z.string().min(1),
+  lat: z.number(),
+  lng: z.number(),
+  placeId: z.string().nullable(),
+});
+
 export const createTripSchema = z.object({
   title: z.string().min(1, "Title is required"),
   startName: z.string().min(1, "Start location is required"),
@@ -14,6 +21,17 @@ export const updateTripSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   startDate: isoDate.nullable().optional(),
+  start: placeInput.optional(),
+  finish: z
+    .object({
+      mode: z.enum(["open", "round", "place"]),
+      place: placeInput.optional(),
+    })
+    .refine((f) => f.mode !== "place" || !!f.place, {
+      message: "A place is required for a specific finish",
+      path: ["place"],
+    })
+    .optional(),
 });
 
 export type CreateTripInput = z.infer<typeof createTripSchema>;
