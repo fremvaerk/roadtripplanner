@@ -66,4 +66,39 @@ describe("computeRoute", () => {
       computeRoute([{ lat: 1, lng: 1 }, { lat: 2, lng: 2 }], ""),
     ).rejects.toBeInstanceOf(RouteError);
   });
+
+  test("requests optimization and returns the optimized intermediate order", async () => {
+    let captured: { body: string } | null = null;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      captured = { body: String(init.body) };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          routes: [
+            {
+              duration: "100s",
+              distanceMeters: 1000,
+              polyline: { encodedPolyline: "p" },
+              legs: [{ duration: "100s", distanceMeters: 1000 }],
+              optimizedIntermediateWaypointIndex: [1, 0],
+            },
+          ],
+        }),
+      } as Response;
+    }) as typeof fetch;
+
+    const r = await computeRoute(
+      [
+        { lat: 0, lng: 0 },
+        { lat: 1, lng: 1 },
+        { lat: 2, lng: 2 },
+        { lat: 3, lng: 3 },
+      ],
+      "fake-key",
+      { optimize: true },
+    );
+    expect(r.optimizedOrder).toEqual([1, 0]);
+    expect(captured!.body).toContain("\"optimizeWaypointOrder\":true");
+  });
 });
