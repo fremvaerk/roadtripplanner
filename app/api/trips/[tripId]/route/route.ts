@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getTrip } from "@/lib/trips/service";
 import { computeRoute, RouteError } from "@/lib/routing/routes";
-import { orderedRoutePoints, attributeLegDurations } from "@/lib/routing/itinerary-route";
+import { buildRoute, attributeLegDurations, type TripVia } from "@/lib/routing/itinerary-route";
 import type { TripDetail } from "@/lib/api/trips";
 
 type Ctx = { params: Promise<{ tripId: string }> };
@@ -12,24 +12,24 @@ export async function GET(_req: Request, { params }: Ctx) {
   const trip = await getTrip(prisma, tripId);
   if (!trip) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { coords, legDayId } = orderedRoutePoints(trip as unknown as TripDetail);
-  if (coords.length < 2) {
-    return NextResponse.json({
-      encodedPolyline: null,
-      perDaySeconds: {},
-      totalSeconds: 0,
-      totalMeters: 0,
-    });
+  const vias = ((trip as unknown as { routeVias?: TripVia[] }).routeVias ?? []) as TripVia[];
+  const { waypoints, legDayId, legAfterPoiId } = buildRoute(trip as unknown as TripDetail, vias);
+
+  if (waypoints.length < 2) {
+    return NextResponse.json({ legs: [], perDaySeconds: {}, totalSeconds: 0, totalMeters: 0 });
   }
 
   try {
-    const route = await computeRoute(coords);
+    const route = await computeRoute(waypoints, undefined, { legPolylines: true });
     const { perDaySeconds, totalSeconds } = attributeLegDurations(
       legDayId,
       route.legs.map((l) => l.durationSeconds),
     );
     return NextResponse.json({
-      encodedPolyline: route.encodedPolyline,
+      legs: route.legs.map((l, i) => ({
+        encodedPolyline: l.encodedPolyline ?? null,
+        afterPoiId: legAfterPoiId[i] ?? null,
+      })),
       perDaySeconds,
       totalSeconds: totalSeconds || route.totalDurationSeconds,
       totalMeters: route.totalDistanceMeters,

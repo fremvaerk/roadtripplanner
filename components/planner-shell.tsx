@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useTrip } from "@/hooks/use-trip";
 import { useRoute } from "@/hooks/use-route";
 import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
+import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -30,6 +31,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const optimizeDay = useOptimizeDay(tripId);
   const buildSplit = useBuildSplit(tripId);
   const resplit = useResplit(tripId);
+  const addVia = useAddVia(tripId);
+  const moveVia = useMoveVia(tripId);
+  const removeVia = useRemoveVia(tripId);
 
   if (isLoading) {
     return (
@@ -96,7 +100,17 @@ export function PlannerShell({ tripId }: { tripId: string }) {
       <div className="flex h-screen w-full">
         <div className="relative flex-1">
           {apiKey ? (
-            <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} routePolyline={route?.encodedPolyline ?? null} />
+            <TripMap
+              start={start}
+              end={end}
+              pois={poiPoints}
+              onAddPlace={handleAddFromMap}
+              legs={route?.legs ?? []}
+              vias={trip.routeVias}
+              onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
+              onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
+              onRemoveVia={(viaId) => removeVia.mutate(viaId)}
+            />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
               Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.

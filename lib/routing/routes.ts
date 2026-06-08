@@ -8,7 +8,8 @@ export class RouteError extends Error {
 }
 
 export type LatLngLiteral = { lat: number; lng: number };
-export type RouteLeg = { durationSeconds: number; distanceMeters: number };
+export type RouteWaypoint = { lat: number; lng: number; via?: boolean };
+export type RouteLeg = { durationSeconds: number; distanceMeters: number; encodedPolyline?: string };
 export type ComputedRoute = {
   encodedPolyline: string;
   legs: RouteLeg[];
@@ -27,9 +28,9 @@ function parseSeconds(d: string | undefined): number {
 }
 
 export async function computeRoute(
-  points: LatLngLiteral[],
+  points: RouteWaypoint[],
   apiKey: string | undefined = process.env.GOOGLE_MAPS_SERVER_KEY,
-  opts: { optimize?: boolean } = {},
+  opts: { optimize?: boolean; legPolylines?: boolean } = {},
 ): Promise<ComputedRoute> {
   if (!apiKey) throw new RouteError("Missing GOOGLE_MAPS_SERVER_KEY");
   if (points.length < 2) throw new RouteError("A route needs at least two points");
@@ -50,12 +51,15 @@ export async function computeRoute(
         "routes.legs.duration",
         "routes.legs.distanceMeters",
         ...(opts.optimize ? ["routes.optimizedIntermediateWaypointIndex"] : []),
+        ...(opts.legPolylines ? ["routes.legs.polyline.encodedPolyline"] : []),
       ].join(","),
     },
     body: JSON.stringify({
       origin: toWaypoint(origin),
       destination: toWaypoint(destination),
-      intermediates: intermediates.map(toWaypoint),
+      intermediates: intermediates.map((p) =>
+        p.via ? { ...toWaypoint(p), via: true } : toWaypoint(p),
+      ),
       travelMode: "DRIVE",
       units: "METRIC",
       ...(opts.optimize ? { optimizeWaypointOrder: true } : {}),
@@ -69,7 +73,11 @@ export async function computeRoute(
       duration?: string;
       distanceMeters?: number;
       polyline?: { encodedPolyline?: string };
-      legs?: Array<{ duration?: string; distanceMeters?: number }>;
+      legs?: Array<{
+        duration?: string;
+        distanceMeters?: number;
+        polyline?: { encodedPolyline?: string };
+      }>;
       optimizedIntermediateWaypointIndex?: number[];
     }>;
   };
@@ -84,6 +92,7 @@ export async function computeRoute(
     legs: (route.legs ?? []).map((l) => ({
       durationSeconds: parseSeconds(l.duration),
       distanceMeters: l.distanceMeters ?? 0,
+      encodedPolyline: l.polyline?.encodedPolyline,
     })),
     totalDurationSeconds: parseSeconds(route.duration),
     totalDistanceMeters: route.distanceMeters ?? 0,

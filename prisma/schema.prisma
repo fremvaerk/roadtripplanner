@@ -27,6 +27,7 @@ model Trip {
   days         Day[]
   pois         Poi[]
   poiGroups    PoiGroup[]
+  routeVias    RouteVia[]
 }
 
 model Day {
@@ -78,4 +79,15 @@ model PoiGroup {
   pois       Poi[]
 
   @@unique([tripId, orderIndex])
+}
+
+model RouteVia {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  afterPoiId String?
+  lat        Float
+  lng        Float
+  seq        Int
+  createdAt  DateTime @default(now())
 }

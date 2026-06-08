@@ -10,27 +10,33 @@ import {
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
+import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 
 export type MapPoint = { lat: number; lng: number; name: string; id?: string };
 
-// Renders inside an <APIProvider> supplied by the planner (so this and the
-// search box share one Maps JS context).
 export function TripMap({
   start,
   end,
   pois = [],
   onAddPlace,
-  routePolyline,
+  legs = [],
+  vias = [],
+  onAddVia,
+  onMoveVia,
+  onRemoveVia,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
   pois?: MapPoint[];
   onAddPlace?: (input: AddPoiInput) => void;
-  routePolyline?: string | null;
+  legs?: RouteLegResult[];
+  vias?: TripVia[];
+  onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
+  onMoveVia?: (viaId: string, lat: number, lng: number) => void;
+  onRemoveVia?: (viaId: string) => void;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const placesLib = useMapsLibrary("places");
-  // Memoize so RoutePolyline/FitBounds effects don't tear down on every render.
   const path: MapPoint[] = useMemo(
     () => [start, ...pois, ...(end ? [end] : [])],
     [start, end, pois],
@@ -46,11 +52,9 @@ export function TripMap({
       onClick={async (ev) => {
         const placeId = ev.detail.placeId;
         if (!placeId || !onAddPlace || !placesLib) return;
-        ev.stop(); // suppress the default place info window
+        ev.stop();
         const place = new placesLib.Place({ id: placeId });
-        await place.fetchFields({
-          fields: ["location", "displayName", "id", "types"],
-        });
+        await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
         const loc = place.location;
         if (!loc) return;
         onAddPlace({
@@ -79,42 +83,98 @@ export function TripMap({
         </AdvancedMarker>
       )}
 
-      <RoutePolyline path={path} encoded={routePolyline} />
+      <RouteLegs legs={legs} fallback={path} onAddVia={onAddVia} />
+
+      {vias.map((v) => (
+        <AdvancedMarker
+          key={v.id}
+          position={{ lat: v.lat, lng: v.lng }}
+          draggable
+          onDragEnd={(e) => {
+            const lat = e.latLng?.lat();
+            const lng = e.latLng?.lng();
+            if (lat != null && lng != null && onMoveVia) onMoveVia(v.id, lat, lng);
+          }}
+        >
+          <div
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onRemoveVia?.(v.id);
+            }}
+            title="Double-click to remove this control point"
+            style={{
+              width: 12,
+              height: 12,
+              background: "#f59e0b",
+              border: "2px solid #b45309",
+              transform: "rotate(45deg)",
+              cursor: "grab",
+            }}
+          />
+        </AdvancedMarker>
+      ))}
+
       <FitBounds points={path} />
     </Map>
   );
 }
 
-function RoutePolyline({ path, encoded }: { path: MapPoint[]; encoded?: string | null }) {
+function RouteLegs({
+  legs,
+  fallback,
+  onAddVia,
+}: {
+  legs: RouteLegResult[];
+  fallback: MapPoint[];
+  onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
+}) {
   const map = useMap();
   const geometry = useMapsLibrary("geometry");
+  const onAddViaRef = useRef(onAddVia);
+  onAddViaRef.current = onAddVia;
+
   useEffect(() => {
     if (!map) return;
-    let coords: google.maps.LatLngLiteral[] | null = null;
-    if (encoded) {
-      // Wait for the geometry library before drawing the road route — don't flash
-      // the straight-line fallback over an available encoded polyline.
-      if (!geometry) return;
-      coords = geometry.encoding.decodePath(encoded).map((p) => ({ lat: p.lat(), lng: p.lng() }));
-    } else if (path.length >= 2) {
-      coords = path.map((p) => ({ lat: p.lat, lng: p.lng }));
+    const lines: google.maps.Polyline[] = [];
+
+    const encodedLegs = legs.filter((l) => l.encodedPolyline);
+    if (encodedLegs.length && geometry) {
+      for (const leg of encodedLegs) {
+        const coords = geometry.encoding
+          .decodePath(leg.encodedPolyline as string)
+          .map((p) => ({ lat: p.lat(), lng: p.lng() }));
+        const line = new google.maps.Polyline({
+          path: coords,
+          clickable: true,
+          strokeColor: "#2563eb",
+          strokeOpacity: 0.85,
+          strokeWeight: 5,
+        });
+        line.addListener("click", (e: google.maps.PolyMouseEvent) => {
+          if (!e.latLng || !onAddViaRef.current) return;
+          onAddViaRef.current(leg.afterPoiId, e.latLng.lat(), e.latLng.lng());
+        });
+        line.setMap(map);
+        lines.push(line);
+      }
+    } else if (fallback.length >= 2) {
+      const line = new google.maps.Polyline({
+        path: fallback.map((p) => ({ lat: p.lat, lng: p.lng })),
+        geodesic: true,
+        strokeColor: "#2563eb",
+        strokeOpacity: 0.85,
+        strokeWeight: 4,
+      });
+      line.setMap(map);
+      lines.push(line);
     }
-    if (!coords || coords.length < 2) return;
-    const line = new google.maps.Polyline({
-      path: coords,
-      geodesic: !encoded,
-      strokeColor: "#2563eb",
-      strokeOpacity: 0.85,
-      strokeWeight: 4,
-    });
-    line.setMap(map);
-    return () => line.setMap(null);
-  }, [map, geometry, encoded, path]);
+
+    return () => lines.forEach((l) => l.setMap(null));
+  }, [map, geometry, legs, fallback]);
+
   return null;
 }
 
-// Fit the viewport once, on first load — don't snap back after the user pans
-// and then adds a place.
 function FitBounds({ points }: { points: MapPoint[] }) {
   const map = useMap();
   const hasFit = useRef(false);
