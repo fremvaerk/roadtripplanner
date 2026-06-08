@@ -182,3 +182,34 @@ export async function setOvernight(
     return tx.poi.findUnique({ where: { id: poiId } });
   });
 }
+
+export async function createGroup(prisma: PrismaClient, tripId: string, name: string) {
+  const orderIndex = await prisma.poiGroup.count({ where: { tripId } });
+  return prisma.poiGroup.create({ data: { tripId, name, orderIndex } });
+}
+
+export async function renameGroup(prisma: PrismaClient, groupId: string, name: string) {
+  return prisma.poiGroup.update({ where: { id: groupId }, data: { name } });
+}
+
+export async function deleteGroup(prisma: PrismaClient, groupId: string) {
+  return prisma.$transaction(async (tx) => {
+    await tx.poi.updateMany({ where: { groupId }, data: { groupId: null } });
+    return tx.poiGroup.delete({ where: { id: groupId } });
+  });
+}
+
+export async function reorderGroups(
+  prisma: PrismaClient,
+  tripId: string,
+  orderedIds: string[],
+) {
+  return prisma.$transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx.poiGroup.update({ where: { id: orderedIds[i] }, data: { orderIndex: 1000 + i } });
+    }
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx.poiGroup.update({ where: { id: orderedIds[i] }, data: { orderIndex: i } });
+    }
+  });
+}
