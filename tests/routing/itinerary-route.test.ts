@@ -5,7 +5,7 @@ import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 function poi(id: string, dayId: string | null, orderInDay: number | null, lat: number, lng: number): PoiDetail {
   return {
     id, name: id, lat, lng, placeId: null, category: null, source: "user",
-    isOvernight: false, dayId, orderInDay, status: "accepted",
+    isOvernight: false, dayId, orderInDay, status: "accepted", groupId: null, orderInGroup: null,
   };
 }
 
@@ -20,6 +20,8 @@ function baseTrip(pois: PoiDetail[], end: { lat: number; lng: number } | null): 
       { id: "d2", dayIndex: 1, pois: [] },
     ],
     pois,
+    poiGroups: [],
+    routeVias: [],
   };
 }
 

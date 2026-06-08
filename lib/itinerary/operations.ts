@@ -293,9 +293,13 @@ export async function addVia(
     const stop = await prisma.poi.findFirst({ where: { id: input.afterPoiId, tripId } });
     if (!stop) throw new ItineraryError("Anchor stop does not belong to this trip");
   }
-  const seq = await prisma.routeVia.count({
+  // max(seq)+1 (not count) so seq stays gap-safe/unique after a delete-then-add.
+  const last = await prisma.routeVia.findFirst({
     where: { tripId, afterPoiId: input.afterPoiId ?? null },
+    orderBy: { seq: "desc" },
+    select: { seq: true },
   });
+  const seq = last ? last.seq + 1 : 0;
   return prisma.routeVia.create({
     data: { tripId, afterPoiId: input.afterPoiId ?? null, lat: input.lat, lng: input.lng, seq },
   });

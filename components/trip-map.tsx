@@ -97,7 +97,10 @@ export function TripMap({
           }}
         >
           <div
-            onDoubleClick={() => onRemoveVia?.(v.id)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onRemoveVia?.(v.id);
+            }}
             title="Double-click to remove this control point"
             style={{
               width: 12,

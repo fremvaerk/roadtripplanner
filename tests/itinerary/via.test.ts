@@ -56,6 +56,15 @@ describe("via operations", () => {
     ).rejects.toBeInstanceOf(ItineraryError);
   });
 
+  test("seq stays gap-safe after a delete-then-add (no collision)", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const v0 = await addVia(prisma, trip.id, { afterPoiId: null, lat: 0.1, lng: 0.1 }); // seq 0
+    await addVia(prisma, trip.id, { afterPoiId: null, lat: 0.2, lng: 0.2 }); // seq 1
+    await removeVia(prisma, v0.id);
+    const v2 = await addVia(prisma, trip.id, { afterPoiId: null, lat: 0.3, lng: 0.3 });
+    expect(v2.seq).toBe(2); // max(seq)+1, not count (which would collide at 1)
+  });
+
   test("moveVia updates coordinates", async () => {
     const trip = await createTrip(prisma, sampleTrip());
     const v = await addVia(prisma, trip.id, { afterPoiId: null, lat: 0.5, lng: 0.5 });
