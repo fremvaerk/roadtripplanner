@@ -13,7 +13,7 @@ import { useRoute } from "@/hooks/use-route";
 import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
 import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
-import { useUpdateNight } from "@/hooks/use-night-mutations";
+import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
 import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
@@ -54,6 +54,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const moveVia = useMoveVia(tripId);
   const removeVia = useRemoveVia(tripId);
   const updateNight = useUpdateNight(tripId);
+  const setNight = useSetNight(tripId);
   const addDay = useAddDay(tripId);
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
@@ -135,6 +136,17 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
               nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng }))}
               onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
+              dayChoices={trip.days.map((d) => ({
+                id: d.id,
+                label: formatDayDate(trip.startDate, d.dayIndex)
+                  ? `Day ${d.dayIndex + 1} · ${formatDayDate(trip.startDate, d.dayIndex)}`
+                  : `Day ${d.dayIndex + 1}`,
+              }))}
+              onSetNight={(dayId, lat, lng) => {
+                const day = trip.days.find((d) => d.id === dayId);
+                if (day?.night) updateNight.mutate({ dayId, lat, lng });
+                else setNight.mutate({ dayId, lat, lng });
+              }}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -253,13 +265,6 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     tripId={tripId}
                     dayId={day.id}
                     night={day.night}
-                    fallback={(() => {
-                      const stops = byDay(day.id);
-                      const lastStop = stops[stops.length - 1];
-                      return lastStop
-                        ? { lat: lastStop.lat, lng: lastStop.lng }
-                        : { lat: trip.startLat, lng: trip.startLng };
-                    })()}
                   />
                 </div>
               ))}

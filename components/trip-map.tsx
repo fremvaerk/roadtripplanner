@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Map,
   AdvancedMarker,
@@ -11,6 +11,7 @@ import {
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
 import type { RouteLegResult, TripVia } from "@/lib/api/trips";
+import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 
 export type MapPoint = { lat: number; lng: number; name: string; id?: string };
 
@@ -26,6 +27,8 @@ export function TripMap({
   onRemoveVia,
   nights = [],
   onMoveNight,
+  dayChoices = [],
+  onSetNight,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -38,9 +41,35 @@ export function TripMap({
   onRemoveVia?: (viaId: string) => void;
   nights?: { dayId: string; lat: number; lng: number }[];
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
+  dayChoices?: { id: string; label: string }[];
+  onSetNight?: (dayId: string, lat: number, lng: number) => void;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const placesLib = useMapsLibrary("places");
+  const geometryLib = useMapsLibrary("geometry");
+  const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number } | null>(null);
+
+  const legPaths: LegPath[] = useMemo(() => {
+    if (!geometryLib) return [];
+    return legs
+      .filter((l) => l.encodedPolyline)
+      .map((l) => ({
+        afterPoiId: l.afterPoiId,
+        coords: geometryLib.encoding
+          .decodePath(l.encodedPolyline as string)
+          .map((p) => ({ lat: p.lat(), lng: p.lng() })),
+      }));
+  }, [geometryLib, legs]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
+
   const path: MapPoint[] = useMemo(
     () => [start, ...pois, ...(end ? [end] : [])],
     [start, end, pois],
@@ -52,6 +81,7 @@ export function TripMap({
   );
 
   return (
+    <div className="relative h-full w-full">
     <Map
       defaultCenter={{ lat: start.lat, lng: start.lng }}
       defaultZoom={7}
@@ -74,6 +104,14 @@ export function TripMap({
           category: categoryFromTypes(place.types ?? []),
           source: "map",
         });
+      }}
+      onContextmenu={(ev) => {
+        const ll = ev.detail.latLng;
+        const dom = ev.domEvent as MouseEvent | undefined;
+        if (!ll || !dom) return;
+        ev.stop();
+        dom.preventDefault?.(); // suppress the native browser context menu
+        setMenu({ x: dom.clientX, y: dom.clientY, lat: ll.lat, lng: ll.lng });
       }}
     >
       <AdvancedMarker position={start} title={start.name}>
@@ -150,6 +188,60 @@ export function TripMap({
 
       <FitBounds points={boundsPoints} />
     </Map>
+    {menu && (legPaths.length > 0 || (dayChoices.length > 0 && onSetNight)) && (
+      <>
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setMenu(null)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu(null);
+          }}
+        />
+        <div
+          role="menu"
+          className="fixed z-30 min-w-44 rounded-md border bg-background py-1 text-sm shadow-md"
+          style={{ left: menu.x, top: menu.y }}
+        >
+          {legPaths.length > 0 && (
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left hover:bg-accent"
+              onClick={() => {
+                const leg = nearestLeg(legPaths, { lat: menu.lat, lng: menu.lng });
+                if (leg && onAddVia) onAddVia(leg.afterPoiId, menu.lat, menu.lng);
+                setMenu(null);
+              }}
+            >
+              ➕ Add waypoint here
+            </button>
+          )}
+          {dayChoices.length > 0 && onSetNight && (
+            <>
+              <div className="border-t px-3 pb-1 pt-2 text-xs text-muted-foreground">
+                Set night for:
+              </div>
+              {dayChoices.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 text-left hover:bg-accent"
+                  onClick={() => {
+                    onSetNight(d.id, menu.lat, menu.lng);
+                    setMenu(null);
+                  }}
+                >
+                  🛏️ {d.label}
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </>
+    )}
+    </div>
   );
 }
 
