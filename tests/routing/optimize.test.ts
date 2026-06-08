@@ -16,6 +16,11 @@ describe("applyOptimizedOrder", () => {
     expect(applyOptimizedOrder(items, [0, 5])).toEqual(["a", "b"]);
   });
 
+  test("returns items unchanged when indices contain duplicates", () => {
+    const items = ["a", "b", "c"];
+    expect(applyOptimizedOrder(items, [0, 0, 1])).toEqual(["a", "b", "c"]);
+  });
+
   test("handles an empty list", () => {
     expect(applyOptimizedOrder([], [])).toEqual([]);
   });

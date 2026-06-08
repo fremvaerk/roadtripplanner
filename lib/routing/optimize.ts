@@ -5,7 +5,14 @@
  */
 export function applyOptimizedOrder<T>(items: T[], optimizedIndices: number[]): T[] {
   if (optimizedIndices.length !== items.length) return items;
-  const valid = optimizedIndices.every((i) => Number.isInteger(i) && i >= 0 && i < items.length);
+  // Must be a true permutation: in range AND no duplicates (a duplicate index would
+  // silently drop one stop and double another).
+  const seen = new Set<number>();
+  const valid = optimizedIndices.every((i) => {
+    if (!Number.isInteger(i) || i < 0 || i >= items.length || seen.has(i)) return false;
+    seen.add(i);
+    return true;
+  });
   if (!valid) return items;
   return optimizedIndices.map((i) => items[i]);
 }

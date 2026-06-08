@@ -158,7 +158,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                           variant="ghost"
                           size="sm"
                           className="h-6 px-2 text-xs font-normal"
-                          disabled={optimizeDay.isPending}
+                          disabled={optimizeDay.isPending && optimizeDay.variables === day.id}
                           onClick={() => optimizeDay.mutate(day.id)}
                           aria-label={`Optimize order of day ${day.dayIndex + 1}`}
                         >

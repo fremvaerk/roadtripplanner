@@ -68,9 +68,12 @@ describe("computeRoute", () => {
   });
 
   test("requests optimization and returns the optimized intermediate order", async () => {
-    let captured: { body: string } | null = null;
+    let captured: { body: string; fieldMask: string } | null = null;
     globalThis.fetch = (async (_url: string, init: RequestInit) => {
-      captured = { body: String(init.body) };
+      captured = {
+        body: String(init.body),
+        fieldMask: (init.headers as Record<string, string>)["X-Goog-FieldMask"],
+      };
       return {
         ok: true,
         status: 200,
@@ -100,5 +103,6 @@ describe("computeRoute", () => {
     );
     expect(r.optimizedOrder).toEqual([1, 0]);
     expect(captured!.body).toContain("\"optimizeWaypointOrder\":true");
+    expect(captured!.fieldMask).toContain("routes.optimizedIntermediateWaypointIndex");
   });
 });
