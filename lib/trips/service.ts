@@ -72,7 +72,8 @@ export async function updateTrip(
   }
   if (patch.finish) {
     if (patch.finish.mode === "place") {
-      const p = patch.finish.place!;
+      const p = patch.finish.place;
+      if (!p) throw new Error("finish.place is required for mode 'place'");
       data.isRoundTrip = false;
       data.endName = p.name;
       data.endLat = p.lat;
