@@ -20,12 +20,18 @@ export function orderedRoutePoints(trip: TripDetail): OrderedRoute {
     });
 
   const start: LatLngLiteral = { lat: trip.startLat, lng: trip.startLng };
-  const end: LatLngLiteral =
+  const terminator: LatLngLiteral | null =
     trip.endLat != null && trip.endLng != null
-      ? { lat: trip.endLat, lng: trip.endLng }
-      : start;
+      ? { lat: trip.endLat, lng: trip.endLng } // specific place
+      : trip.isRoundTrip
+        ? start // round trip
+        : null; // open — end at the last stop
 
-  const coords: LatLngLiteral[] = [start, ...assigned.map((p) => ({ lat: p.lat, lng: p.lng })), end];
+  const coords: LatLngLiteral[] = [
+    start,
+    ...assigned.map((p) => ({ lat: p.lat, lng: p.lng })),
+    ...(terminator ? [terminator] : []),
+  ];
   const stopDayIds = assigned.map((p) => p.dayId as string);
 
   const legDayId: (string | null)[] = [];
@@ -91,10 +97,12 @@ export function buildRoute(trip: TripDetail, vias: TripVia[]): BuiltRoute {
   }
 
   const start: RouteWaypoint = { lat: trip.startLat, lng: trip.startLng };
-  const end: RouteWaypoint =
+  const terminator: RouteWaypoint | null =
     trip.endLat != null && trip.endLng != null
-      ? { lat: trip.endLat, lng: trip.endLng }
-      : { lat: trip.startLat, lng: trip.startLng };
+      ? { lat: trip.endLat, lng: trip.endLng } // specific place
+      : trip.isRoundTrip
+        ? { lat: trip.startLat, lng: trip.startLng } // round trip
+        : null; // open
 
   const scheduled = new Set(trip.pois.filter((p) => p.dayId !== null).map((p) => p.id));
   const byAnchor = new Map<string | null, TripVia[]>();
@@ -124,8 +132,10 @@ export function buildRoute(trip: TripDetail, vias: TripVia[]): BuiltRoute {
     }
   }
 
-  stopovers.push({ wp: end, dayId: null, poiId: null });
-  waypoints.push(end);
+  if (terminator) {
+    stopovers.push({ wp: terminator, dayId: null, poiId: null });
+    waypoints.push(terminator);
+  }
 
   // The only legs that arrive at a day-less stopover are the trailing drive(s)
   // to the destination (and the return leg on a round trip). A night *ends* its

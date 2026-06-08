@@ -122,3 +122,49 @@ describe("buildRoute night-boundary attribution", () => {
     expect(legDayId).toEqual(["d0", "d1", "d1"]);
   });
 });
+
+describe("finish modes", () => {
+  function openTrip(pois: PoiDetail[]): TripDetail {
+    return { ...baseTrip(pois, null), isRoundTrip: false };
+  }
+
+  test("orderedRoutePoints: open finish ends at the last stop (no terminator)", () => {
+    const trip = openTrip([poi("a", "d1", 0, 1, 1), poi("b", "d2", 0, 2, 2)]);
+    const { coords, legDayId } = orderedRoutePoints(trip);
+    expect(coords).toEqual([
+      { lat: 0, lng: 0 },
+      { lat: 1, lng: 1 },
+      { lat: 2, lng: 2 },
+    ]);
+    expect(legDayId).toEqual(["d1", "d2"]);
+  });
+
+  test("orderedRoutePoints: open finish with no stops is just the start, no legs", () => {
+    const trip = openTrip([]);
+    const { coords, legDayId } = orderedRoutePoints(trip);
+    expect(coords).toEqual([{ lat: 0, lng: 0 }]);
+    expect(legDayId).toEqual([]);
+  });
+
+  test("orderedRoutePoints: round trip returns to start", () => {
+    const trip = baseTrip([poi("a", "d1", 0, 1, 1)], null); // isRoundTrip true
+    const { coords } = orderedRoutePoints(trip);
+    expect(coords[coords.length - 1]).toEqual({ lat: 0, lng: 0 });
+  });
+
+  test("orderedRoutePoints: specific place ends at the end point", () => {
+    const trip = baseTrip([poi("a", "d1", 0, 1, 1)], { lat: 3, lng: 3 }); // isRoundTrip false
+    const { coords } = orderedRoutePoints(trip);
+    expect(coords[coords.length - 1]).toEqual({ lat: 3, lng: 3 });
+  });
+
+  test("buildRoute: open finish has no terminator waypoint", () => {
+    const trip = openTrip([poi("a", "d1", 0, 1, 1)]);
+    const { waypoints, legDayId } = buildRoute(trip, []);
+    expect(waypoints).toEqual([
+      { lat: 0, lng: 0 },
+      { lat: 1, lng: 1 },
+    ]);
+    expect(legDayId).toEqual(["d1"]);
+  });
+});
