@@ -74,6 +74,7 @@ export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string 
           <div key={g.id} className="mb-3">
             <div className="mb-1 flex items-center justify-between">
               <input
+                key={g.name}
                 className="w-full bg-transparent text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none"
                 defaultValue={g.name}
                 onBlur={(e) => {

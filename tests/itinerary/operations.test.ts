@@ -96,6 +96,17 @@ describe("addPoi", () => {
     expect(a.groupId).toBeNull();
     expect(a.orderInGroup).toBe(0);
   });
+
+  test("rejects a groupId that belongs to a different trip", async () => {
+    const tripA = await createTrip(prisma, sampleTrip());
+    const tripB = await createTrip(prisma, sampleTrip());
+    const gB = await prisma.poiGroup.create({
+      data: { tripId: tripB.id, name: "B", orderIndex: 0 },
+    });
+    await expect(
+      addPoi(prisma, tripA.id, { name: "X", lat: 1, lng: 1, groupId: gB.id }),
+    ).rejects.toBeInstanceOf(ItineraryError);
+  });
 });
 
 describe("removePoi", () => {
