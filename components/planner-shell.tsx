@@ -7,11 +7,22 @@ import { TripMap, type MapPoint } from "@/components/trip-map";
 import { PlaceSearch } from "@/components/place-search";
 import { PoiContainer } from "@/components/poi-container";
 import { useTrip } from "@/hooks/use-trip";
+import { useRoute } from "@/hooks/use-route";
 import { useAddPoi, useMovePoi } from "@/hooks/use-poi-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
+function formatDuration(seconds: number): string {
+  if (!seconds) return "0 min";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  if (h && m) return `${h} h ${m} min`;
+  if (h) return `${h} h`;
+  return `${m} min`;
+}
+
 export function PlannerShell({ tripId }: { tripId: string }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
+  const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);
   const movePoi = useMovePoi(tripId);
 
@@ -94,7 +105,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
         <div className="flex h-screen w-full">
           <div className="relative flex-1">
             {apiKey ? (
-              <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} />
+              <TripMap start={start} end={end} pois={poiPoints} onAddPlace={handleAddFromMap} routePolyline={route?.encodedPolyline ?? null} />
             ) : (
               <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
                 Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.
@@ -104,10 +115,16 @@ export function PlannerShell({ tripId }: { tripId: string }) {
 
           <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
             <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-1 text-sm text-muted-foreground">
               {trip.startName}
               {end ? ` → ${end.name}` : " (round trip)"}
             </p>
+            {route && route.totalSeconds > 0 && (
+              <p className="mb-4 text-xs text-muted-foreground">
+                Total driving: {formatDuration(route.totalSeconds)} ·{" "}
+                {Math.round(route.totalMeters / 1000)} km
+              </p>
+            )}
 
             <div className="mb-4">
               <PlaceSearch tripId={tripId} />
@@ -126,7 +143,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             <div className="space-y-3">
               {trip.days.map((day) => (
                 <div key={day.id} className="rounded-md border p-3">
-                  <div className="mb-2 text-sm font-medium">Day {day.dayIndex + 1}</div>
+                  <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                    <span>Day {day.dayIndex + 1}</span>
+                    {route?.perDaySeconds[day.id] ? (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        🚗 {formatDuration(route.perDaySeconds[day.id])}
+                      </span>
+                    ) : null}
+                  </div>
                   <PoiContainer
                     id={day.id}
                     pois={byDay(day.id)}
