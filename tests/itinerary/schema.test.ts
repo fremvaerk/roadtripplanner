@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { addPoiSchema, patchPoiSchema } from "@/lib/itinerary/schema";
+import { addPoiSchema, patchPoiSchema, createGroupSchema } from "@/lib/itinerary/schema";
 
 describe("addPoiSchema", () => {
   const base = { name: "Uffizi", lat: 43.768, lng: 11.255 };
@@ -48,5 +48,23 @@ describe("patchPoiSchema", () => {
   });
   test("rejects a negative orderInDay", () => {
     expect(patchPoiSchema.safeParse({ op: "move", dayId: "d1", orderInDay: -1 }).success).toBe(false);
+  });
+});
+
+describe("createGroupSchema", () => {
+  test("accepts a non-empty name", () => {
+    expect(createGroupSchema.safeParse({ name: "Wineries" }).success).toBe(true);
+  });
+  test("rejects an empty name", () => {
+    expect(createGroupSchema.safeParse({ name: "" }).success).toBe(false);
+  });
+});
+
+describe("patchPoiSchema group op", () => {
+  test("accepts a group op (group + index)", () => {
+    expect(patchPoiSchema.safeParse({ op: "group", groupId: "g1", orderInGroup: 0 }).success).toBe(true);
+  });
+  test("accepts a group op to ungrouped (null)", () => {
+    expect(patchPoiSchema.safeParse({ op: "group", groupId: null, orderInGroup: 2 }).success).toBe(true);
   });
 });

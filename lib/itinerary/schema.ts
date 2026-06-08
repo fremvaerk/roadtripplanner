@@ -8,6 +8,7 @@ export const addPoiSchema = z.object({
   category: z.string().optional(),
   source: z.enum(["user", "search", "map", "ai"]).optional(),
   dayId: z.string().optional(),
+  groupId: z.string().optional(),
 });
 
 export type AddPoiBody = z.infer<typeof addPoiSchema>;
@@ -22,6 +23,16 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     op: z.literal("overnight"),
     isOvernight: z.boolean(),
   }),
+  z.object({
+    op: z.literal("group"),
+    groupId: z.string().nullable(),
+    orderInGroup: z.number().int().min(0),
+  }),
 ]);
 
 export type PatchPoiBody = z.infer<typeof patchPoiSchema>;
+
+export const createGroupSchema = z.object({ name: z.string().min(1, "Name is required") });
+export type CreateGroupBody = z.infer<typeof createGroupSchema>;
+export const renameGroupSchema = createGroupSchema;
+export const reorderGroupsSchema = z.object({ orderedIds: z.array(z.string()) });
