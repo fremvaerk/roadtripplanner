@@ -12,7 +12,11 @@ export type PoiDetail = {
   dayId: string | null;
   orderInDay: number | null;
   status: string;
+  groupId: string | null;
+  orderInGroup: number | null;
 };
+
+export type TripGroup = { id: string; name: string; orderIndex: number };
 
 export type DayDetail = {
   id: string;
@@ -33,6 +37,7 @@ export type TripDetail = {
   isRoundTrip: boolean;
   days: DayDetail[];
   pois: PoiDetail[];
+  poiGroups: TripGroup[];
 };
 
 export async function fetchTrip(tripId: string): Promise<TripDetail> {
@@ -109,4 +114,50 @@ export async function buildSplitRequest(tripId: string): Promise<void> {
 export async function resplitRequest(tripId: string): Promise<void> {
   const res = await fetch(`/api/trips/${tripId}/resplit`, { method: "POST" });
   if (!res.ok) throw new Error(`Failed to re-split (${res.status})`);
+}
+
+export async function createGroupRequest(tripId: string, name: string): Promise<TripGroup> {
+  const res = await fetch(`/api/trips/${tripId}/groups`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(`Failed to create group (${res.status})`);
+  return res.json();
+}
+
+export async function renameGroupRequest(groupId: string, name: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(`Failed to rename group (${res.status})`);
+}
+
+export async function deleteGroupRequest(groupId: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to delete group (${res.status})`);
+}
+
+export async function reorderGroupsRequest(tripId: string, orderedIds: string[]): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/groups`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ orderedIds }),
+  });
+  if (!res.ok) throw new Error(`Failed to reorder groups (${res.status})`);
+}
+
+export async function moveToGroupRequest(
+  poiId: string,
+  groupId: string | null,
+  orderInGroup: number,
+): Promise<void> {
+  const res = await fetch(`/api/pois/${poiId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "group", groupId, orderInGroup }),
+  });
+  if (!res.ok) throw new Error(`Failed to move to group (${res.status})`);
 }

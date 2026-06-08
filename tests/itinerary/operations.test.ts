@@ -11,6 +11,7 @@ const prisma = new PrismaClient({
 
 beforeEach(async () => {
   await prisma.poi.deleteMany();
+  await prisma.poiGroup.deleteMany();
   await prisma.day.deleteMany();
   await prisma.trip.deleteMany();
 });
@@ -75,6 +76,36 @@ describe("addPoi", () => {
       addPoi(prisma, tripA.id, { name: "X", lat: 1, lng: 1, dayId: foreignDayId }),
     ).rejects.toBeInstanceOf(ItineraryError);
     expect(await prisma.poi.count()).toBe(0);
+  });
+
+  test("files a POI into a group with the next orderInGroup", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const group = await prisma.poiGroup.create({
+      data: { tripId: trip.id, name: "Wineries", orderIndex: 0 },
+    });
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, groupId: group.id });
+    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, groupId: group.id });
+    expect(a.groupId).toBe(group.id);
+    expect(a.orderInGroup).toBe(0);
+    expect(b.orderInGroup).toBe(1);
+  });
+
+  test("ungrouped POIs get an orderInGroup within the ungrouped bucket", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1 });
+    expect(a.groupId).toBeNull();
+    expect(a.orderInGroup).toBe(0);
+  });
+
+  test("rejects a groupId that belongs to a different trip", async () => {
+    const tripA = await createTrip(prisma, sampleTrip());
+    const tripB = await createTrip(prisma, sampleTrip());
+    const gB = await prisma.poiGroup.create({
+      data: { tripId: tripB.id, name: "B", orderIndex: 0 },
+    });
+    await expect(
+      addPoi(prisma, tripA.id, { name: "X", lat: 1, lng: 1, groupId: gB.id }),
+    ).rejects.toBeInstanceOf(ItineraryError);
   });
 });
 

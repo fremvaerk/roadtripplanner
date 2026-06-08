@@ -18,6 +18,7 @@ export type AddPoiInput = {
   category?: string | null;
   source?: string; // "user" | "search" | "map" | "ai"
   dayId?: string | null;
+  groupId?: string | null;
 };
 
 export async function addPoi(
@@ -35,11 +36,22 @@ export async function addPoi(
     if (!day) throw new ItineraryError("Day does not belong to this trip");
     orderInDay = await prisma.poi.count({ where: { dayId: input.dayId } });
   }
+  if (input.groupId) {
+    const group = await prisma.poiGroup.findFirst({
+      where: { id: input.groupId, tripId },
+    });
+    if (!group) throw new ItineraryError("Group does not belong to this trip");
+  }
+  const orderInGroup = await prisma.poi.count({
+    where: { tripId, groupId: input.groupId ?? null },
+  });
   return prisma.poi.create({
     data: {
       tripId,
       dayId: input.dayId ?? null,
       orderInDay,
+      groupId: input.groupId ?? null,
+      orderInGroup,
       name: input.name,
       lat: input.lat,
       lng: input.lng,
@@ -171,6 +183,101 @@ export async function setOvernight(
       await tx.poi.update({ where: { id: poiId }, data: { isOvernight: true } });
     } else {
       await tx.poi.update({ where: { id: poiId }, data: { isOvernight: false } });
+    }
+
+    return tx.poi.findUnique({ where: { id: poiId } });
+  });
+}
+
+export async function createGroup(prisma: PrismaClient, tripId: string, name: string) {
+  const orderIndex = await prisma.poiGroup.count({ where: { tripId } });
+  return prisma.poiGroup.create({ data: { tripId, name, orderIndex } });
+}
+
+export async function renameGroup(prisma: PrismaClient, groupId: string, name: string) {
+  return prisma.poiGroup.update({ where: { id: groupId }, data: { name } });
+}
+
+export async function deleteGroup(prisma: PrismaClient, groupId: string) {
+  return prisma.$transaction(async (tx) => {
+    const group = await tx.poiGroup.findUnique({ where: { id: groupId } });
+    if (!group) throw new ItineraryError("Group not found");
+    // Append this group's POIs to the end of the ungrouped bucket so their
+    // orderInGroup doesn't collide with existing ungrouped POIs.
+    const ungroupedCount = await tx.poi.count({
+      where: { tripId: group.tripId, groupId: null },
+    });
+    const moving = await tx.poi.findMany({
+      where: { groupId },
+      orderBy: { orderInGroup: "asc" },
+      select: { id: true },
+    });
+    for (let i = 0; i < moving.length; i++) {
+      await tx.poi.update({
+        where: { id: moving[i].id },
+        data: { groupId: null, orderInGroup: ungroupedCount + i },
+      });
+    }
+    return tx.poiGroup.delete({ where: { id: groupId } });
+  });
+}
+
+export async function reorderGroups(
+  prisma: PrismaClient,
+  tripId: string,
+  orderedIds: string[],
+) {
+  return prisma.$transaction(async (tx) => {
+    // Phase 1 parks indices above any existing value to avoid the
+    // @@unique([tripId, orderIndex]) collision; offset by length so it's
+    // collision-free for any group count.
+    const offset = orderedIds.length;
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx.poiGroup.update({ where: { id: orderedIds[i] }, data: { orderIndex: offset + i } });
+    }
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx.poiGroup.update({ where: { id: orderedIds[i] }, data: { orderIndex: i } });
+    }
+  });
+}
+
+export async function moveToGroup(
+  prisma: PrismaClient,
+  poiId: string,
+  groupId: string | null,
+  orderInGroup: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    const poi = await tx.poi.findUnique({ where: { id: poiId } });
+    if (!poi) throw new ItineraryError("POI not found");
+    const oldGroupId = poi.groupId;
+
+    if (groupId) {
+      const group = await tx.poiGroup.findFirst({ where: { id: groupId, tripId: poi.tripId } });
+      if (!group) throw new ItineraryError("Group does not belong to this trip");
+    }
+
+    const siblings = await tx.poi.findMany({
+      where: { tripId: poi.tripId, groupId, id: { not: poiId } },
+      orderBy: { orderInGroup: "asc" },
+      select: { id: true },
+    });
+    const ids = siblings.map((s) => s.id);
+    const index = Math.max(0, Math.min(orderInGroup, ids.length));
+    ids.splice(index, 0, poiId);
+    for (let i = 0; i < ids.length; i++) {
+      await tx.poi.update({ where: { id: ids[i] }, data: { groupId, orderInGroup: i } });
+    }
+
+    if (oldGroupId !== groupId) {
+      const src = await tx.poi.findMany({
+        where: { tripId: poi.tripId, groupId: oldGroupId },
+        orderBy: { orderInGroup: "asc" },
+        select: { id: true },
+      });
+      for (let i = 0; i < src.length; i++) {
+        await tx.poi.update({ where: { id: src[i].id }, data: { orderInGroup: i } });
+      }
     }
 
     return tx.poi.findUnique({ where: { id: poiId } });
