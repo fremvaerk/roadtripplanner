@@ -213,3 +213,46 @@ export async function reorderGroups(
     }
   });
 }
+
+export async function moveToGroup(
+  prisma: PrismaClient,
+  poiId: string,
+  groupId: string | null,
+  orderInGroup: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    const poi = await tx.poi.findUnique({ where: { id: poiId } });
+    if (!poi) throw new ItineraryError("POI not found");
+    const oldGroupId = poi.groupId;
+
+    if (groupId) {
+      const group = await tx.poiGroup.findFirst({ where: { id: groupId, tripId: poi.tripId } });
+      if (!group) throw new ItineraryError("Group does not belong to this trip");
+    }
+
+    const siblings = await tx.poi.findMany({
+      where: { tripId: poi.tripId, groupId, id: { not: poiId } },
+      orderBy: { orderInGroup: "asc" },
+      select: { id: true },
+    });
+    const ids = siblings.map((s) => s.id);
+    const index = Math.max(0, Math.min(orderInGroup, ids.length));
+    ids.splice(index, 0, poiId);
+    for (let i = 0; i < ids.length; i++) {
+      await tx.poi.update({ where: { id: ids[i] }, data: { groupId, orderInGroup: i } });
+    }
+
+    if (oldGroupId !== groupId) {
+      const src = await tx.poi.findMany({
+        where: { tripId: poi.tripId, groupId: oldGroupId },
+        orderBy: { orderInGroup: "asc" },
+        select: { id: true },
+      });
+      for (let i = 0; i < src.length; i++) {
+        await tx.poi.update({ where: { id: src[i].id }, data: { orderInGroup: i } });
+      }
+    }
+
+    return tx.poi.findUnique({ where: { id: poiId } });
+  });
+}
