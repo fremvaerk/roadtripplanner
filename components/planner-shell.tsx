@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -16,6 +17,8 @@ import { DayNight } from "@/components/day-night";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
 import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
+import { PlaceAutocomplete } from "@/components/place-autocomplete";
+import { useUpdateTripBase } from "@/hooks/use-trip-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -58,6 +61,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const addDay = useAddDay(tripId);
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
+  const updateBase = useUpdateTripBase(tripId);
+  const [pickingPlace, setPickingPlace] = useState(false);
 
   if (isLoading) {
     return (
@@ -157,10 +162,96 @@ export function PlannerShell({ tripId }: { tripId: string }) {
 
         <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
           <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
-          <p className="mb-1 text-sm text-muted-foreground">
-            {trip.startName}
-            {end ? ` → ${end.name}` : " (round trip)"}
-          </p>
+          {(() => {
+            const finishMode: "open" | "round" | "place" =
+              trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
+            const activeFinish = pickingPlace ? "place" : finishMode;
+            return (
+              <>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  {trip.startName}
+                  {finishMode === "place"
+                    ? ` → ${trip.endName}`
+                    : finishMode === "round"
+                      ? " ↺ round trip"
+                      : " → (open)"}
+                </p>
+
+                <div className="mb-3 space-y-2">
+                  <div>
+                    <div className="mb-1 text-xs text-muted-foreground">
+                      Start: <span className="text-foreground">{trip.startName}</span>
+                    </div>
+                    <PlaceAutocomplete
+                      placeholder="Change start…"
+                      onPick={(p) =>
+                        updateBase.mutate({
+                          start: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-xs text-muted-foreground">Finish</div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant={activeFinish === "open" ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setPickingPlace(false);
+                          updateBase.mutate({ finish: { mode: "open" } });
+                        }}
+                      >
+                        Open
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={activeFinish === "round" ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          setPickingPlace(false);
+                          updateBase.mutate({ finish: { mode: "round" } });
+                        }}
+                      >
+                        Round trip
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={activeFinish === "place" ? "default" : "outline"}
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setPickingPlace(true)}
+                      >
+                        Place
+                      </Button>
+                    </div>
+                    {activeFinish === "place" && (
+                      <div className="mt-1">
+                        {trip.endName ? (
+                          <div className="mb-1 text-xs text-muted-foreground">
+                            Ends at: <span className="text-foreground">{trip.endName}</span>
+                          </div>
+                        ) : null}
+                        <PlaceAutocomplete
+                          placeholder="Search destination…"
+                          onPick={(p) => {
+                            updateBase.mutate({
+                              finish: {
+                                mode: "place",
+                                place: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
+                              },
+                            });
+                            setPickingPlace(false);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
           {route && route.totalSeconds > 0 && (
             <p className="mb-4 text-xs text-muted-foreground">
               Total driving: {formatDuration(route.totalSeconds)} · {formatKm(route.totalMeters)}

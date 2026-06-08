@@ -232,3 +232,18 @@ export async function setStartDateRequest(tripId: string, startDate: string | nu
   });
   if (!res.ok) throw new Error(`Failed to set start date (${res.status})`);
 }
+
+export type TripPlaceInput = { name: string; lat: number; lng: number; placeId: string | null };
+export type TripBasePatch = {
+  start?: TripPlaceInput;
+  finish?: { mode: "open" | "round" | "place"; place?: TripPlaceInput };
+};
+
+export async function setTripBaseRequest(tripId: string, patch: TripBasePatch): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`Failed to update trip (${res.status})`);
+}
