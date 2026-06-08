@@ -19,10 +19,13 @@ export type TripGroup = { id: string; name: string; orderIndex: number };
 
 export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
+export type DayNight = { id: string; lat: number; lng: number; title: string | null; url: string | null; notes: string | null };
+
 export type DayDetail = {
   id: string;
   dayIndex: number;
   pois: PoiDetail[];
+  night: DayNight | null;
 };
 
 export type TripDetail = {

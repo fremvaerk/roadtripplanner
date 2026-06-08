@@ -14,7 +14,10 @@ function trip(pois: PoiDetail[]): TripDetail {
     id: "t", title: "T", description: "",
     startName: "S", startLat: 0, startLng: 0,
     endName: "E", endLat: 0, endLng: 10, isRoundTrip: false,
-    days: [{ id: "d1", dayIndex: 0, pois: [] }],
+    days: [
+      { id: "d1", dayIndex: 0, pois: [], night: null },
+      { id: "d2", dayIndex: 1, pois: [], night: null },
+    ],
     pois, poiGroups: [], routeVias: [],
   };
 }
@@ -60,5 +63,19 @@ describe("buildRoute", () => {
     expect(waypoints.length).toBe(2);
     expect(legAfterPoiId).toEqual([null]);
     expect(legDayId).toEqual([null]);
+  });
+
+  test("inserts a day's night as a stopover at the day boundary, attributed to that day", () => {
+    const t = trip([poi("a", "d1", 0, 0, 2), poi("b", "d2", 0, 0, 6)]);
+    t.days = [
+      { id: "d1", dayIndex: 0, pois: [], night: { id: "n1", lat: 0, lng: 4, title: null, url: null, notes: null } },
+      { id: "d2", dayIndex: 1, pois: [], night: null },
+    ];
+    const { waypoints, legDayId, legAfterPoiId } = buildRoute(t, []);
+    expect(waypoints.map((w) => [w.lng, !!w.via])).toEqual([
+      [0, false], [2, false], [4, false], [6, false], [10, false],
+    ]);
+    expect(legDayId).toEqual(["d1", "d1", "d2", "d2"]);
+    expect(legAfterPoiId).toEqual([null, "a", null, "b"]);
   });
 });
