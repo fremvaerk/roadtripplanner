@@ -26,6 +26,7 @@ model Trip {
   updatedAt    DateTime  @updatedAt
   days         Day[]
   pois         Poi[]
+  poiGroups    PoiGroup[]
 }
 
 model Day {
@@ -53,6 +54,9 @@ model Poi {
   lng          Float
   placeId      String?
   category     String?
+  groupId      String?
+  group        PoiGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  orderInGroup Int?
   source       String   @default("user") // ai | user | search | map
   rating       Float?
   photoRef     String?
@@ -62,4 +66,16 @@ model Poi {
   userNote     String?
   status       String   @default("accepted") // suggested | accepted
   createdAt    DateTime @default(now())
+}
+
+model PoiGroup {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  name       String
+  orderIndex Int
+  createdAt  DateTime @default(now())
+  pois       Poi[]
+
+  @@unique([tripId, orderIndex])
 }
