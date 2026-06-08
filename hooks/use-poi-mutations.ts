@@ -5,6 +5,8 @@ import {
   patchPoiMove,
   patchPoiOvernight,
   optimizeDayRequest,
+  buildSplitRequest,
+  resplitRequest,
   type TripDetail,
 } from "@/lib/api/trips";
 import type { AddPoiBody } from "@/lib/itinerary/schema";
@@ -72,6 +74,28 @@ export function useOptimizeDay(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (dayId: string) => optimizeDayRequest(dayId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
+  });
+}
+
+export function useBuildSplit(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => buildSplitRequest(tripId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
+  });
+}
+
+export function useResplit(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => resplitRequest(tripId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
       qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
