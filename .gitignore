@@ -8,3 +8,4 @@ lib/generated/
 *.db-journal
 .next/
 .playwright-mcp/
+tsconfig.tsbuildinfo

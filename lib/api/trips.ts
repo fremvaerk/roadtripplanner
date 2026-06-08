@@ -100,3 +100,13 @@ export async function optimizeDayRequest(dayId: string): Promise<void> {
   const res = await fetch(`/api/days/${dayId}/optimize`, { method: "POST" });
   if (!res.ok) throw new Error(`Failed to optimize day (${res.status})`);
 }
+
+export async function buildSplitRequest(tripId: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/split`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to split into days (${res.status})`);
+}
+
+export async function resplitRequest(tripId: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/resplit`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to re-split (${res.status})`);
+}

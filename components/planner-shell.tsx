@@ -9,7 +9,7 @@ import { PoiContainer } from "@/components/poi-container";
 import { Button } from "@/components/ui/button";
 import { useTrip } from "@/hooks/use-trip";
 import { useRoute } from "@/hooks/use-route";
-import { useAddPoi, useMovePoi, useOptimizeDay } from "@/hooks/use-poi-mutations";
+import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -27,6 +27,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const addPoi = useAddPoi(tripId);
   const movePoi = useMovePoi(tripId);
   const optimizeDay = useOptimizeDay(tripId);
+  const buildSplit = useBuildSplit(tripId);
+  const resplit = useResplit(tripId);
 
   if (isLoading) {
     return (
@@ -61,6 +63,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
       .filter((p) => p.dayId === dayId)
       .sort((a, b) => (a.orderInDay ?? 0) - (b.orderInDay ?? 0));
   const pool = byDay(null);
+  const assignedCount = trip.pois.filter((p) => p.dayId !== null).length;
 
   const groups: Record<string, string[]> = { pool: pool.map((p) => p.id) };
   for (const day of trip.days) groups[day.id] = byDay(day.id).map((p) => p.id);
@@ -130,6 +133,33 @@ export function PlannerShell({ tripId }: { tripId: string }) {
 
             <div className="mb-4">
               <PlaceSearch tripId={tripId} />
+            </div>
+
+            <div className="mb-3 flex gap-2">
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={pool.length === 0 || buildSplit.isPending}
+                onClick={() => buildSplit.mutate()}
+              >
+                {buildSplit.isPending ? "Splitting…" : "Build route & split into days"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={assignedCount === 0 || resplit.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Re-split the whole trip? This rebuilds every day from scratch and clears your overnight marks.",
+                    )
+                  ) {
+                    resplit.mutate();
+                  }
+                }}
+              >
+                {resplit.isPending ? "Re-splitting…" : "Re-split all"}
+              </Button>
             </div>
 
             <div className="mb-4">
