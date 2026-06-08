@@ -188,16 +188,25 @@ export function TripMap({
 
       <FitBounds points={boundsPoints} />
     </Map>
-    {menu && (
+    {menu && (legPaths.length > 0 || (dayChoices.length > 0 && onSetNight)) && (
       <>
-        <div className="fixed inset-0 z-20" onClick={() => setMenu(null)} />
         <div
+          className="fixed inset-0 z-20"
+          onClick={() => setMenu(null)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu(null);
+          }}
+        />
+        <div
+          role="menu"
           className="fixed z-30 min-w-44 rounded-md border bg-background py-1 text-sm shadow-md"
           style={{ left: menu.x, top: menu.y }}
         >
           {legPaths.length > 0 && (
             <button
               type="button"
+              role="menuitem"
               className="block w-full px-3 py-1.5 text-left hover:bg-accent"
               onClick={() => {
                 const leg = nearestLeg(legPaths, { lat: menu.lat, lng: menu.lng });
@@ -217,6 +226,7 @@ export function TripMap({
                 <button
                   key={d.id}
                   type="button"
+                  role="menuitem"
                   className="block w-full px-3 py-1.5 text-left hover:bg-accent"
                   onClick={() => {
                     onSetNight(d.id, menu.lat, menu.lng);
