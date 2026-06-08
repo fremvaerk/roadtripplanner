@@ -5,7 +5,7 @@ import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 function poi(id: string, dayId: string | null, orderInDay: number | null, lat: number, lng: number): PoiDetail {
   return {
     id, name: id, lat, lng, placeId: null, category: null, source: "user",
-    isOvernight: false, dayId, orderInDay, status: "accepted", groupId: null, orderInGroup: null,
+    dayId, orderInDay, status: "accepted", groupId: null, orderInGroup: null,
   };
 }
 

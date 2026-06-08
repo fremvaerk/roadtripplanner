@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
-import { useMovePoi, useSetOvernight } from "@/hooks/use-poi-mutations";
+import { useMovePoi } from "@/hooks/use-poi-mutations";
 import type { PoiDetail } from "@/lib/api/trips";
 
 export function PoiCard({
@@ -24,7 +24,6 @@ export function PoiCard({
     accept: "poi",
   });
   const movePoi = useMovePoi(tripId);
-  const setOvernight = useSetOvernight(tripId);
 
   return (
     <li
@@ -40,18 +39,7 @@ export function PoiCard({
       >
         ⠿
       </span>
-      <span className="flex-1 truncate">
-        {poi.isOvernight ? "🌙 " : ""}
-        {poi.name}
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={poi.isOvernight ? `Unset overnight for ${poi.name}` : `Set ${poi.name} as overnight`}
-        onClick={() => setOvernight.mutate({ poiId: poi.id, isOvernight: !poi.isOvernight })}
-      >
-        🌙
-      </Button>
+      <span className="flex-1 truncate">{poi.name}</span>
       <Button
         variant="ghost"
         size="sm"

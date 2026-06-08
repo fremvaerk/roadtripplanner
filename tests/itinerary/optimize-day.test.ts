@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, setOvernight, optimizeDay } from "@/lib/itinerary/operations";
+import { addPoi, optimizeDay } from "@/lib/itinerary/operations";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 import type { ComputedRoute } from "@/lib/routing/routes";
@@ -50,21 +50,6 @@ describe("optimizeDay", () => {
 
     const inDay = await prisma.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
     expect(inDay.map((p) => p.id)).toEqual([a.id, c.id, b.id, d.id]);
-  });
-
-  test("uses the overnight stop as the fixed destination", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const dayId = trip.days[0].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
-    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
-    const c = await addPoi(prisma, trip.id, { name: "C", lat: 3, lng: 3, dayId });
-    const d = await addPoi(prisma, trip.id, { name: "D", lat: 4, lng: 4, dayId });
-    await setOvernight(prisma, b.id, true);
-
-    await optimizeDay(prisma, dayId, async () => fakeRoute([1, 0]));
-
-    const inDay = await prisma.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
-    expect(inDay.map((p) => p.id)).toEqual([a.id, d.id, c.id, b.id]);
   });
 
   test("is a no-op for fewer than 3 stops (computeFn not called)", async () => {

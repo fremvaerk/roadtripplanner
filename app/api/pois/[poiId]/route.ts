@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { removePoi, movePoi, setOvernight, moveToGroup, ItineraryError } from "@/lib/itinerary/operations";
+import { removePoi, movePoi, moveToGroup, ItineraryError } from "@/lib/itinerary/operations";
 import { patchPoiSchema } from "@/lib/itinerary/schema";
 
 type Ctx = { params: Promise<{ poiId: string }> };
@@ -31,10 +31,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
     let poi;
     if (data.op === "move") {
       poi = await movePoi(prisma, poiId, { dayId: data.dayId, orderInDay: data.orderInDay });
-    } else if (data.op === "group") {
-      poi = await moveToGroup(prisma, poiId, data.groupId, data.orderInGroup);
     } else {
-      poi = await setOvernight(prisma, poiId, data.isOvernight);
+      poi = await moveToGroup(prisma, poiId, data.groupId, data.orderInGroup);
     }
     return NextResponse.json(poi);
   } catch (e) {

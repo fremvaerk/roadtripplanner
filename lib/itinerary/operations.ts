@@ -89,20 +89,13 @@ export async function movePoi(
       const ids = siblings.map((s) => s.id);
       const index = Math.max(0, Math.min(target.orderInDay, ids.length));
       ids.splice(index, 0, poiId);
-      const changedDay = oldDayId !== dayId;
       for (let i = 0; i < ids.length; i++) {
-        // Moving to a different day drops the overnight flag (overnight is per-day);
-        // a same-day reorder keeps it.
-        const data =
-          ids[i] === poiId && changedDay
-            ? { dayId, orderInDay: i, isOvernight: false }
-            : { dayId, orderInDay: i };
-        await tx.poi.update({ where: { id: ids[i] }, data });
+        await tx.poi.update({ where: { id: ids[i] }, data: { dayId, orderInDay: i } });
       }
     } else {
       await tx.poi.update({
         where: { id: poiId },
-        data: { dayId: null, orderInDay: null, isOvernight: false },
+        data: { dayId: null, orderInDay: null },
       });
     }
 
@@ -138,7 +131,7 @@ export async function optimizeDay(
   });
   if (stops.length < 3) return stops;
 
-  const destination = stops.find((s) => s.isOvernight) ?? stops[stops.length - 1];
+  const destination = stops[stops.length - 1];
   const rest = stops.filter((s) => s.id !== destination.id);
   const origin = rest[0];
   const intermediates = rest.slice(1);
@@ -159,33 +152,6 @@ export async function optimizeDay(
       await tx.poi.update({ where: { id: finalOrder[i].id }, data: { orderInDay: i } });
     }
     return tx.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
-  });
-}
-
-export async function setOvernight(
-  prisma: PrismaClient,
-  poiId: string,
-  value: boolean,
-) {
-  return prisma.$transaction(async (tx) => {
-    // Read inside the transaction so the day-membership check and the write are atomic.
-    const poi = await tx.poi.findUnique({ where: { id: poiId } });
-    if (!poi) throw new ItineraryError("POI not found");
-
-    if (value) {
-      if (!poi.dayId) {
-        throw new ItineraryError("Only a place assigned to a day can be the overnight");
-      }
-      await tx.poi.updateMany({
-        where: { dayId: poi.dayId, isOvernight: true },
-        data: { isOvernight: false },
-      });
-      await tx.poi.update({ where: { id: poiId }, data: { isOvernight: true } });
-    } else {
-      await tx.poi.update({ where: { id: poiId }, data: { isOvernight: false } });
-    }
-
-    return tx.poi.findUnique({ where: { id: poiId } });
   });
 }
 

@@ -150,7 +150,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               onClick={() => {
                 if (
                   window.confirm(
-                    "Re-split the whole trip? This rebuilds every day from scratch and clears your overnight marks.",
+                    "Re-split the whole trip? This rebuilds every day from scratch.",
                   )
                 ) {
                   resplit.mutate();

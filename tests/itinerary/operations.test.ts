@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, removePoi, ItineraryError, movePoi, setOvernight } from "@/lib/itinerary/operations";
+import { addPoi, removePoi, ItineraryError, movePoi } from "@/lib/itinerary/operations";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
@@ -136,7 +136,7 @@ describe("movePoi", () => {
     expect(inDay.map((p) => p.orderInDay)).toEqual([0, 1, 2]);
   });
 
-  test("moves a day POI to the pool, clearing day/order/overnight and re-indexing the source day", async () => {
+  test("moves a day POI to the pool, clearing day/order and re-indexing the source day", async () => {
     const trip = await createTrip(prisma, sampleTrip());
     const dayId = trip.days[0].id;
     const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
@@ -183,68 +183,5 @@ describe("movePoi", () => {
     await expect(
       movePoi(prisma, poi.id, { dayId: tripB.days[0].id, orderInDay: 0 }),
     ).rejects.toBeInstanceOf(ItineraryError);
-  });
-});
-
-describe("setOvernight", () => {
-  test("marks a day POI as the overnight", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const dayId = trip.days[0].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
-    await setOvernight(prisma, a.id, true);
-    const got = await prisma.poi.findUnique({ where: { id: a.id } });
-    expect(got?.isOvernight).toBe(true);
-  });
-
-  test("only one overnight per day — setting a second clears the first", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const dayId = trip.days[0].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
-    const b = await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId });
-    await setOvernight(prisma, a.id, true);
-    await setOvernight(prisma, b.id, true);
-    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
-    expect((await prisma.poi.findUnique({ where: { id: b.id } }))?.isOvernight).toBe(true);
-  });
-
-  test("unsetting overnight works", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const dayId = trip.days[0].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId });
-    await setOvernight(prisma, a.id, true);
-    await setOvernight(prisma, a.id, false);
-    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
-  });
-
-  test("rejects marking a pool POI as overnight", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1 }); // pool
-    await expect(setOvernight(prisma, a.id, true)).rejects.toBeInstanceOf(ItineraryError);
-  });
-});
-
-describe("movePoi + overnight interaction", () => {
-  test("moving an overnight POI to a different day clears its overnight flag", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const day1 = trip.days[0].id;
-    const day2 = trip.days[1].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId: day1 });
-    await setOvernight(prisma, a.id, true);
-
-    await movePoi(prisma, a.id, { dayId: day2, orderInDay: 0 });
-
-    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
-  });
-
-  test("reordering an overnight POI within the same day keeps its overnight flag", async () => {
-    const trip = await createTrip(prisma, sampleTrip());
-    const day1 = trip.days[0].id;
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 1, lng: 1, dayId: day1 });
-    await addPoi(prisma, trip.id, { name: "B", lat: 2, lng: 2, dayId: day1 });
-    await setOvernight(prisma, a.id, true);
-
-    await movePoi(prisma, a.id, { dayId: day1, orderInDay: 1 });
-
-    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(true);
   });
 });

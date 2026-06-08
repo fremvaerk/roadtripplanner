@@ -20,10 +20,6 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     orderInDay: z.number().int().min(0),
   }),
   z.object({
-    op: z.literal("overnight"),
-    isOvernight: z.boolean(),
-  }),
-  z.object({
     op: z.literal("group"),
     groupId: z.string().nullable(),
     orderInGroup: z.number().int().min(0),

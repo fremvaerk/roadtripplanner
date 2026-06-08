@@ -40,9 +40,6 @@ describe("patchPoiSchema", () => {
   test("accepts a move op to the pool (null day)", () => {
     expect(patchPoiSchema.safeParse({ op: "move", dayId: null, orderInDay: 0 }).success).toBe(true);
   });
-  test("accepts an overnight op", () => {
-    expect(patchPoiSchema.safeParse({ op: "overnight", isOvernight: true }).success).toBe(true);
-  });
   test("rejects an unknown op", () => {
     expect(patchPoiSchema.safeParse({ op: "bogus" }).success).toBe(false);
   });

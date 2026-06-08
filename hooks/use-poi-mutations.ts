@@ -3,7 +3,6 @@ import {
   postPoi,
   deletePoi,
   patchPoiMove,
-  patchPoiOvernight,
   optimizeDayRequest,
   buildSplitRequest,
   resplitRequest,
@@ -52,18 +51,6 @@ export function useMovePoi(tripId: string) {
       if (ctx?.prev) qc.setQueryData(tripQueryKey(tripId), ctx.prev);
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
-  });
-}
-
-export function useSetOvernight(tripId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (v: { poiId: string; isOvernight: boolean }) =>
-      patchPoiOvernight(v.poiId, v.isOvernight),
-    onSuccess: () => {
       qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
       qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
     },

@@ -35,12 +35,8 @@ export function applyMove(
 
   const pois: PoiDetail[] = trip.pois.map((p) => {
     if (p.id === poiId) {
-      if (dayId === null) {
-        return { ...p, dayId: null, orderInDay: null, isOvernight: false };
-      }
-      // Moving to a different day drops the overnight flag; same-day reorder keeps it.
-      return oldDayId !== dayId
-        ? { ...p, dayId, orderInDay: destOrder.get(p.id) ?? 0, isOvernight: false }
+      return dayId === null
+        ? { ...p, dayId: null, orderInDay: null }
         : { ...p, dayId, orderInDay: destOrder.get(p.id) ?? 0 };
     }
     if (destOrder.has(p.id)) return { ...p, orderInDay: destOrder.get(p.id)! };

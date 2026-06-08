@@ -23,8 +23,8 @@ function dailyCapFromParams(params: string | null): number {
 
 /**
  * Split the unassigned pool across the trip's days (corridor order + drive cap).
- * Existing day placements are kept; each pool stop is appended to its day before
- * that day's overnight (which stays last). `capOverride` is mainly for tests.
+ * Existing day placements are kept; each pool stop is appended to the end of its
+ * assigned day. `capOverride` is mainly for tests.
  */
 export async function splitPoolIntoDays(
   prisma: PrismaClient,
@@ -74,10 +74,9 @@ export async function splitPoolIntoDays(
       const day = trip.days[d];
       const existing = trip.pois
         .filter((p) => p.dayId === day.id)
-        .sort((a, b) => (a.orderInDay ?? 0) - (b.orderInDay ?? 0));
-      const overnight = existing.filter((p) => p.isOvernight).map((p) => p.id);
-      const others = existing.filter((p) => !p.isOvernight).map((p) => p.id);
-      const finalIds = [...others, ...newIds, ...overnight];
+        .sort((a, b) => (a.orderInDay ?? 0) - (b.orderInDay ?? 0))
+        .map((p) => p.id);
+      const finalIds = [...existing, ...newIds];
       for (let i = 0; i < finalIds.length; i++) {
         await tx.poi.update({ where: { id: finalIds[i] }, data: { dayId: day.id, orderInDay: i } });
       }
@@ -87,8 +86,7 @@ export async function splitPoolIntoDays(
 
 /**
  * Rebuild the whole trip from scratch: treat every stop as input, order by
- * corridor, split across days by the cap. Overnight flags are cleared (a fresh
- * split). The route is computed BEFORE any DB write, so a Routes API failure
+ * corridor, split across days by the cap. The route is computed BEFORE any DB write, so a Routes API failure
  * leaves the trip untouched; the reset + re-assignment happen in one transaction.
  */
 export async function resplitAll(
@@ -132,7 +130,7 @@ export async function resplitAll(
   await prisma.$transaction(async (tx) => {
     await tx.poi.updateMany({
       where: { tripId },
-      data: { dayId: null, orderInDay: null, isOvernight: false },
+      data: { dayId: null, orderInDay: null },
     });
     for (let d = 0; d < trip.days.length; d++) {
       const ids = byDay.get(d) ?? [];
