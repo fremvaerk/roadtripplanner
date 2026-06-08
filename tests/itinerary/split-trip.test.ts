@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, setOvernight } from "@/lib/itinerary/operations";
+import { addPoi } from "@/lib/itinerary/operations";
 import { splitPoolIntoDays, resplitAll } from "@/lib/itinerary/split-trip";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
@@ -55,21 +55,6 @@ describe("splitPoolIntoDays", () => {
     expect(fresh.every((p) => p.dayId !== null)).toBe(true);
   });
 
-  test("appends pool stops before an existing overnight (overnight stays last)", async () => {
-    const trip = await createTrip(prisma, sampleTrip(1));
-    const over = await addPoi(prisma, trip.id, { name: "Hotel", lat: 0, lng: 9, dayId: trip.days[0].id });
-    await setOvernight(prisma, over.id, true);
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 0, lng: 2 });
-
-    await splitPoolIntoDays(prisma, trip.id, async () => legRoute([60, 60]), 100000);
-
-    const inDay = await prisma.poi.findMany({
-      where: { dayId: trip.days[0].id },
-      orderBy: { orderInDay: "asc" },
-    });
-    expect(inDay.map((p) => p.id)).toEqual([a.id, over.id]);
-  });
-
   test("does nothing when the pool is empty", async () => {
     const trip = await createTrip(prisma, sampleTrip(2));
     let called = false;
@@ -95,13 +80,5 @@ describe("resplitAll", () => {
     expect(dayOf(a.id)).toBe(trip.days[0].id);
     expect(dayOf(b.id)).toBe(trip.days[0].id);
     expect(dayOf(c.id)).toBe(trip.days[1].id);
-  });
-
-  test("clears overnight flags (a fresh split)", async () => {
-    const trip = await createTrip(prisma, sampleTrip(1));
-    const a = await addPoi(prisma, trip.id, { name: "A", lat: 0, lng: 2, dayId: trip.days[0].id });
-    await setOvernight(prisma, a.id, true);
-    await resplitAll(prisma, trip.id, async () => legRoute([60, 60]), 130);
-    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
   });
 });

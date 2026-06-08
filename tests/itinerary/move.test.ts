@@ -5,7 +5,7 @@ import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 function poi(id: string, dayId: string | null, orderInDay: number | null, extra: Partial<PoiDetail> = {}): PoiDetail {
   return {
     id, name: id, lat: 0, lng: 0, placeId: null, category: null,
-    source: "user", isOvernight: false, dayId, orderInDay, status: "accepted", ...extra,
+    source: "user", dayId, orderInDay, status: "accepted", ...extra,
   };
 }
 
@@ -14,10 +14,12 @@ function trip(pois: PoiDetail[]): TripDetail {
     id: "t", title: "T", description: "", startName: "S", startLat: 0, startLng: 0,
     endName: null, endLat: null, endLng: null, isRoundTrip: false,
     days: [
-      { id: "d1", dayIndex: 0, pois: [] },
-      { id: "d2", dayIndex: 1, pois: [] },
+      { id: "d1", dayIndex: 0, pois: [], night: null },
+      { id: "d2", dayIndex: 1, pois: [], night: null },
     ],
     pois,
+    poiGroups: [],
+    routeVias: [],
   };
 }
 
@@ -30,13 +32,12 @@ describe("applyMove", () => {
     expect(inDay.map((p) => p.orderInDay)).toEqual([0, 1, 2]);
   });
 
-  test("moving to the pool clears day/order/overnight and re-indexes the source day", () => {
-    const t = trip([poi("a", "d1", 0, { isOvernight: true }), poi("b", "d1", 1)]);
+  test("moving to the pool clears day/order and re-indexes the source day", () => {
+    const t = trip([poi("a", "d1", 0), poi("b", "d1", 1)]);
     const out = applyMove(t, "a", null, 0);
     const a = out.pois.find((p) => p.id === "a")!;
     expect(a.dayId).toBeNull();
     expect(a.orderInDay).toBeNull();
-    expect(a.isOvernight).toBe(false);
     expect(out.pois.find((p) => p.id === "b")!.orderInDay).toBe(0);
   });
 
@@ -45,18 +46,6 @@ describe("applyMove", () => {
     const out = applyMove(t, "c", "d1", 0);
     const inDay = out.pois.filter((p) => p.dayId === "d1").sort((x, y) => (x.orderInDay! - y.orderInDay!));
     expect(inDay.map((p) => p.id)).toEqual(["c", "a", "b"]);
-  });
-
-  test("moving an overnight POI to a different day clears its overnight flag", () => {
-    const t = trip([poi("a", "d1", 0, { isOvernight: true })]);
-    const out = applyMove(t, "a", "d2", 0);
-    expect(out.pois.find((p) => p.id === "a")!.isOvernight).toBe(false);
-  });
-
-  test("reordering an overnight POI within the same day keeps its overnight flag", () => {
-    const t = trip([poi("a", "d1", 0, { isOvernight: true }), poi("b", "d1", 1)]);
-    const out = applyMove(t, "a", "d1", 1);
-    expect(out.pois.find((p) => p.id === "a")!.isOvernight).toBe(true);
   });
 
   test("returns the trip unchanged for an unknown poiId", () => {

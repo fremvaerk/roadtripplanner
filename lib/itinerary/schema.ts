@@ -20,10 +20,6 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     orderInDay: z.number().int().min(0),
   }),
   z.object({
-    op: z.literal("overnight"),
-    isOvernight: z.boolean(),
-  }),
-  z.object({
     op: z.literal("group"),
     groupId: z.string().nullable(),
     orderInGroup: z.number().int().min(0),
@@ -43,3 +39,18 @@ export const addViaSchema = z.object({
   lng: z.number(),
 });
 export const moveViaSchema = z.object({ lat: z.number(), lng: z.number() });
+
+export const setNightSchema = z.object({
+  lat: z.number(),
+  lng: z.number(),
+  title: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+export const updateNightSchema = z.object({
+  lat: z.number().optional(),
+  lng: z.number().optional(),
+  title: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});

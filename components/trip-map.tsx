@@ -24,6 +24,8 @@ export function TripMap({
   onAddVia,
   onMoveVia,
   onRemoveVia,
+  nights = [],
+  onMoveNight,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -34,12 +36,19 @@ export function TripMap({
   onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
+  nights?: { dayId: string; lat: number; lng: number }[];
+  onMoveNight?: (dayId: string, lat: number, lng: number) => void;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const placesLib = useMapsLibrary("places");
   const path: MapPoint[] = useMemo(
     () => [start, ...pois, ...(end ? [end] : [])],
     [start, end, pois],
+  );
+  // Include night markers so a remote overnight is in the initial viewport.
+  const boundsPoints: MapPoint[] = useMemo(
+    () => [...path, ...(nights ?? []).map((n) => ({ lat: n.lat, lng: n.lng, name: "night" }))],
+    [path, nights],
   );
 
   return (
@@ -114,7 +123,32 @@ export function TripMap({
         </AdvancedMarker>
       ))}
 
-      <FitBounds points={path} />
+      {(nights ?? []).map((n) => (
+        <AdvancedMarker
+          key={n.dayId}
+          position={{ lat: n.lat, lng: n.lng }}
+          draggable
+          onDragEnd={(e) => {
+            const lat = e.latLng?.lat();
+            const lng = e.latLng?.lng();
+            if (lat != null && lng != null && onMoveNight) onMoveNight(n.dayId, lat, lng);
+          }}
+          title="Night stop (drag to move where you sleep)"
+        >
+          <div
+            style={{
+              fontSize: 18,
+              lineHeight: "18px",
+              cursor: "grab",
+              filter: "drop-shadow(0 1px 1px rgba(0,0,0,.4))",
+            }}
+          >
+            🛏️
+          </div>
+        </AdvancedMarker>
+      ))}
+
+      <FitBounds points={boundsPoints} />
     </Map>
   );
 }

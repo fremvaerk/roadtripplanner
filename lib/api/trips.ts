@@ -8,7 +8,6 @@ export type PoiDetail = {
   placeId: string | null;
   category: string | null;
   source: string;
-  isOvernight: boolean;
   dayId: string | null;
   orderInDay: number | null;
   status: string;
@@ -20,10 +19,13 @@ export type TripGroup = { id: string; name: string; orderIndex: number };
 
 export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
+export type DayNight = { id: string; lat: number; lng: number; title: string | null; url: string | null; notes: string | null };
+
 export type DayDetail = {
   id: string;
   dayIndex: number;
   pois: PoiDetail[];
+  night: DayNight | null;
 };
 
 export type TripDetail = {
@@ -75,19 +77,6 @@ export async function patchPoiMove(
     body: JSON.stringify({ op: "move", dayId, orderInDay }),
   });
   if (!res.ok) throw new Error(`Failed to move place (${res.status})`);
-  return res.json();
-}
-
-export async function patchPoiOvernight(
-  poiId: string,
-  isOvernight: boolean,
-): Promise<PoiDetail> {
-  const res = await fetch(`/api/pois/${poiId}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ op: "overnight", isOvernight }),
-  });
-  if (!res.ok) throw new Error(`Failed to set overnight (${res.status})`);
   return res.json();
 }
 
@@ -192,4 +181,33 @@ export async function moveViaRequest(viaId: string, lat: number, lng: number): P
 export async function removeViaRequest(viaId: string): Promise<void> {
   const res = await fetch(`/api/vias/${viaId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to remove via (${res.status})`);
+}
+
+export async function setNightRequest(
+  dayId: string,
+  body: { lat: number; lng: number; title?: string | null; url?: string | null; notes?: string | null },
+): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to set night (${res.status})`);
+}
+
+export async function updateNightRequest(
+  dayId: string,
+  patch: { lat?: number; lng?: number; title?: string | null; url?: string | null; notes?: string | null },
+): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`Failed to update night (${res.status})`);
+}
+
+export async function clearNightRequest(dayId: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to clear night (${res.status})`);
 }
