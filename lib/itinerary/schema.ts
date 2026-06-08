@@ -36,3 +36,10 @@ export const createGroupSchema = z.object({ name: z.string().min(1, "Name is req
 export type CreateGroupBody = z.infer<typeof createGroupSchema>;
 export const renameGroupSchema = createGroupSchema;
 export const reorderGroupsSchema = z.object({ orderedIds: z.array(z.string()) });
+
+export const addViaSchema = z.object({
+  afterPoiId: z.string().nullable(),
+  lat: z.number(),
+  lng: z.number(),
+});
+export const moveViaSchema = z.object({ lat: z.number(), lng: z.number() });
