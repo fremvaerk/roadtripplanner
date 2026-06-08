@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useSetNight, useUpdateNight, useClearNight } from "@/hooks/use-night-mutations";
 import type { DayNight as DayNightData } from "@/lib/api/trips";
 
@@ -24,15 +24,11 @@ export function DayNight({
 
   if (!night) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mt-1 h-6 px-2 text-xs font-normal text-muted-foreground"
-        disabled={setNight.isPending}
-        onClick={() => setNight.mutate({ dayId, lat: fallback.lat, lng: fallback.lng })}
-      >
-        🛏️ Set night
-      </Button>
+      <PlaceAutocomplete
+        placeholder="🛏️ Where will you sleep? (search address)"
+        className="mt-1"
+        onPick={(p) => setNight.mutate({ dayId, lat: p.lat, lng: p.lng, title: p.name })}
+      />
     );
   }
 
@@ -96,6 +92,11 @@ function NightEditor({
         placeholder="Notes"
         rows={2}
         className="text-xs"
+      />
+      <PlaceAutocomplete
+        placeholder="📍 Change location…"
+        className="mt-1"
+        onPick={(p) => updateNight.mutate({ dayId, lat: p.lat, lng: p.lng })}
       />
     </div>
   );
