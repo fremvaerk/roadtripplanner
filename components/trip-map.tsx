@@ -20,11 +20,13 @@ export function TripMap({
   end,
   pois = [],
   onAddPlace,
+  routePolyline,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
   pois?: MapPoint[];
   onAddPlace?: (input: AddPoiInput) => void;
+  routePolyline?: string | null;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const placesLib = useMapsLibrary("places");
@@ -77,26 +79,34 @@ export function TripMap({
         </AdvancedMarker>
       )}
 
-      <RoutePolyline path={path} />
+      <RoutePolyline path={path} encoded={routePolyline} />
       <FitBounds points={path} />
     </Map>
   );
 }
 
-function RoutePolyline({ path }: { path: MapPoint[] }) {
+function RoutePolyline({ path, encoded }: { path: MapPoint[]; encoded?: string | null }) {
   const map = useMap();
+  const geometry = useMapsLibrary("geometry");
   useEffect(() => {
-    if (!map || path.length < 2) return;
+    if (!map) return;
+    let coords: google.maps.LatLngLiteral[] | null = null;
+    if (encoded && geometry) {
+      coords = geometry.encoding.decodePath(encoded).map((p) => ({ lat: p.lat(), lng: p.lng() }));
+    } else if (path.length >= 2) {
+      coords = path.map((p) => ({ lat: p.lat, lng: p.lng }));
+    }
+    if (!coords || coords.length < 2) return;
     const line = new google.maps.Polyline({
-      path: path.map((p) => ({ lat: p.lat, lng: p.lng })),
-      geodesic: true,
+      path: coords,
+      geodesic: !encoded,
       strokeColor: "#2563eb",
       strokeOpacity: 0.85,
-      strokeWeight: 3,
+      strokeWeight: 4,
     });
     line.setMap(map);
     return () => line.setMap(null);
-  }, [map, path]);
+  }, [map, geometry, encoded, path]);
   return null;
 }
 
