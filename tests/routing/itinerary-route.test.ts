@@ -17,6 +17,7 @@ function baseTrip(pois: PoiDetail[], end: { lat: number; lng: number } | null): 
   return {
     id: "t", title: "T", description: "",
     startName: "Start", startLat: 0, startLng: 0,
+    startDate: null,
     endName: end ? "End" : null, endLat: end?.lat ?? null, endLng: end?.lng ?? null,
     isRoundTrip: end === null,
     days: [
@@ -166,5 +167,12 @@ describe("finish modes", () => {
       { lat: 1, lng: 1 },
     ]);
     expect(legDayId).toEqual(["d1"]);
+  });
+
+  test("buildRoute: open finish with no stops yields a single waypoint and no legs", () => {
+    const trip = openTrip([]);
+    const { waypoints, legDayId } = buildRoute(trip, []);
+    expect(waypoints).toEqual([{ lat: 0, lng: 0 }]);
+    expect(legDayId).toEqual([]);
   });
 });
