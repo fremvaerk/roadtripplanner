@@ -14,6 +14,8 @@ import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from
 import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
 import { useUpdateNight } from "@/hooks/use-night-mutations";
+import { dayDate } from "@/lib/dates";
+import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -23,6 +25,17 @@ function formatDuration(seconds: number): string {
   if (h && m) return `${h} h ${m} min`;
   if (h) return `${h} h`;
   return `${m} min`;
+}
+
+const DATE_FMT = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+function formatDayDate(startDate: string | null, dayIndex: number): string | null {
+  const d = dayDate(startDate, dayIndex);
+  return d ? DATE_FMT.format(d) : null;
 }
 
 export function PlannerShell({ tripId }: { tripId: string }) {
@@ -37,6 +50,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const moveVia = useMoveVia(tripId);
   const removeVia = useRemoveVia(tripId);
   const updateNight = useUpdateNight(tripId);
+  const addDay = useAddDay(tripId);
+  const removeDay = useRemoveDay(tripId);
+  const setStartDate = useSetStartDate(tripId);
 
   if (isLoading) {
     return (
@@ -134,6 +150,15 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               Total driving: {formatDuration(route.totalSeconds)} · {Math.round(route.totalMeters / 1000)} km
             </p>
           )}
+            <label className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Start date</span>
+              <input
+                type="date"
+                value={trip.startDate ? trip.startDate.slice(0, 10) : ""}
+                onChange={(e) => setStartDate.mutate(e.target.value || null)}
+                className="rounded border bg-background px-1 py-0.5 text-xs"
+              />
+            </label>
 
           <div className="mb-4">
             <PlaceSearch tripId={tripId} />
@@ -176,7 +201,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               {trip.days.map((day) => (
                 <div key={day.id} className="rounded-md border p-3">
                   <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
-                    <span>Day {day.dayIndex + 1}</span>
+                    <span>
+                      Day {day.dayIndex + 1}
+                      {formatDayDate(trip.startDate, day.dayIndex) ? (
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          · {formatDayDate(trip.startDate, day.dayIndex)}
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="flex items-center gap-2">
                       {route?.perDaySeconds[day.id] ? (
                         <span className="text-xs font-normal text-muted-foreground">
@@ -195,6 +227,18 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                           {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
                         </Button>
                       ) : null}
+                      <button
+                        type="button"
+                        aria-label={`Remove day ${day.dayIndex + 1}`}
+                        className="px-1 text-xs text-muted-foreground hover:text-red-600"
+                        onClick={() => {
+                          if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
+                            removeDay.mutate(day.id);
+                          }
+                        }}
+                      >
+                        ✕
+                      </button>
                     </span>
                   </div>
                   <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." />
@@ -212,6 +256,15 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                   />
                 </div>
               ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={addDay.isPending}
+                onClick={() => addDay.mutate()}
+              >
+                ＋ Add day
+              </Button>
             </div>
           </DragDropProvider>
         </aside>
