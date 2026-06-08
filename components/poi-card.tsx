@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
-import { useRemovePoi, useSetOvernight } from "@/hooks/use-poi-mutations";
+import { useMovePoi, useSetOvernight } from "@/hooks/use-poi-mutations";
 import type { PoiDetail } from "@/lib/api/trips";
 
 export function PoiCard({
@@ -23,9 +23,8 @@ export function PoiCard({
     type: "poi",
     accept: "poi",
   });
-  const removePoi = useRemovePoi(tripId);
+  const movePoi = useMovePoi(tripId);
   const setOvernight = useSetOvernight(tripId);
-  const inDay = group !== "pool";
 
   return (
     <li
@@ -45,21 +44,19 @@ export function PoiCard({
         {poi.isOvernight ? "🌙 " : ""}
         {poi.name}
       </span>
-      {inDay && (
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={poi.isOvernight ? `Unset overnight for ${poi.name}` : `Set ${poi.name} as overnight`}
-          onClick={() => setOvernight.mutate({ poiId: poi.id, isOvernight: !poi.isOvernight })}
-        >
-          🌙
-        </Button>
-      )}
       <Button
         variant="ghost"
         size="sm"
-        aria-label={`Remove ${poi.name}`}
-        onClick={() => removePoi.mutate(poi.id)}
+        aria-label={poi.isOvernight ? `Unset overnight for ${poi.name}` : `Set ${poi.name} as overnight`}
+        onClick={() => setOvernight.mutate({ poiId: poi.id, isOvernight: !poi.isOvernight })}
+      >
+        🌙
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Remove ${poi.name} from this day`}
+        onClick={() => movePoi.mutate({ poiId: poi.id, dayId: null, orderInDay: 0 })}
       >
         ✕
       </Button>
