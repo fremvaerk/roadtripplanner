@@ -253,13 +253,6 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     tripId={tripId}
                     dayId={day.id}
                     night={day.night}
-                    fallback={(() => {
-                      const stops = byDay(day.id);
-                      const lastStop = stops[stops.length - 1];
-                      return lastStop
-                        ? { lat: lastStop.lat, lng: lastStop.lng }
-                        : { lat: trip.startLat, lng: trip.startLng };
-                    })()}
                   />
                 </div>
               ))}

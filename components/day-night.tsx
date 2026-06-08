@@ -11,12 +11,10 @@ export function DayNight({
   tripId,
   dayId,
   night,
-  fallback,
 }: {
   tripId: string;
   dayId: string;
   night: DayNightData | null;
-  fallback: { lat: number; lng: number };
 }) {
   const setNight = useSetNight(tripId);
   const updateNight = useUpdateNight(tripId);
