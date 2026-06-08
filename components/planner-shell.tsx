@@ -12,6 +12,8 @@ import { useTrip } from "@/hooks/use-trip";
 import { useRoute } from "@/hooks/use-route";
 import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
 import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
+import { DayNight } from "@/components/day-night";
+import { useUpdateNight } from "@/hooks/use-night-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -34,6 +36,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const addVia = useAddVia(tripId);
   const moveVia = useMoveVia(tripId);
   const removeVia = useRemoveVia(tripId);
+  const updateNight = useUpdateNight(tripId);
 
   if (isLoading) {
     return (
@@ -110,6 +113,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng }))}
+              onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -193,6 +198,18 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     </span>
                   </div>
                   <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." />
+                  <DayNight
+                    tripId={tripId}
+                    dayId={day.id}
+                    night={day.night}
+                    fallback={(() => {
+                      const stops = byDay(day.id);
+                      const lastStop = stops[stops.length - 1];
+                      return lastStop
+                        ? { lat: lastStop.lat, lng: lastStop.lng }
+                        : { lat: trip.startLat, lng: trip.startLng };
+                    })()}
+                  />
                 </div>
               ))}
             </div>
