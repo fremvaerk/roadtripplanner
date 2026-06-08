@@ -96,4 +96,12 @@ describe("resplitAll", () => {
     expect(dayOf(b.id)).toBe(trip.days[0].id);
     expect(dayOf(c.id)).toBe(trip.days[1].id);
   });
+
+  test("clears overnight flags (a fresh split)", async () => {
+    const trip = await createTrip(prisma, sampleTrip(1));
+    const a = await addPoi(prisma, trip.id, { name: "A", lat: 0, lng: 2, dayId: trip.days[0].id });
+    await setOvernight(prisma, a.id, true);
+    await resplitAll(prisma, trip.id, async () => legRoute([60, 60]), 130);
+    expect((await prisma.poi.findUnique({ where: { id: a.id } }))?.isOvernight).toBe(false);
+  });
 });
