@@ -18,6 +18,7 @@ export type AddPoiInput = {
   category?: string | null;
   source?: string; // "user" | "search" | "map" | "ai"
   dayId?: string | null;
+  groupId?: string | null;
 };
 
 export async function addPoi(
@@ -35,11 +36,16 @@ export async function addPoi(
     if (!day) throw new ItineraryError("Day does not belong to this trip");
     orderInDay = await prisma.poi.count({ where: { dayId: input.dayId } });
   }
+  const orderInGroup = await prisma.poi.count({
+    where: { tripId, groupId: input.groupId ?? null },
+  });
   return prisma.poi.create({
     data: {
       tripId,
       dayId: input.dayId ?? null,
       orderInDay,
+      groupId: input.groupId ?? null,
+      orderInGroup,
       name: input.name,
       lat: input.lat,
       lng: input.lng,
