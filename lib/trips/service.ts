@@ -37,6 +37,7 @@ export async function getTrip(prisma: PrismaClient, id: string) {
       },
       pois: { orderBy: { createdAt: "asc" } },
       poiGroups: { orderBy: { orderIndex: "asc" } },
+      routeVias: true,
     },
   });
 }

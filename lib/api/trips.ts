@@ -18,6 +18,8 @@ export type PoiDetail = {
 
 export type TripGroup = { id: string; name: string; orderIndex: number };
 
+export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
+
 export type DayDetail = {
   id: string;
   dayIndex: number;
@@ -38,6 +40,7 @@ export type TripDetail = {
   days: DayDetail[];
   pois: PoiDetail[];
   poiGroups: TripGroup[];
+  routeVias: TripVia[];
 };
 
 export async function fetchTrip(tripId: string): Promise<TripDetail> {
@@ -88,8 +91,9 @@ export async function patchPoiOvernight(
   return res.json();
 }
 
+export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null };
 export type RouteResult = {
-  encodedPolyline: string | null;
+  legs: RouteLegResult[];
   perDaySeconds: Record<string, number>;
   totalSeconds: number;
   totalMeters: number;
@@ -160,4 +164,32 @@ export async function moveToGroupRequest(
     body: JSON.stringify({ op: "group", groupId, orderInGroup }),
   });
   if (!res.ok) throw new Error(`Failed to move to group (${res.status})`);
+}
+
+export async function addViaRequest(
+  tripId: string,
+  afterPoiId: string | null,
+  lat: number,
+  lng: number,
+): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/vias`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ afterPoiId, lat, lng }),
+  });
+  if (!res.ok) throw new Error(`Failed to add via (${res.status})`);
+}
+
+export async function moveViaRequest(viaId: string, lat: number, lng: number): Promise<void> {
+  const res = await fetch(`/api/vias/${viaId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ lat, lng }),
+  });
+  if (!res.ok) throw new Error(`Failed to move via (${res.status})`);
+}
+
+export async function removeViaRequest(viaId: string): Promise<void> {
+  const res = await fetch(`/api/vias/${viaId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to remove via (${res.status})`);
 }
