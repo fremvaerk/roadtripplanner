@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -62,7 +62,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
   const updateBase = useUpdateTripBase(tripId);
-  const [pickingPlace, setPickingPlace] = useState(false);
+  const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
+
+  // Drop the optimistic override once the server reflects the new finish.
+  useEffect(() => {
+    setPendingMode(null);
+  }, [trip?.endLat, trip?.endLng, trip?.isRoundTrip]);
 
   if (isLoading) {
     return (
@@ -165,14 +170,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           {(() => {
             const finishMode: "open" | "round" | "place" =
               trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
-            const activeFinish = pickingPlace ? "place" : finishMode;
+            const activeFinish = pendingMode ?? finishMode;
             return (
               <>
                 <p className="mb-2 text-sm text-muted-foreground">
                   {trip.startName}
-                  {finishMode === "place"
-                    ? ` → ${trip.endName}`
-                    : finishMode === "round"
+                  {activeFinish === "place"
+                    ? ` → ${trip.endName ?? "destination…"}`
+                    : activeFinish === "round"
                       ? " ↺ round trip"
                       : " → (open)"}
                 </p>
@@ -194,13 +199,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
 
                   <div>
                     <div className="mb-1 text-xs text-muted-foreground">Finish</div>
-                    <div className="flex gap-1">
+                    <div role="group" aria-label="Finish mode" className="flex gap-1">
                       <Button
                         size="sm"
                         variant={activeFinish === "open" ? "default" : "outline"}
+                        aria-pressed={activeFinish === "open"}
                         className="h-7 px-2 text-xs"
                         onClick={() => {
-                          setPickingPlace(false);
+                          setPendingMode("open");
                           updateBase.mutate({ finish: { mode: "open" } });
                         }}
                       >
@@ -209,9 +215,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                       <Button
                         size="sm"
                         variant={activeFinish === "round" ? "default" : "outline"}
+                        aria-pressed={activeFinish === "round"}
                         className="h-7 px-2 text-xs"
                         onClick={() => {
-                          setPickingPlace(false);
+                          setPendingMode("round");
                           updateBase.mutate({ finish: { mode: "round" } });
                         }}
                       >
@@ -220,13 +227,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                       <Button
                         size="sm"
                         variant={activeFinish === "place" ? "default" : "outline"}
+                        aria-pressed={activeFinish === "place"}
                         className="h-7 px-2 text-xs"
-                        onClick={() => setPickingPlace(true)}
+                        onClick={() => setPendingMode("place")}
                       >
                         Place
                       </Button>
                     </div>
-                    {activeFinish === "place" && (
+                    {activeFinish === "place" && !updateBase.isPending && (
                       <div className="mt-1">
                         {trip.endName ? (
                           <div className="mb-1 text-xs text-muted-foreground">
@@ -235,15 +243,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                         ) : null}
                         <PlaceAutocomplete
                           placeholder="Search destination…"
-                          onPick={(p) => {
+                          onPick={(p) =>
                             updateBase.mutate({
                               finish: {
                                 mode: "place",
                                 place: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
                               },
-                            });
-                            setPickingPlace(false);
-                          }}
+                            })
+                          }
                         />
                       </div>
                     )}
