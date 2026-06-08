@@ -25,7 +25,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   try {
-    const trip = await updateTrip(prisma, tripId, parsed.data);
+    const { startDate, ...rest } = parsed.data;
+    const trip = await updateTrip(prisma, tripId, {
+      ...rest,
+      ...(startDate !== undefined
+        ? { startDate: startDate ? new Date(startDate) : null }
+        : {}),
+    });
     return NextResponse.json(trip);
   } catch (e) {
     if (isNotFound(e)) return NextResponse.json({ error: "Not found" }, { status: 404 });
