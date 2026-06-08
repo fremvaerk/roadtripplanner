@@ -24,9 +24,8 @@ afterAll(async () => {
 
 function sampleTrip(): CreateTripData {
   return {
-    title: "T", description: "d", isRoundTrip: false, startDate: null, dayCount: 2,
+    title: "T", description: "d", startDate: null, dayCount: 2,
     start: { name: "S", lat: 0, lng: 0, placeId: null },
-    end: { name: "E", lat: 1, lng: 1, placeId: null },
   };
 }
 

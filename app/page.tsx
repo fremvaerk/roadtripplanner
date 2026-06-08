@@ -30,7 +30,7 @@ export default async function HomePage() {
                 <div className="font-medium">{t.title}</div>
                 <div className="text-sm text-muted-foreground">
                   {t.startName}
-                  {!t.isRoundTrip && t.endName ? ` → ${t.endName}` : " (round trip)"}
+                  {t.isRoundTrip ? " ↺ round trip" : t.endName ? ` → ${t.endName}` : " → (open)"}
                 </div>
               </Link>
             </li>
