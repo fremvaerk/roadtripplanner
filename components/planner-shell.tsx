@@ -6,9 +6,10 @@ import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
 import { PlaceSearch } from "@/components/place-search";
 import { PoiContainer } from "@/components/poi-container";
+import { Button } from "@/components/ui/button";
 import { useTrip } from "@/hooks/use-trip";
 import { useRoute } from "@/hooks/use-route";
-import { useAddPoi, useMovePoi } from "@/hooks/use-poi-mutations";
+import { useAddPoi, useMovePoi, useOptimizeDay } from "@/hooks/use-poi-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 
 function formatDuration(seconds: number): string {
@@ -25,6 +26,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);
   const movePoi = useMovePoi(tripId);
+  const optimizeDay = useOptimizeDay(tripId);
 
   if (isLoading) {
     return (
@@ -143,13 +145,29 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             <div className="space-y-3">
               {trip.days.map((day) => (
                 <div key={day.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex items-center justify-between text-sm font-medium">
+                  <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
                     <span>Day {day.dayIndex + 1}</span>
-                    {route?.perDaySeconds[day.id] ? (
-                      <span className="text-xs font-normal text-muted-foreground">
-                        🚗 {formatDuration(route.perDaySeconds[day.id])}
-                      </span>
-                    ) : null}
+                    <span className="flex items-center gap-2">
+                      {route?.perDaySeconds[day.id] ? (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          🚗 {formatDuration(route.perDaySeconds[day.id])}
+                        </span>
+                      ) : null}
+                      {byDay(day.id).length >= 3 ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs font-normal"
+                          disabled={optimizeDay.isPending}
+                          onClick={() => optimizeDay.mutate(day.id)}
+                          aria-label={`Optimize order of day ${day.dayIndex + 1}`}
+                        >
+                          {optimizeDay.isPending && optimizeDay.variables === day.id
+                            ? "Optimizing…"
+                            : "Optimize"}
+                        </Button>
+                      ) : null}
+                    </span>
                   </div>
                   <PoiContainer
                     id={day.id}
