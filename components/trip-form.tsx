@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 
 export function TripForm() {
   const router = useRouter();
-  const [isRoundTrip, setIsRoundTrip] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -22,10 +20,7 @@ export function TripForm() {
     const payload = {
       title: String(form.get("title") ?? ""),
       startName: String(form.get("startName") ?? ""),
-      endName: isRoundTrip ? undefined : String(form.get("endName") ?? ""),
       description: String(form.get("description") ?? ""),
-      dayCount: String(form.get("dayCount") ?? "1"),
-      isRoundTrip,
     };
 
     try {
@@ -60,35 +55,13 @@ export function TripForm() {
         <Input id="startName" name="startName" placeholder="Florence, Italy" required />
       </div>
 
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="isRoundTrip"
-          checked={isRoundTrip}
-          onCheckedChange={(v) => setIsRoundTrip(v === true)}
-        />
-        <Label htmlFor="isRoundTrip">Round trip (end where I start)</Label>
-      </div>
-
-      {!isRoundTrip && (
-        <div className="space-y-2">
-          <Label htmlFor="endName">End location</Label>
-          <Input id="endName" name="endName" placeholder="Rome, Italy" />
-        </div>
-      )}
-
       <div className="space-y-2">
-        <Label htmlFor="dayCount">Number of days</Label>
-        <Input id="dayCount" name="dayCount" type="number" min={1} max={60} defaultValue={1} />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description">What's the trip?</Label>
+        <Label htmlFor="description">What's the trip? (optional)</Label>
         <Textarea
           id="description"
           name="description"
           rows={4}
-          placeholder="A relaxed week of Tuscan food, hilltop towns, and art. Avoid highways where possible."
-          required
+          placeholder="A relaxed week of Tuscan food, hilltop towns, and art."
         />
       </div>
 
