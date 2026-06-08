@@ -91,7 +91,10 @@ function RoutePolyline({ path, encoded }: { path: MapPoint[]; encoded?: string |
   useEffect(() => {
     if (!map) return;
     let coords: google.maps.LatLngLiteral[] | null = null;
-    if (encoded && geometry) {
+    if (encoded) {
+      // Wait for the geometry library before drawing the road route — don't flash
+      // the straight-line fallback over an available encoded polyline.
+      if (!geometry) return;
       coords = geometry.encoding.decodePath(encoded).map((p) => ({ lat: p.lat(), lng: p.lng() }));
     } else if (path.length >= 2) {
       coords = path.map((p) => ({ lat: p.lat, lng: p.lng }));
