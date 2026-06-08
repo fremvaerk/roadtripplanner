@@ -282,3 +282,42 @@ export async function moveVia(
 export async function removeVia(prisma: PrismaClient, viaId: string) {
   return prisma.routeVia.delete({ where: { id: viaId } });
 }
+
+export async function setNight(
+  prisma: PrismaClient,
+  dayId: string,
+  input: { lat: number; lng: number; title?: string | null; url?: string | null; notes?: string | null },
+) {
+  return prisma.nightStop.upsert({
+    where: { dayId },
+    create: {
+      dayId,
+      lat: input.lat,
+      lng: input.lng,
+      title: input.title ?? null,
+      url: input.url ?? null,
+      notes: input.notes ?? null,
+    },
+    update: {
+      lat: input.lat,
+      lng: input.lng,
+      title: input.title ?? null,
+      url: input.url ?? null,
+      notes: input.notes ?? null,
+    },
+  });
+}
+
+export async function updateNight(
+  prisma: PrismaClient,
+  dayId: string,
+  patch: { lat?: number; lng?: number; title?: string | null; url?: string | null; notes?: string | null },
+) {
+  const existing = await prisma.nightStop.findUnique({ where: { dayId } });
+  if (!existing) throw new ItineraryError("This day has no night stop");
+  return prisma.nightStop.update({ where: { dayId }, data: patch });
+}
+
+export async function clearNight(prisma: PrismaClient, dayId: string) {
+  return prisma.nightStop.deleteMany({ where: { dayId } });
+}
