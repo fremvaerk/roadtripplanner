@@ -105,4 +105,42 @@ describe("computeRoute", () => {
     expect(captured!.body).toContain("\"optimizeWaypointOrder\":true");
     expect(captured!.fieldMask).toContain("routes.optimizedIntermediateWaypointIndex");
   });
+
+  test("marks via intermediates as via:true and requests leg polylines", async () => {
+    let body = "";
+    let fieldMask = "";
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      body = String(init.body);
+      fieldMask = (init.headers as Record<string, string>)["X-Goog-FieldMask"];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          routes: [
+            {
+              duration: "100s",
+              distanceMeters: 1000,
+              polyline: { encodedPolyline: "p" },
+              legs: [
+                { duration: "100s", distanceMeters: 1000, polyline: { encodedPolyline: "leg0" } },
+              ],
+            },
+          ],
+        }),
+      } as Response;
+    }) as typeof fetch;
+
+    const r = await computeRoute(
+      [
+        { lat: 0, lng: 0 },
+        { lat: 1, lng: 1, via: true },
+        { lat: 2, lng: 2 },
+      ],
+      "fake-key",
+      { legPolylines: true },
+    );
+    expect(body).toContain("\"via\":true");
+    expect(fieldMask).toContain("routes.legs.polyline.encodedPolyline");
+    expect(r.legs[0].encodedPolyline).toBe("leg0");
+  });
 });
