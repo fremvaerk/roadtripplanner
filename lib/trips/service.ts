@@ -33,7 +33,7 @@ export async function getTrip(prisma: PrismaClient, id: string) {
     include: {
       days: {
         orderBy: { dayIndex: "asc" },
-        include: { pois: { orderBy: { orderInDay: "asc" } } },
+        include: { pois: { orderBy: { orderInDay: "asc" } }, night: true },
       },
       pois: { orderBy: { createdAt: "asc" } },
       poiGroups: { orderBy: { orderIndex: "asc" } },

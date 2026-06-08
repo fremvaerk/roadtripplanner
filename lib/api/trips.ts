@@ -182,3 +182,32 @@ export async function removeViaRequest(viaId: string): Promise<void> {
   const res = await fetch(`/api/vias/${viaId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to remove via (${res.status})`);
 }
+
+export async function setNightRequest(
+  dayId: string,
+  body: { lat: number; lng: number; title?: string | null; url?: string | null; notes?: string | null },
+): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Failed to set night (${res.status})`);
+}
+
+export async function updateNightRequest(
+  dayId: string,
+  patch: { lat?: number; lng?: number; title?: string | null; url?: string | null; notes?: string | null },
+): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`Failed to update night (${res.status})`);
+}
+
+export async function clearNightRequest(dayId: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/night`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to clear night (${res.status})`);
+}

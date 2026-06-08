@@ -39,3 +39,18 @@ export const addViaSchema = z.object({
   lng: z.number(),
 });
 export const moveViaSchema = z.object({ lat: z.number(), lng: z.number() });
+
+export const setNightSchema = z.object({
+  lat: z.number(),
+  lng: z.number(),
+  title: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+export const updateNightSchema = z.object({
+  lat: z.number().optional(),
+  lng: z.number().optional(),
+  title: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
