@@ -43,4 +43,14 @@ describe("updateTripSchema", () => {
     const r = updateTripSchema.safeParse({ title: "New name" });
     expect(r.success).toBe(true);
   });
+
+  test("accepts a valid YYYY-MM-DD startDate and null", () => {
+    expect(updateTripSchema.safeParse({ startDate: "2026-06-09" }).success).toBe(true);
+    expect(updateTripSchema.safeParse({ startDate: null }).success).toBe(true);
+  });
+
+  test("rejects a malformed startDate string", () => {
+    expect(updateTripSchema.safeParse({ startDate: "banana" }).success).toBe(false);
+    expect(updateTripSchema.safeParse({ startDate: "2026-6-9" }).success).toBe(false);
+  });
 });

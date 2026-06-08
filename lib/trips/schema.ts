@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be a YYYY-MM-DD date");
+
 export const createTripSchema = z
   .object({
     title: z.string().min(1, "Title is required"),
@@ -7,7 +9,7 @@ export const createTripSchema = z
     endName: z.string().min(1).optional(),
     isRoundTrip: z.boolean().default(false),
     description: z.string().min(1, "Description is required"),
-    startDate: z.string().optional(),
+    startDate: isoDate.optional(),
     dayCount: z.coerce.number().int().min(1).max(60).default(1),
   })
   .refine((d) => d.isRoundTrip || !!d.endName, {
@@ -18,7 +20,7 @@ export const createTripSchema = z
 export const updateTripSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
-  startDate: z.string().nullable().optional(),
+  startDate: isoDate.nullable().optional(),
 });
 
 export type CreateTripInput = z.infer<typeof createTripSchema>;
