@@ -95,3 +95,8 @@ export async function fetchRoute(tripId: string): Promise<RouteResult> {
   if (!res.ok) throw new Error(`Failed to load route (${res.status})`);
   return res.json();
 }
+
+export async function optimizeDayRequest(dayId: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}/optimize`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to optimize day (${res.status})`);
+}

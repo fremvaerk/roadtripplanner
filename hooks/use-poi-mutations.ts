@@ -4,6 +4,7 @@ import {
   deletePoi,
   patchPoiMove,
   patchPoiOvernight,
+  optimizeDayRequest,
   type TripDetail,
 } from "@/lib/api/trips";
 import type { AddPoiBody } from "@/lib/itinerary/schema";
@@ -60,6 +61,17 @@ export function useSetOvernight(tripId: string) {
   return useMutation({
     mutationFn: (v: { poiId: string; isOvernight: boolean }) =>
       patchPoiOvernight(v.poiId, v.isOvernight),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
+  });
+}
+
+export function useOptimizeDay(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dayId: string) => optimizeDayRequest(dayId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
       qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });

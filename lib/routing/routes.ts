@@ -14,6 +14,7 @@ export type ComputedRoute = {
   legs: RouteLeg[];
   totalDurationSeconds: number;
   totalDistanceMeters: number;
+  optimizedOrder?: number[];
 };
 
 function toWaypoint(p: LatLngLiteral) {
@@ -28,6 +29,7 @@ function parseSeconds(d: string | undefined): number {
 export async function computeRoute(
   points: LatLngLiteral[],
   apiKey: string | undefined = process.env.GOOGLE_MAPS_SERVER_KEY,
+  opts: { optimize?: boolean } = {},
 ): Promise<ComputedRoute> {
   if (!apiKey) throw new RouteError("Missing GOOGLE_MAPS_SERVER_KEY");
   if (points.length < 2) throw new RouteError("A route needs at least two points");
@@ -41,8 +43,14 @@ export async function computeRoute(
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask":
-        "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.duration,routes.legs.distanceMeters",
+      "X-Goog-FieldMask": [
+        "routes.duration",
+        "routes.distanceMeters",
+        "routes.polyline.encodedPolyline",
+        "routes.legs.duration",
+        "routes.legs.distanceMeters",
+        ...(opts.optimize ? ["routes.optimizedIntermediateWaypointIndex"] : []),
+      ].join(","),
     },
     body: JSON.stringify({
       origin: toWaypoint(origin),
@@ -50,6 +58,7 @@ export async function computeRoute(
       intermediates: intermediates.map(toWaypoint),
       travelMode: "DRIVE",
       units: "METRIC",
+      ...(opts.optimize ? { optimizeWaypointOrder: true } : {}),
     }),
   });
 
@@ -61,6 +70,7 @@ export async function computeRoute(
       distanceMeters?: number;
       polyline?: { encodedPolyline?: string };
       legs?: Array<{ duration?: string; distanceMeters?: number }>;
+      optimizedIntermediateWaypointIndex?: number[];
     }>;
   };
 
@@ -77,5 +87,6 @@ export async function computeRoute(
     })),
     totalDurationSeconds: parseSeconds(route.duration),
     totalDistanceMeters: route.distanceMeters ?? 0,
+    optimizedOrder: route.optimizedIntermediateWaypointIndex,
   };
 }

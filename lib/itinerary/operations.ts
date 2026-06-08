@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
+import { computeRoute, type ComputedRoute } from "@/lib/routing/routes";
+import { applyOptimizedOrder } from "@/lib/routing/optimize";
 
 /** Thrown when an operation is given input that's invalid for the target trip. */
 export class ItineraryError extends Error {
@@ -104,6 +106,47 @@ export async function movePoi(
     }
 
     return tx.poi.findUnique({ where: { id: poiId } });
+  });
+}
+
+type ComputeRouteFn = (
+  points: { lat: number; lng: number }[],
+  apiKey?: string,
+  opts?: { optimize?: boolean },
+) => Promise<ComputedRoute>;
+
+export async function optimizeDay(
+  prisma: PrismaClient,
+  dayId: string,
+  computeFn: ComputeRouteFn = computeRoute,
+) {
+  const stops = await prisma.poi.findMany({
+    where: { dayId },
+    orderBy: { orderInDay: "asc" },
+  });
+  if (stops.length < 3) return stops;
+
+  const destination = stops.find((s) => s.isOvernight) ?? stops[stops.length - 1];
+  const rest = stops.filter((s) => s.id !== destination.id);
+  const origin = rest[0];
+  const intermediates = rest.slice(1);
+  if (intermediates.length < 1) return stops;
+
+  const points = [origin, ...intermediates, destination].map((s) => ({ lat: s.lat, lng: s.lng }));
+  const route = await computeFn(points, undefined, { optimize: true });
+
+  const orderedIntermediates =
+    route.optimizedOrder && route.optimizedOrder.length === intermediates.length
+      ? applyOptimizedOrder(intermediates, route.optimizedOrder)
+      : intermediates;
+
+  const finalOrder = [origin, ...orderedIntermediates, destination];
+
+  return prisma.$transaction(async (tx) => {
+    for (let i = 0; i < finalOrder.length; i++) {
+      await tx.poi.update({ where: { id: finalOrder[i].id }, data: { orderInDay: i } });
+    }
+    return tx.poi.findMany({ where: { dayId }, orderBy: { orderInDay: "asc" } });
   });
 }
 
