@@ -283,3 +283,32 @@ export async function moveToGroup(
     return tx.poi.findUnique({ where: { id: poiId } });
   });
 }
+
+export async function addVia(
+  prisma: PrismaClient,
+  tripId: string,
+  input: { afterPoiId: string | null; lat: number; lng: number },
+) {
+  if (input.afterPoiId) {
+    const stop = await prisma.poi.findFirst({ where: { id: input.afterPoiId, tripId } });
+    if (!stop) throw new ItineraryError("Anchor stop does not belong to this trip");
+  }
+  const seq = await prisma.routeVia.count({
+    where: { tripId, afterPoiId: input.afterPoiId ?? null },
+  });
+  return prisma.routeVia.create({
+    data: { tripId, afterPoiId: input.afterPoiId ?? null, lat: input.lat, lng: input.lng, seq },
+  });
+}
+
+export async function moveVia(
+  prisma: PrismaClient,
+  viaId: string,
+  input: { lat: number; lng: number },
+) {
+  return prisma.routeVia.update({ where: { id: viaId }, data: { lat: input.lat, lng: input.lng } });
+}
+
+export async function removeVia(prisma: PrismaClient, viaId: string) {
+  return prisma.routeVia.delete({ where: { id: viaId } });
+}
