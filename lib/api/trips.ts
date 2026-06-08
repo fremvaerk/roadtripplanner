@@ -82,3 +82,16 @@ export async function patchPoiOvernight(
   if (!res.ok) throw new Error(`Failed to set overnight (${res.status})`);
   return res.json();
 }
+
+export type RouteResult = {
+  encodedPolyline: string | null;
+  perDaySeconds: Record<string, number>;
+  totalSeconds: number;
+  totalMeters: number;
+};
+
+export async function fetchRoute(tripId: string): Promise<RouteResult> {
+  const res = await fetch(`/api/trips/${tripId}/route`);
+  if (!res.ok) throw new Error(`Failed to load route (${res.status})`);
+  return res.json();
+}

@@ -9,12 +9,16 @@ import {
 import type { AddPoiBody } from "@/lib/itinerary/schema";
 import { applyMove } from "@/lib/itinerary/move";
 import { tripQueryKey } from "@/hooks/use-trip";
+import { routeQueryKey } from "@/hooks/use-route";
 
 export function useAddPoi(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: AddPoiBody) => postPoi(tripId, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
   });
 }
 
@@ -22,7 +26,10 @@ export function useRemovePoi(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (poiId: string) => deletePoi(poiId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
   });
 }
 
@@ -41,7 +48,10 @@ export function useMovePoi(tripId: string) {
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(tripQueryKey(tripId), ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
   });
 }
 
@@ -50,6 +60,9 @@ export function useSetOvernight(tripId: string) {
   return useMutation({
     mutationFn: (v: { poiId: string; isOvernight: boolean }) =>
       patchPoiOvernight(v.poiId, v.isOvernight),
-    onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
+      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
+    },
   });
 }
