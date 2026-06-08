@@ -45,6 +45,11 @@ export function TripMap({
     () => [start, ...pois, ...(end ? [end] : [])],
     [start, end, pois],
   );
+  // Include night markers so a remote overnight is in the initial viewport.
+  const boundsPoints: MapPoint[] = useMemo(
+    () => [...path, ...(nights ?? []).map((n) => ({ lat: n.lat, lng: n.lng, name: "night" }))],
+    [path, nights],
+  );
 
   return (
     <Map
@@ -143,7 +148,7 @@ export function TripMap({
         </AdvancedMarker>
       ))}
 
-      <FitBounds points={path} />
+      <FitBounds points={boundsPoints} />
     </Map>
   );
 }

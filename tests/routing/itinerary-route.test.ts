@@ -16,8 +16,8 @@ function baseTrip(pois: PoiDetail[], end: { lat: number; lng: number } | null): 
     endName: end ? "End" : null, endLat: end?.lat ?? null, endLng: end?.lng ?? null,
     isRoundTrip: end === null,
     days: [
-      { id: "d1", dayIndex: 0, pois: [] },
-      { id: "d2", dayIndex: 1, pois: [] },
+      { id: "d1", dayIndex: 0, pois: [], night: null },
+      { id: "d2", dayIndex: 1, pois: [], night: null },
     ],
     pois,
     poiGroups: [],

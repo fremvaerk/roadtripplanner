@@ -14,10 +14,12 @@ function trip(pois: PoiDetail[]): TripDetail {
     id: "t", title: "T", description: "", startName: "S", startLat: 0, startLng: 0,
     endName: null, endLat: null, endLng: null, isRoundTrip: false,
     days: [
-      { id: "d1", dayIndex: 0, pois: [] },
-      { id: "d2", dayIndex: 1, pois: [] },
+      { id: "d1", dayIndex: 0, pois: [], night: null },
+      { id: "d2", dayIndex: 1, pois: [], night: null },
     ],
     pois,
+    poiGroups: [],
+    routeVias: [],
   };
 }
 

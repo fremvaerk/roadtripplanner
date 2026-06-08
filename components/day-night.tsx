@@ -84,9 +84,9 @@ function NightEditor({
         placeholder="Link (Airbnb / Booking / campsite)"
         className="mb-1 h-7 text-xs"
       />
-      {night.url ? (
-        <a href={night.url} target="_blank" rel="noreferrer" className="mb-1 block truncate text-blue-600 underline">
-          {night.url}
+      {url.trim() ? (
+        <a href={url.trim()} target="_blank" rel="noreferrer" className="mb-1 block truncate text-blue-600 underline">
+          {url.trim()}
         </a>
       ) : null}
       <Textarea
