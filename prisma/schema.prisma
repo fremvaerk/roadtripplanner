@@ -38,8 +38,21 @@ model Day {
   date     DateTime?
   notes    String?
   pois     Poi[]
+  night    NightStop?
 
   @@unique([tripId, dayIndex])
+}
+
+model NightStop {
+  id        String   @id @default(cuid())
+  dayId     String   @unique
+  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  lat       Float
+  lng       Float
+  title     String?
+  url       String?
+  notes     String?
+  createdAt DateTime @default(now())
 }
 
 model Poi {
@@ -49,7 +62,6 @@ model Poi {
   dayId        String?
   day          Day?     @relation(fields: [dayId], references: [id], onDelete: SetNull)
   orderInDay   Int?
-  isOvernight  Boolean  @default(false)
   name         String
   lat          Float
   lng          Float
