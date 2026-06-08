@@ -43,16 +43,29 @@ export function orderedRoutePoints(trip: TripDetail): OrderedRoute {
 export function attributeLegDurations(
   legDayId: (string | null)[],
   legSeconds: number[],
-): { perDaySeconds: Record<string, number>; totalSeconds: number } {
+  legMeters: number[] = [],
+): {
+  perDaySeconds: Record<string, number>;
+  perDayMeters: Record<string, number>;
+  totalSeconds: number;
+  totalMeters: number;
+} {
   const perDaySeconds: Record<string, number> = {};
+  const perDayMeters: Record<string, number> = {};
   let totalSeconds = 0;
+  let totalMeters = 0;
   for (let i = 0; i < legSeconds.length; i++) {
     const secs = legSeconds[i] ?? 0;
+    const meters = legMeters[i] ?? 0;
     totalSeconds += secs;
+    totalMeters += meters;
     const day = legDayId[i];
-    if (day) perDaySeconds[day] = (perDaySeconds[day] ?? 0) + secs;
+    if (day) {
+      perDaySeconds[day] = (perDaySeconds[day] ?? 0) + secs;
+      perDayMeters[day] = (perDayMeters[day] ?? 0) + meters;
+    }
   }
-  return { perDaySeconds, totalSeconds };
+  return { perDaySeconds, perDayMeters, totalSeconds, totalMeters };
 }
 
 export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
@@ -114,14 +127,25 @@ export function buildRoute(trip: TripDetail, vias: TripVia[]): BuiltRoute {
   stopovers.push({ wp: end, dayId: null, poiId: null });
   waypoints.push(end);
 
-  const lastContentDayId =
-    [...stopovers].reverse().find((s) => s.dayId !== null)?.dayId ?? null;
+  // The only legs that arrive at a day-less stopover are the trailing drive(s)
+  // to the destination (and the return leg on a round trip). A night *ends* its
+  // day, so the drive after the final night belongs to the NEXT day, not the
+  // night's own day. A stop does not end a day, so a trailing drive after a stop
+  // stays on that stop's day.
+  const lastContent = [...stopovers].reverse().find((s) => s.dayId !== null);
+  let trailingDayId = lastContent?.dayId ?? null;
+  if (lastContent && lastContent.poiId === null && lastContent.dayId !== null) {
+    const idx = daysOrdered.findIndex((d) => d.id === lastContent.dayId);
+    if (idx >= 0 && idx + 1 < daysOrdered.length) {
+      trailingDayId = daysOrdered[idx + 1].id;
+    }
+  }
 
   const legDayId: (string | null)[] = [];
   const legAfterPoiId: (string | null)[] = [];
   for (let i = 0; i < stopovers.length - 1; i++) {
     const arrival = stopovers[i + 1];
-    legDayId.push(arrival.dayId ?? lastContentDayId);
+    legDayId.push(arrival.dayId ?? trailingDayId);
     legAfterPoiId.push(stopovers[i].poiId);
   }
 

@@ -85,6 +85,7 @@ export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: strin
 export type RouteResult = {
   legs: RouteLegResult[];
   perDaySeconds: Record<string, number>;
+  perDayMeters: Record<string, number>;
   totalSeconds: number;
   totalMeters: number;
 };

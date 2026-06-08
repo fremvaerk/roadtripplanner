@@ -27,6 +27,10 @@ function formatDuration(seconds: number): string {
   return `${m} min`;
 }
 
+function formatKm(meters: number): string {
+  return `${Math.round(meters / 1000)} km`;
+}
+
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
   day: "numeric",
@@ -147,7 +151,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           </p>
           {route && route.totalSeconds > 0 && (
             <p className="mb-4 text-xs text-muted-foreground">
-              Total driving: {formatDuration(route.totalSeconds)} · {Math.round(route.totalMeters / 1000)} km
+              Total driving: {formatDuration(route.totalSeconds)} · {formatKm(route.totalMeters)}
             </p>
           )}
             <label className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -213,6 +217,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                       {route?.perDaySeconds[day.id] ? (
                         <span className="text-xs font-normal text-muted-foreground">
                           🚗 {formatDuration(route.perDaySeconds[day.id])}
+                          {route.perDayMeters?.[day.id]
+                            ? ` · ${formatKm(route.perDayMeters[day.id])}`
+                            : ""}
                         </span>
                       ) : null}
                       {byDay(day.id).length >= 3 ? (

@@ -16,14 +16,15 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { waypoints, legDayId, legAfterPoiId } = buildRoute(trip as unknown as TripDetail, vias);
 
   if (waypoints.length < 2) {
-    return NextResponse.json({ legs: [], perDaySeconds: {}, totalSeconds: 0, totalMeters: 0 });
+    return NextResponse.json({ legs: [], perDaySeconds: {}, perDayMeters: {}, totalSeconds: 0, totalMeters: 0 });
   }
 
   try {
     const route = await computeRoute(waypoints, undefined, { legPolylines: true });
-    const { perDaySeconds, totalSeconds } = attributeLegDurations(
+    const { perDaySeconds, perDayMeters, totalSeconds, totalMeters } = attributeLegDurations(
       legDayId,
       route.legs.map((l) => l.durationSeconds),
+      route.legs.map((l) => l.distanceMeters),
     );
     return NextResponse.json({
       legs: route.legs.map((l, i) => ({
@@ -31,8 +32,9 @@ export async function GET(_req: Request, { params }: Ctx) {
         afterPoiId: legAfterPoiId[i] ?? null,
       })),
       perDaySeconds,
+      perDayMeters,
       totalSeconds: totalSeconds || route.totalDurationSeconds,
-      totalMeters: route.totalDistanceMeters,
+      totalMeters: totalMeters || route.totalDistanceMeters,
     });
   } catch (e) {
     if (e instanceof RouteError) {
