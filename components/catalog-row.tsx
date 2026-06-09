@@ -29,7 +29,7 @@ export function CatalogRow({
   const removePoi = useRemovePoi(tripId);
   const movePoi = useMovePoi(tripId);
   const [editing, setEditing] = useState(false);
-  const [thumbBroken, setThumbBroken] = useState(false);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
 
   function onAssign(value: string) {
     if (value === "") {
@@ -49,12 +49,12 @@ export function CatalogRow({
       <span ref={handleRef} aria-label="Drag to a group" className="cursor-grab select-none px-1 text-muted-foreground">
         ⠿
       </span>
-      {poi.imageUrl && !thumbBroken ? (
+      {poi.imageUrl && poi.imageUrl !== brokenUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={poi.imageUrl}
           alt=""
-          onError={() => setThumbBroken(true)}
+          onError={() => setBrokenUrl(poi.imageUrl)}
           className="h-7 w-7 shrink-0 rounded object-cover"
         />
       ) : null}
