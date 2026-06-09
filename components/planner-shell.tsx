@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -65,6 +65,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
   >(null);
+  const addedPlaceIds = useMemo(
+    () => new Set((trip?.pois ?? []).map((p) => p.placeId).filter((x): x is string => !!x)),
+    [trip?.pois],
+  );
 
   // Drop the optimistic override once the server reflects the new finish.
   useEffect(() => {
@@ -104,10 +108,6 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const dayGroups: Record<string, string[]> = {};
   for (const day of trip.days) dayGroups[day.id] = byDay(day.id).map((p) => p.id);
 
-  const addedPlaceIds = new Set(
-    trip.pois.map((p) => p.placeId).filter((x): x is string => !!x),
-  );
-
   function handleAddFromMap(input: AddPoiInput) {
     addPoi.mutate({
       name: input.name,
@@ -115,7 +115,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
       lng: input.lng,
       placeId: input.placeId ?? undefined,
       category: input.category ?? undefined,
-      source: (input.source as "user" | "search" | "map" | "ai" | undefined) ?? "map",
+      source: input.source ?? "map",
     });
     setPreview(null);
   }

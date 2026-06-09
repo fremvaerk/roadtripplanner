@@ -16,7 +16,7 @@ export type AddPoiInput = {
   lng: number;
   placeId?: string | null;
   category?: string | null;
-  source?: string; // "user" | "search" | "map" | "ai"
+  source?: "user" | "search" | "map" | "ai";
   dayId?: string | null;
   groupId?: string | null;
 };
