@@ -25,6 +25,9 @@ export function NightEditor({
   const mapPick = useMapPick();
   const pickId = `night-move:${dayId}`;
   const picking = mapPick?.armedId === pickId;
+  // Unique element-id prefix so label/aria associations never collide if two
+  // editors are ever mounted at once.
+  const uid = `ne-${dayId}`;
 
   const [title, setTitle] = useState(night.title ?? "");
   const [url, setUrl] = useState(night.url ?? "");
@@ -75,16 +78,16 @@ export function NightEditor({
         <div
           role="dialog"
           aria-modal="true"
-          aria-labelledby="ne-title"
+          aria-labelledby={`${uid}-title`}
           className="w-80 max-w-[90vw] rounded-md border bg-background p-4 shadow-lg"
           onClick={(e) => e.stopPropagation()}
         >
-          <h3 id="ne-title" className="mb-2 text-sm font-semibold">Edit night stop</h3>
+          <h3 id={`${uid}-title`} className="mb-2 text-sm font-semibold">Edit night stop</h3>
           <div className="space-y-2">
             <div>
-              <Label htmlFor="ne-name" className="text-xs">Title</Label>
+              <Label htmlFor={`${uid}-name`} className="text-xs">Title</Label>
               <Input
-                id="ne-name"
+                id={`${uid}-name`}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Parking near forest"
@@ -92,9 +95,9 @@ export function NightEditor({
               />
             </div>
             <div>
-              <Label htmlFor="ne-url" className="text-xs">Link</Label>
+              <Label htmlFor={`${uid}-url`} className="text-xs">Link</Label>
               <Input
-                id="ne-url"
+                id={`${uid}-url`}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="Airbnb / Booking / campsite"
@@ -107,8 +110,8 @@ export function NightEditor({
               ) : null}
             </div>
             <div>
-              <Label htmlFor="ne-notes" className="text-xs">Notes</Label>
-              <Textarea id="ne-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm" />
+              <Label htmlFor={`${uid}-notes`} className="text-xs">Notes</Label>
+              <Textarea id={`${uid}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm" />
             </div>
             <div>
               <Label className="text-xs">Location</Label>
