@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Input } from "@/components/ui/input";
 import { useMapPick } from "@/components/map-pick-context";
@@ -29,6 +29,12 @@ export function PlaceAutocomplete({
   const placesLib = useMapsLibrary("places");
   const mapPick = useMapPick();
   const armed = !!pickId && mapPick?.armedId === pickId;
+  useEffect(() => {
+    return () => {
+      if (pickId && mapPick) mapPick.disarm(pickId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [value, setValue] = useState("");
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
