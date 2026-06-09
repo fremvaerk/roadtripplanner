@@ -76,7 +76,7 @@ export function PlaceAutocomplete({
   }
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={`relative ${className ?? ""}${armed ? " rounded-md ring-2 ring-blue-500" : ""}`}>
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -91,7 +91,6 @@ export function PlaceAutocomplete({
         }}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        className={armed ? "ring-2 ring-blue-500" : undefined}
       />
       {predictions.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow">
