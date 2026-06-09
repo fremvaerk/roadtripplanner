@@ -91,5 +91,6 @@ describe("group CRUD", () => {
     expect(updateGroupSchema.safeParse({ color: "#aabbcc" }).success).toBe(true);
     expect(updateGroupSchema.safeParse({ color: "red" }).success).toBe(false);
     expect(updateGroupSchema.safeParse({ color: "#abc" }).success).toBe(false);
+    expect(updateGroupSchema.safeParse({}).success).toBe(false);
   });
 });
