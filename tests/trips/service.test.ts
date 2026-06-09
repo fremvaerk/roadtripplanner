@@ -30,11 +30,9 @@ function sampleData(overrides: Partial<CreateTripData> = {}): CreateTripData {
   return {
     title: "Tuscany Loop",
     description: "Relaxed week of food and art.",
-    isRoundTrip: false,
     startDate: null,
     dayCount: 3,
     start: { name: "Florence", lat: 43.77, lng: 11.25, placeId: "p_start" },
-    end: { name: "Rome", lat: 41.9, lng: 12.5, placeId: "p_end" },
     ...overrides,
   };
 }
@@ -44,17 +42,13 @@ describe("trip service", () => {
     const trip = await createTrip(prisma, sampleData());
     expect(trip.id).toBeTruthy();
     expect(trip.startName).toBe("Florence");
-    expect(trip.endLat).toBeCloseTo(41.9);
     expect(trip.days).toHaveLength(3);
     expect(trip.days.map((d) => d.dayIndex)).toEqual([0, 1, 2]);
   });
 
-  test("createTrip leaves end fields null for a round trip", async () => {
-    const trip = await createTrip(
-      prisma,
-      sampleData({ isRoundTrip: true, end: null, dayCount: 1 }),
-    );
-    expect(trip.isRoundTrip).toBe(true);
+  test("createTrip defaults to an open finish (no end, not a round trip)", async () => {
+    const trip = await createTrip(prisma, sampleData({ dayCount: 1 }));
+    expect(trip.isRoundTrip).toBe(false);
     expect(trip.endName).toBeNull();
     expect(trip.endLat).toBeNull();
   });
@@ -89,6 +83,45 @@ describe("trip service", () => {
     expect(set.startDate?.toISOString().slice(0, 10)).toBe("2026-06-09");
     const cleared = await updateTrip(prisma, created.id, { startDate: null });
     expect(cleared.startDate).toBeNull();
+  });
+
+  test("updateTrip sets the start location", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const updated = await updateTrip(prisma, created.id, {
+      start: { name: "Pisa", lat: 43.72, lng: 10.4, placeId: "p_pisa" },
+    });
+    expect(updated.startName).toBe("Pisa");
+    expect(updated.startLat).toBeCloseTo(43.72);
+    expect(updated.startPlaceId).toBe("p_pisa");
+  });
+
+  test("updateTrip finish=place sets end and clears round trip", async () => {
+    const created = await createTrip(prisma, sampleData());
+    const updated = await updateTrip(prisma, created.id, {
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: "p_rome" } },
+    });
+    expect(updated.isRoundTrip).toBe(false);
+    expect(updated.endName).toBe("Rome");
+    expect(updated.endLat).toBeCloseTo(41.9);
+  });
+
+  test("updateTrip finish=round sets round trip and clears end", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await updateTrip(prisma, created.id, {
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: null } },
+    });
+    const updated = await updateTrip(prisma, created.id, { finish: { mode: "round" } });
+    expect(updated.isRoundTrip).toBe(true);
+    expect(updated.endName).toBeNull();
+    expect(updated.endLat).toBeNull();
+  });
+
+  test("updateTrip finish=open clears both round trip and end", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await updateTrip(prisma, created.id, { finish: { mode: "round" } });
+    const updated = await updateTrip(prisma, created.id, { finish: { mode: "open" } });
+    expect(updated.isRoundTrip).toBe(false);
+    expect(updated.endName).toBeNull();
   });
 
   test("deleteTrip removes the trip and cascades days", async () => {

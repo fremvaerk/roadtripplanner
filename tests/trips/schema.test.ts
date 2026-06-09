@@ -5,13 +5,16 @@ describe("createTripSchema", () => {
   const base = {
     title: "Tuscany Loop",
     startName: "Florence, Italy",
-    endName: "Rome, Italy",
-    description: "A relaxed week of food and art.",
-    dayCount: 6,
   };
 
-  test("accepts a valid one-way trip", () => {
+  test("accepts a start-only trip (no end, no description)", () => {
     const r = createTripSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.dayCount).toBe(1);
+  });
+
+  test("accepts an optional description", () => {
+    const r = createTripSchema.safeParse({ ...base, description: "A relaxed week." });
     expect(r.success).toBe(true);
   });
 
@@ -20,21 +23,9 @@ describe("createTripSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  test("requires an end location unless round trip", () => {
-    const r = createTripSchema.safeParse({ ...base, endName: undefined });
+  test("rejects a missing start location", () => {
+    const r = createTripSchema.safeParse({ title: "X" });
     expect(r.success).toBe(false);
-  });
-
-  test("allows missing end location for a round trip", () => {
-    const r = createTripSchema.safeParse({ ...base, endName: undefined, isRoundTrip: true });
-    expect(r.success).toBe(true);
-  });
-
-  test("coerces dayCount from a string and defaults to 1", () => {
-    const r = createTripSchema.safeParse({ ...base, dayCount: "3" });
-    expect(r.success && r.data.dayCount).toBe(3);
-    const d = createTripSchema.safeParse({ ...base, dayCount: undefined });
-    expect(d.success && d.data.dayCount).toBe(1);
   });
 });
 
@@ -52,5 +43,28 @@ describe("updateTripSchema", () => {
   test("rejects a malformed startDate string", () => {
     expect(updateTripSchema.safeParse({ startDate: "banana" }).success).toBe(false);
     expect(updateTripSchema.safeParse({ startDate: "2026-6-9" }).success).toBe(false);
+  });
+
+  test("accepts a start patch", () => {
+    const r = updateTripSchema.safeParse({
+      start: { name: "Pisa", lat: 43.72, lng: 10.4, placeId: null },
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("accepts finish open/round without a place", () => {
+    expect(updateTripSchema.safeParse({ finish: { mode: "open" } }).success).toBe(true);
+    expect(updateTripSchema.safeParse({ finish: { mode: "round" } }).success).toBe(true);
+  });
+
+  test("accepts finish place with a place", () => {
+    const r = updateTripSchema.safeParse({
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: null } },
+    });
+    expect(r.success).toBe(true);
+  });
+
+  test("rejects finish place without a place", () => {
+    expect(updateTripSchema.safeParse({ finish: { mode: "place" } }).success).toBe(false);
   });
 });

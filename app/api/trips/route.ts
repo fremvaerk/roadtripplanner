@@ -19,17 +19,13 @@ export async function POST(req: Request) {
 
   try {
     const start = await geocodePlace(input.startName);
-    const end =
-      !input.isRoundTrip && input.endName ? await geocodePlace(input.endName) : null;
 
     const trip = await createTrip(prisma, {
       title: input.title,
-      description: input.description,
-      isRoundTrip: input.isRoundTrip,
+      description: input.description ?? "",
       startDate: input.startDate ? new Date(input.startDate) : null,
       dayCount: input.dayCount,
       start,
-      end,
     });
     return NextResponse.json(trip, { status: 201 });
   } catch (e) {

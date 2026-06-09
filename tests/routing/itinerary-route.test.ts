@@ -17,6 +17,7 @@ function baseTrip(pois: PoiDetail[], end: { lat: number; lng: number } | null): 
   return {
     id: "t", title: "T", description: "",
     startName: "Start", startLat: 0, startLng: 0,
+    startDate: null,
     endName: end ? "End" : null, endLat: end?.lat ?? null, endLng: end?.lng ?? null,
     isRoundTrip: end === null,
     days: [
@@ -120,5 +121,58 @@ describe("buildRoute night-boundary attribution", () => {
     // stopovers: start, n0(d0), A(d1), end ; legs: start->n0(d0), n0->A(d1), A->end(d1)
     const { legDayId } = buildRoute(trip, []);
     expect(legDayId).toEqual(["d0", "d1", "d1"]);
+  });
+});
+
+describe("finish modes", () => {
+  function openTrip(pois: PoiDetail[]): TripDetail {
+    return { ...baseTrip(pois, null), isRoundTrip: false };
+  }
+
+  test("orderedRoutePoints: open finish ends at the last stop (no terminator)", () => {
+    const trip = openTrip([poi("a", "d1", 0, 1, 1), poi("b", "d2", 0, 2, 2)]);
+    const { coords, legDayId } = orderedRoutePoints(trip);
+    expect(coords).toEqual([
+      { lat: 0, lng: 0 },
+      { lat: 1, lng: 1 },
+      { lat: 2, lng: 2 },
+    ]);
+    expect(legDayId).toEqual(["d1", "d2"]);
+  });
+
+  test("orderedRoutePoints: open finish with no stops is just the start, no legs", () => {
+    const trip = openTrip([]);
+    const { coords, legDayId } = orderedRoutePoints(trip);
+    expect(coords).toEqual([{ lat: 0, lng: 0 }]);
+    expect(legDayId).toEqual([]);
+  });
+
+  test("orderedRoutePoints: round trip returns to start", () => {
+    const trip = baseTrip([poi("a", "d1", 0, 1, 1)], null); // isRoundTrip true
+    const { coords } = orderedRoutePoints(trip);
+    expect(coords[coords.length - 1]).toEqual({ lat: 0, lng: 0 });
+  });
+
+  test("orderedRoutePoints: specific place ends at the end point", () => {
+    const trip = baseTrip([poi("a", "d1", 0, 1, 1)], { lat: 3, lng: 3 }); // isRoundTrip false
+    const { coords } = orderedRoutePoints(trip);
+    expect(coords[coords.length - 1]).toEqual({ lat: 3, lng: 3 });
+  });
+
+  test("buildRoute: open finish has no terminator waypoint", () => {
+    const trip = openTrip([poi("a", "d1", 0, 1, 1)]);
+    const { waypoints, legDayId } = buildRoute(trip, []);
+    expect(waypoints).toEqual([
+      { lat: 0, lng: 0 },
+      { lat: 1, lng: 1 },
+    ]);
+    expect(legDayId).toEqual(["d1"]);
+  });
+
+  test("buildRoute: open finish with no stops yields a single waypoint and no legs", () => {
+    const trip = openTrip([]);
+    const { waypoints, legDayId } = buildRoute(trip, []);
+    expect(waypoints).toEqual([{ lat: 0, lng: 0 }]);
+    expect(legDayId).toEqual([]);
   });
 });

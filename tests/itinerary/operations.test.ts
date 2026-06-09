@@ -24,11 +24,9 @@ function sampleTrip(): CreateTripData {
   return {
     title: "Trip",
     description: "desc",
-    isRoundTrip: false,
     startDate: null,
     dayCount: 2,
     start: { name: "Florence", lat: 43.77, lng: 11.25, placeId: "p_start" },
-    end: { name: "Rome", lat: 41.9, lng: 12.5, placeId: "p_end" },
   };
 }
 
