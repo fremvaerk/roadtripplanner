@@ -19,6 +19,7 @@ import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutati
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateTripBase } from "@/hooks/use-trip-mutations";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
+import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0 min";
@@ -96,7 +97,11 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
-  const poiPoints: MapPoint[] = trip.pois.map((p) => ({ lat: p.lat, lng: p.lng, name: p.name, id: p.id }));
+  const groupColorById = new Map(trip.poiGroups.map((g) => [g.id, g.color]));
+  const poiPoints: MapPoint[] = trip.pois.map((p) => {
+    const bg = (p.groupId && groupColorById.get(p.groupId)) || UNGROUPED_COLOR;
+    return { lat: p.lat, lng: p.lng, name: p.name, id: p.id, color: { background: bg, border: darken(bg) } };
+  });
 
   const byDay = (dayId: string | null) =>
     trip.pois

@@ -6,7 +6,8 @@ import { move } from "@dnd-kit/helpers";
 import { GroupSection } from "@/components/group-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCreateGroup, useRenameGroup, useDeleteGroup, useMoveToGroup } from "@/hooks/use-group-mutations";
+import { useCreateGroup, useRenameGroup, useDeleteGroup, useMoveToGroup, useSetGroupColor } from "@/hooks/use-group-mutations";
+import { GroupColorPicker } from "@/components/group-color-picker";
 import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 const UNGROUPED = "__ungrouped__";
@@ -15,6 +16,7 @@ export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string 
   const createGroup = useCreateGroup(tripId);
   const renameGroup = useRenameGroup(tripId);
   const deleteGroup = useDeleteGroup(tripId);
+  const setGroupColor = useSetGroupColor(tripId);
   const moveToGroup = useMoveToGroup(tripId);
   const [newName, setNewName] = useState("");
 
@@ -72,10 +74,15 @@ export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string 
       <DragDropProvider onDragEnd={onDragEnd}>
         {trip.poiGroups.map((g) => (
           <div key={g.id} className="mb-3">
-            <div className="mb-1 flex items-center justify-between">
+            <div className="mb-1 flex items-center gap-2">
+              <GroupColorPicker
+                color={g.color}
+                label={g.name}
+                onChange={(hex) => setGroupColor.mutate({ groupId: g.id, color: hex })}
+              />
               <input
                 key={g.name}
-                className="w-full bg-transparent text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none"
+                className="flex-1 bg-transparent text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none"
                 defaultValue={g.name}
                 onBlur={(e) => {
                   const name = e.target.value.trim();

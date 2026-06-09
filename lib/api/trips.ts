@@ -130,6 +130,15 @@ export async function renameGroupRequest(groupId: string, name: string): Promise
   if (!res.ok) throw new Error(`Failed to rename group (${res.status})`);
 }
 
+export async function setGroupColorRequest(groupId: string, color: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ color }),
+  });
+  if (!res.ok) throw new Error(`Failed to set group color (${res.status})`);
+}
+
 export async function deleteGroupRequest(groupId: string): Promise<void> {
   const res = await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to delete group (${res.status})`);
