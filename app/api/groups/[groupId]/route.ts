@@ -12,10 +12,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  let group = null;
-  if (parsed.data.name !== undefined) group = await renameGroup(prisma, groupId, parsed.data.name);
-  if (parsed.data.color !== undefined) group = await setGroupColor(prisma, groupId, parsed.data.color);
-  if (!group) group = await prisma.poiGroup.findUnique({ where: { id: groupId } });
+  const exists = await prisma.poiGroup.findUnique({ where: { id: groupId }, select: { id: true } });
+  if (!exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (parsed.data.name !== undefined) await renameGroup(prisma, groupId, parsed.data.name);
+  if (parsed.data.color !== undefined) await setGroupColor(prisma, groupId, parsed.data.color);
+  const group = await prisma.poiGroup.findUnique({ where: { id: groupId } });
   return NextResponse.json(group);
 }
 
