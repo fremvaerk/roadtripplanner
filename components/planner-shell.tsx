@@ -121,6 +121,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
       placeId: input.placeId ?? undefined,
       category: input.category ?? undefined,
       source: input.source ?? "map",
+      address: input.address ?? undefined,
+      description: input.description ?? undefined,
+      imageUrl: input.imageUrl ?? undefined,
     });
     setPreview(null);
   }
