@@ -128,6 +128,9 @@ export function PlacePreview({
             placeId,
             category: categoryFromTypes(details.types),
             source,
+            address: details.address,
+            description: details.description,
+            imageUrl: details.photoUrl,
           })
         }
       >

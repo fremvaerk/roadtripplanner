@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
-import { removePoi, movePoi, moveToGroup, ItineraryError } from "@/lib/itinerary/operations";
+import { removePoi, movePoi, moveToGroup, updatePoi, ItineraryError } from "@/lib/itinerary/operations";
 import { patchPoiSchema } from "@/lib/itinerary/schema";
 
 type Ctx = { params: Promise<{ poiId: string }> };
@@ -31,8 +31,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
     let poi;
     if (data.op === "move") {
       poi = await movePoi(prisma, poiId, { dayId: data.dayId, orderInDay: data.orderInDay });
-    } else {
+    } else if (data.op === "group") {
       poi = await moveToGroup(prisma, poiId, data.groupId, data.orderInGroup);
+    } else if (data.op === "edit") {
+      poi = await updatePoi(prisma, poiId, {
+        name: data.name,
+        description: data.description,
+        imageUrl: data.imageUrl,
+      });
+    } else {
+      data satisfies never;
+      throw new Error(`Unhandled poi PATCH op`);
     }
     return NextResponse.json(poi);
   } catch (e) {

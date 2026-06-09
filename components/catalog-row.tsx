@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { useRemovePoi, useMovePoi } from "@/hooks/use-poi-mutations";
+import { PlaceEditor } from "@/components/place-editor";
 import type { PoiDetail, DayDetail } from "@/lib/api/trips";
 
 export function CatalogRow({
@@ -26,6 +28,12 @@ export function CatalogRow({
   });
   const removePoi = useRemovePoi(tripId);
   const movePoi = useMovePoi(tripId);
+  const [editing, setEditing] = useState(false);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBrokenUrl(null);
+  }, [poi.imageUrl]);
 
   function onAssign(value: string) {
     if (value === "") {
@@ -45,7 +53,24 @@ export function CatalogRow({
       <span ref={handleRef} aria-label="Drag to a group" className="cursor-grab select-none px-1 text-muted-foreground">
         ⠿
       </span>
+      {poi.imageUrl && poi.imageUrl !== brokenUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={poi.imageUrl}
+          alt=""
+          onError={() => setBrokenUrl(poi.imageUrl)}
+          className="h-7 w-7 shrink-0 rounded object-cover"
+        />
+      ) : null}
       <span className="flex-1 truncate">{poi.name}</span>
+      <button
+        type="button"
+        aria-label={`Edit ${poi.name}`}
+        className="px-1 text-muted-foreground hover:text-foreground"
+        onClick={() => setEditing(true)}
+      >
+        ✎
+      </button>
       <select
         aria-label={`Assign ${poi.name} to a day`}
         className="rounded border bg-background px-1 py-0.5 text-xs"
@@ -67,6 +92,7 @@ export function CatalogRow({
       >
         ✕
       </button>
+      {editing ? <PlaceEditor poi={poi} tripId={tripId} onClose={() => setEditing(false)} /> : null}
     </li>
   );
 }

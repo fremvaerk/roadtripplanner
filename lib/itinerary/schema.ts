@@ -9,6 +9,9 @@ export const addPoiSchema = z.object({
   source: z.enum(["user", "search", "map", "ai"]).optional(),
   dayId: z.string().optional(),
   groupId: z.string().optional(),
+  address: z.string().optional(),
+  description: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export type AddPoiBody = z.infer<typeof addPoiSchema>;
@@ -23,6 +26,12 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     op: z.literal("group"),
     groupId: z.string().nullable(),
     orderInGroup: z.number().int().min(0),
+  }),
+  z.object({
+    op: z.literal("edit"),
+    name: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
   }),
 ]);
 

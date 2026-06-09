@@ -13,6 +13,9 @@ export type PoiDetail = {
   status: string;
   groupId: string | null;
   orderInGroup: number | null;
+  address: string | null;
+  description: string | null;
+  imageUrl: string | null;
 };
 
 export type TripGroup = { id: string; name: string; orderIndex: number; color: string };
@@ -79,6 +82,18 @@ export async function patchPoiMove(
   });
   if (!res.ok) throw new Error(`Failed to move place (${res.status})`);
   return res.json();
+}
+
+export async function updatePoiRequest(
+  poiId: string,
+  patch: { name?: string; description?: string | null; imageUrl?: string | null },
+): Promise<void> {
+  const res = await fetch(`/api/pois/${poiId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ op: "edit", ...patch }),
+  });
+  if (!res.ok) throw new Error(`Failed to update place (${res.status})`);
 }
 
 export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null };
