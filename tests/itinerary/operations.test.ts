@@ -129,7 +129,9 @@ describe("addPoi", () => {
     expect(poi.description).toBeNull();
     expect(poi.imageUrl).toBeNull();
   });
+});
 
+describe("updatePoi", () => {
   test("updatePoi updates name, description and imageUrl", async () => {
     const trip = await createTrip(prisma, sampleTrip());
     const poi = await addPoi(prisma, trip.id, { name: "X", lat: 1, lng: 2 });

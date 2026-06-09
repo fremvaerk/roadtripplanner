@@ -33,12 +33,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
       poi = await movePoi(prisma, poiId, { dayId: data.dayId, orderInDay: data.orderInDay });
     } else if (data.op === "group") {
       poi = await moveToGroup(prisma, poiId, data.groupId, data.orderInGroup);
-    } else {
+    } else if (data.op === "edit") {
       poi = await updatePoi(prisma, poiId, {
         name: data.name,
         description: data.description,
         imageUrl: data.imageUrl,
       });
+    } else {
+      data satisfies never;
+      throw new Error(`Unhandled poi PATCH op`);
     }
     return NextResponse.json(poi);
   } catch (e) {
