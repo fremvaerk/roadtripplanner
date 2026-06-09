@@ -61,7 +61,7 @@ export function TripMap({
   // Pan/zoom to a freshly opened preview so it's in view (esp. for search picks).
   useEffect(() => {
     if (!map || !preview) return;
-    map.panTo(preview.position);
+    if (!map.getBounds()?.contains(preview.position)) map.panTo(preview.position);
     if ((map.getZoom() ?? 0) < 13) map.setZoom(13);
   }, [map, preview]);
 
@@ -192,14 +192,14 @@ export function TripMap({
         </AdvancedMarker>
       ))}
 
-      {preview && onAddPlace && (
+      {preview && (
         <InfoWindow position={preview.position} onCloseClick={() => onPreviewClose?.()}>
           <PlacePreview
             placeId={preview.placeId}
             position={preview.position}
             source={preview.source}
             alreadyAdded={addedPlaceIds?.has(preview.placeId) ?? false}
-            onAdd={(input) => onAddPlace(input)}
+            onAdd={(input) => onAddPlace?.(input)}
           />
         </InfoWindow>
       )}
