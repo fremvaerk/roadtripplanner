@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Input } from "@/components/ui/input";
+import { useMapPick } from "@/components/map-pick-context";
 
 export type PlacePick = {
   name: string;
@@ -17,13 +18,17 @@ export function PlaceAutocomplete({
   onPick,
   ariaLabel,
   className,
+  pickId,
 }: {
   placeholder: string;
   onPick: (p: PlacePick) => void;
   ariaLabel?: string;
   className?: string;
+  pickId?: string;
 }) {
   const placesLib = useMapsLibrary("places");
+  const mapPick = useMapPick();
+  const armed = !!pickId && mapPick?.armedId === pickId;
   const [value, setValue] = useState("");
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
@@ -64,6 +69,7 @@ export function PlaceAutocomplete({
       placeId: place.id ?? null,
       types: place.types ?? [],
     });
+    if (pickId && mapPick) mapPick.disarm(pickId);
     setValue("");
     setPredictions([]);
     sessionToken.current = null;
@@ -74,8 +80,18 @@ export function PlaceAutocomplete({
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (pickId && mapPick) mapPick.arm(pickId, onPick);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && pickId && mapPick) {
+            mapPick.disarm(pickId);
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+        }}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
+        className={armed ? "ring-2 ring-blue-500" : undefined}
       />
       {predictions.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow">
