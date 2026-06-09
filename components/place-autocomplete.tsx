@@ -94,7 +94,7 @@ export function PlaceAutocomplete({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Escape" && pickId && mapPick) {
+            if (e.key === "Escape" && armed && pickId && mapPick) {
               mapPick.disarm(pickId);
               (e.currentTarget as HTMLInputElement).blur();
             }
