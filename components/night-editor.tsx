@@ -34,7 +34,9 @@ export function NightEditor({
   const [notes, setNotes] = useState(night.notes ?? "");
   const [lat, setLat] = useState(night.lat);
   const [lng, setLng] = useState(night.lng);
-  const [locLabel, setLocLabel] = useState(`${night.lat.toFixed(4)}, ${night.lng.toFixed(4)}`);
+  const [locLabel, setLocLabel] = useState(
+    night.title ?? `${night.lat.toFixed(4)}, ${night.lng.toFixed(4)}`,
+  );
 
   // Escape closes the popup — but NOT while picking (then Escape is the map-pick
   // context's cancel, which clears `armedId` and un-hides this popup).
@@ -45,6 +47,15 @@ export function NightEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, picking]);
+
+  // Defensive: if the popup unmounts while its location field is still armed,
+  // clear the armed state so the map doesn't stay in pick mode.
+  useEffect(() => {
+    return () => {
+      mapPick?.disarm(pickId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function save() {
     updateNight.mutate(
