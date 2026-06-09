@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 import { computeRoute, type ComputedRoute } from "@/lib/routing/routes";
 import { applyOptimizedOrder } from "@/lib/routing/optimize";
+import { defaultGroupColor } from "@/lib/places/group-colors";
 
 /** Thrown when an operation is given input that's invalid for the target trip. */
 export class ItineraryError extends Error {
@@ -157,11 +158,17 @@ export async function optimizeDay(
 
 export async function createGroup(prisma: PrismaClient, tripId: string, name: string) {
   const orderIndex = await prisma.poiGroup.count({ where: { tripId } });
-  return prisma.poiGroup.create({ data: { tripId, name, orderIndex } });
+  return prisma.poiGroup.create({
+    data: { tripId, name, orderIndex, color: defaultGroupColor(orderIndex) },
+  });
 }
 
 export async function renameGroup(prisma: PrismaClient, groupId: string, name: string) {
   return prisma.poiGroup.update({ where: { id: groupId }, data: { name } });
+}
+
+export async function setGroupColor(prisma: PrismaClient, groupId: string, color: string) {
+  return prisma.poiGroup.update({ where: { id: groupId }, data: { color } });
 }
 
 export async function deleteGroup(prisma: PrismaClient, groupId: string) {

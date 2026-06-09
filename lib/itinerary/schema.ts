@@ -30,7 +30,10 @@ export type PatchPoiBody = z.infer<typeof patchPoiSchema>;
 
 export const createGroupSchema = z.object({ name: z.string().min(1, "Name is required") });
 export type CreateGroupBody = z.infer<typeof createGroupSchema>;
-export const renameGroupSchema = createGroupSchema;
+export const updateGroupSchema = z.object({
+  name: z.string().min(1).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a #rrggbb hex color").optional(),
+});
 export const reorderGroupsSchema = z.object({ orderedIds: z.array(z.string()) });
 
 export const addViaSchema = z.object({

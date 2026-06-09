@@ -15,7 +15,7 @@ export type PoiDetail = {
   orderInGroup: number | null;
 };
 
-export type TripGroup = { id: string; name: string; orderIndex: number };
+export type TripGroup = { id: string; name: string; orderIndex: number; color: string };
 
 export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
