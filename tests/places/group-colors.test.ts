@@ -27,6 +27,17 @@ describe("group-colors", () => {
     expect(isValidHexColor(darken("#3b82f6"))).toBe(true);
   });
 
+  test("darken returns invalid input unchanged (graceful)", () => {
+    expect(darken("#abc")).toBe("#abc");
+    expect(darken("red")).toBe("red");
+    expect(darken("")).toBe("");
+  });
+
+  test("darken clamps amount to [0,1]", () => {
+    expect(darken("#808080", 2)).toBe("#000000");   // >1 -> full black
+    expect(darken("#808080", -1)).toBe("#808080");  // <0 -> no change
+  });
+
   test("isValidHexColor accepts #rrggbb and rejects others", () => {
     expect(isValidHexColor("#aabbcc")).toBe(true);
     expect(isValidHexColor("#ABC123")).toBe(true);

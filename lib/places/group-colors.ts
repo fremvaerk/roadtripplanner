@@ -27,8 +27,9 @@ export function defaultGroupColor(orderIndex: number): string {
 export function darken(hex: string, amount = 0.2): string {
   const m = /^#([0-9a-fA-F]{6})$/.exec(hex);
   if (!m) return hex;
+  const a = Math.max(0, Math.min(1, amount));
   const num = parseInt(m[1], 16);
-  const ch = (c: number) => Math.max(0, Math.floor(c * (1 - amount)));
+  const ch = (c: number) => Math.max(0, Math.floor(c * (1 - a)));
   const r = ch((num >> 16) & 0xff);
   const g = ch((num >> 8) & 0xff);
   const b = ch(num & 0xff);
