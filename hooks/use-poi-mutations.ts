@@ -3,6 +3,7 @@ import {
   postPoi,
   deletePoi,
   patchPoiMove,
+  updatePoiRequest,
   optimizeDayRequest,
   buildSplitRequest,
   resplitRequest,
@@ -54,6 +55,17 @@ export function useMovePoi(tripId: string) {
       qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
       qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
     },
+  });
+}
+
+export function useUpdatePoi(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { poiId: string; name?: string; description?: string | null; imageUrl?: string | null }) => {
+      const { poiId, ...patch } = v;
+      return updatePoiRequest(poiId, patch);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
   });
 }
 

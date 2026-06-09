@@ -27,6 +27,12 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     groupId: z.string().nullable(),
     orderInGroup: z.number().int().min(0),
   }),
+  z.object({
+    op: z.literal("edit"),
+    name: z.string().min(1).optional(),
+    description: z.string().nullable().optional(),
+    imageUrl: z.string().url().nullable().optional(),
+  }),
 ]);
 
 export type PatchPoiBody = z.infer<typeof patchPoiSchema>;

@@ -70,6 +70,18 @@ export async function addPoi(
   });
 }
 
+export async function updatePoi(
+  prisma: PrismaClient,
+  poiId: string,
+  patch: { name?: string; description?: string | null; imageUrl?: string | null },
+) {
+  const data: { name?: string; description?: string | null; imageUrl?: string | null } = {};
+  if (patch.name !== undefined) data.name = patch.name;
+  if (patch.description !== undefined) data.description = patch.description;
+  if (patch.imageUrl !== undefined) data.imageUrl = patch.imageUrl;
+  return prisma.poi.update({ where: { id: poiId }, data });
+}
+
 export async function removePoi(prisma: PrismaClient, poiId: string) {
   return prisma.poi.delete({ where: { id: poiId } });
 }

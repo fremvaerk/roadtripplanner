@@ -1,7 +1,8 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addPoi, removePoi, ItineraryError, movePoi } from "@/lib/itinerary/operations";
+import { addPoi, removePoi, ItineraryError, movePoi, updatePoi } from "@/lib/itinerary/operations";
+import { patchPoiSchema } from "@/lib/itinerary/schema";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
@@ -127,6 +128,38 @@ describe("addPoi", () => {
     expect(poi.address).toBeNull();
     expect(poi.description).toBeNull();
     expect(poi.imageUrl).toBeNull();
+  });
+
+  test("updatePoi updates name, description and imageUrl", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const poi = await addPoi(prisma, trip.id, { name: "X", lat: 1, lng: 2 });
+    const updated = await updatePoi(prisma, poi.id, {
+      name: "Renamed",
+      description: "New note",
+      imageUrl: "https://example.com/new.jpg",
+    });
+    expect(updated.name).toBe("Renamed");
+    expect(updated.description).toBe("New note");
+    expect(updated.imageUrl).toBe("https://example.com/new.jpg");
+  });
+
+  test("updatePoi can clear description and imageUrl with null", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const poi = await addPoi(prisma, trip.id, {
+      name: "X", lat: 1, lng: 2, description: "d", imageUrl: "https://e.com/i.jpg",
+    });
+    const updated = await updatePoi(prisma, poi.id, { description: null, imageUrl: null });
+    expect(updated.description).toBeNull();
+    expect(updated.imageUrl).toBeNull();
+    expect(updated.name).toBe("X"); // untouched
+  });
+
+  test("patchPoiSchema edit variant validates fields", () => {
+    expect(patchPoiSchema.safeParse({ op: "edit", name: "Y" }).success).toBe(true);
+    expect(patchPoiSchema.safeParse({ op: "edit", imageUrl: null }).success).toBe(true);
+    expect(patchPoiSchema.safeParse({ op: "edit", imageUrl: "https://e.com/i.jpg" }).success).toBe(true);
+    expect(patchPoiSchema.safeParse({ op: "edit", imageUrl: "not a url" }).success).toBe(false);
+    expect(patchPoiSchema.safeParse({ op: "edit", name: "" }).success).toBe(false);
   });
 });
 
