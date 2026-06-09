@@ -9,3 +9,6 @@ lib/generated/
 .next/
 .playwright-mcp/
 tsconfig.tsbuildinfo
+
+# Next.js generated (regenerated on dev/build; flip-flops dev vs build path)
+next-env.d.ts
