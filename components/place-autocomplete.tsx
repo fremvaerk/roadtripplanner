@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Input } from "@/components/ui/input";
+import { useMapPick } from "@/components/map-pick-context";
 
 export type PlacePick = {
   name: string;
@@ -17,13 +18,23 @@ export function PlaceAutocomplete({
   onPick,
   ariaLabel,
   className,
+  pickId,
 }: {
   placeholder: string;
   onPick: (p: PlacePick) => void;
   ariaLabel?: string;
   className?: string;
+  pickId?: string;
 }) {
   const placesLib = useMapsLibrary("places");
+  const mapPick = useMapPick();
+  const armed = !!pickId && mapPick?.armedId === pickId;
+  useEffect(() => {
+    return () => {
+      if (pickId && mapPick) mapPick.disarm(pickId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [value, setValue] = useState("");
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
@@ -64,16 +75,26 @@ export function PlaceAutocomplete({
       placeId: place.id ?? null,
       types: place.types ?? [],
     });
+    if (pickId && mapPick) mapPick.disarm(pickId);
     setValue("");
     setPredictions([]);
     sessionToken.current = null;
   }
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={`relative ${className ?? ""}${armed ? " rounded-md ring-2 ring-blue-500" : ""}`}>
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (pickId && mapPick) mapPick.arm(pickId, onPick);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && pickId && mapPick) {
+            mapPick.disarm(pickId);
+            (e.currentTarget as HTMLInputElement).blur();
+          }
+        }}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
       />

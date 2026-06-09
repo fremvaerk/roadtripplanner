@@ -13,6 +13,8 @@ import type { AddPoiInput } from "@/lib/itinerary/operations";
 import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
+import { useMapPick } from "@/components/map-pick-context";
+import type { PlacePick } from "@/components/place-autocomplete";
 
 export type MapPoint = { lat: number; lng: number; name: string; id?: string; color?: { background: string; border: string } };
 
@@ -55,6 +57,8 @@ export function TripMap({
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
+  const placesLib = useMapsLibrary("places");
+  const mapPick = useMapPick();
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number } | null>(null);
 
@@ -97,19 +101,40 @@ export function TripMap({
   );
 
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full ${mapPick?.armedId ? "cursor-crosshair" : ""}`}>
     <Map
       defaultCenter={{ lat: start.lat, lng: start.lng }}
       defaultZoom={7}
       mapId={mapId}
       gestureHandling="greedy"
       style={{ width: "100%", height: "100%" }}
-      onClick={(ev) => {
+      onClick={async (ev) => {
         const placeId = ev.detail.placeId;
         const ll = ev.detail.latLng;
-        if (!placeId || !ll || !onPreviewPlace) return;
+        if (!placeId || !ll) return;
         ev.stop();
-        onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
+        if (mapPick?.armedId) {
+          let pick: PlacePick = { name: "Unnamed place", lat: ll.lat, lng: ll.lng, placeId, types: [] };
+          if (placesLib) {
+            try {
+              const place = new placesLib.Place({ id: placeId });
+              await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+              const loc = place.location;
+              pick = {
+                name: place.displayName ?? "Unnamed place",
+                lat: loc ? loc.lat() : ll.lat,
+                lng: loc ? loc.lng() : ll.lng,
+                placeId: place.id ?? placeId,
+                types: place.types ?? [],
+              };
+            } catch {
+              // keep the click-coordinate fallback
+            }
+          }
+          mapPick.consume(pick);
+          return;
+        }
+        if (onPreviewPlace) onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
       }}
       onContextmenu={(ev) => {
         const ll = ev.detail.latLng;
