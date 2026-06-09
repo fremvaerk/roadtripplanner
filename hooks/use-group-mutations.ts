@@ -5,6 +5,7 @@ import {
   deleteGroupRequest,
   reorderGroupsRequest,
   moveToGroupRequest,
+  setGroupColorRequest,
 } from "@/lib/api/trips";
 import { tripQueryKey } from "@/hooks/use-trip";
 
@@ -45,6 +46,14 @@ export function useMoveToGroup(tripId: string) {
   return useMutation({
     mutationFn: (v: { poiId: string; groupId: string | null; orderInGroup: number }) =>
       moveToGroupRequest(v.poiId, v.groupId, v.orderInGroup),
+    onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
+  });
+}
+
+export function useSetGroupColor(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { groupId: string; color: string }) => setGroupColorRequest(v.groupId, v.color),
     onSuccess: () => qc.invalidateQueries({ queryKey: tripQueryKey(tripId) }),
   });
 }

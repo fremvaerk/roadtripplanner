@@ -15,7 +15,7 @@ export type PoiDetail = {
   orderInGroup: number | null;
 };
 
-export type TripGroup = { id: string; name: string; orderIndex: number };
+export type TripGroup = { id: string; name: string; orderIndex: number; color: string };
 
 export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
@@ -128,6 +128,15 @@ export async function renameGroupRequest(groupId: string, name: string): Promise
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error(`Failed to rename group (${res.status})`);
+}
+
+export async function setGroupColorRequest(groupId: string, color: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ color }),
+  });
+  if (!res.ok) throw new Error(`Failed to set group color (${res.status})`);
 }
 
 export async function deleteGroupRequest(groupId: string): Promise<void> {

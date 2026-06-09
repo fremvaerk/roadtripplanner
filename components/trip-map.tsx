@@ -14,7 +14,7 @@ import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
 
-export type MapPoint = { lat: number; lng: number; name: string; id?: string };
+export type MapPoint = { lat: number; lng: number; name: string; id?: string; color?: { background: string; border: string } };
 
 export function TripMap({
   start,
@@ -126,7 +126,11 @@ export function TripMap({
 
       {pois.map((p, i) => (
         <AdvancedMarker key={p.id ?? i} position={p} title={p.name}>
-          <Pin />
+          <Pin
+            background={p.color?.background ?? "#64748b"}
+            borderColor={p.color?.border ?? "#475569"}
+            glyphColor="#ffffff"
+          />
         </AdvancedMarker>
       ))}
 

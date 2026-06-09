@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { renameGroup, deleteGroup } from "@/lib/itinerary/operations";
-import { renameGroupSchema } from "@/lib/itinerary/schema";
+import { renameGroup, setGroupColor, deleteGroup } from "@/lib/itinerary/operations";
+import { updateGroupSchema } from "@/lib/itinerary/schema";
 
 type Ctx = { params: Promise<{ groupId: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { groupId } = await params;
   const body = await req.json().catch(() => null);
-  const parsed = renameGroupSchema.safeParse(body);
+  const parsed = updateGroupSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const group = await renameGroup(prisma, groupId, parsed.data.name);
+  const exists = await prisma.poiGroup.findUnique({ where: { id: groupId }, select: { id: true } });
+  if (!exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (parsed.data.name !== undefined) await renameGroup(prisma, groupId, parsed.data.name);
+  if (parsed.data.color !== undefined) await setGroupColor(prisma, groupId, parsed.data.color);
+  const group = await prisma.poiGroup.findUnique({ where: { id: groupId } });
   return NextResponse.json(group);
 }
 
