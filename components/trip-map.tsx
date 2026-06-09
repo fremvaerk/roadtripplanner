@@ -10,6 +10,7 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
+import { categoryFromTypes } from "@/lib/places/category";
 import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
@@ -61,7 +62,40 @@ export function TripMap({
   const geocodingLib = useMapsLibrary("geocoding");
   const mapPick = useMapPick();
   const geometryLib = useMapsLibrary("geometry");
-  const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number; placeId: string | null } | null>(null);
+
+  // Resolve a clicked point to a named place: a Google place (placeId) → its
+  // details; an empty point → reverse-geocoded address (fallback: coordinates).
+  async function resolvePlace(placeId: string | null, lat: number, lng: number): Promise<PlacePick> {
+    let pick: PlacePick = { name: `Pin ${lat.toFixed(4)}, ${lng.toFixed(4)}`, lat, lng, placeId, types: [] };
+    if (placeId && placesLib) {
+      try {
+        const place = new placesLib.Place({ id: placeId });
+        await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+        const loc = place.location;
+        pick = {
+          name: place.displayName ?? pick.name,
+          lat: loc ? loc.lat() : lat,
+          lng: loc ? loc.lng() : lng,
+          placeId: place.id ?? placeId,
+          types: place.types ?? [],
+        };
+      } catch {
+        // keep the coordinate fallback
+      }
+    } else if (geocodingLib) {
+      try {
+        const geocoder = new geocodingLib.Geocoder();
+        const { results } = await geocoder.geocode({ location: { lat, lng } });
+        if (results[0]) {
+          pick = { name: results[0].formatted_address, lat, lng, placeId: results[0].place_id ?? null, types: [] };
+        }
+      } catch {
+        // keep the coordinate fallback
+      }
+    }
+    return pick;
+  }
 
   // Pan/zoom to a freshly opened preview so it's in view (esp. for search picks).
   useEffect(() => {
@@ -118,46 +152,7 @@ export function TripMap({
         // to its coordinates).
         if (mapPick?.armedId) {
           ev.stop();
-          let pick: PlacePick = {
-            name: `Pin ${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}`,
-            lat: ll.lat,
-            lng: ll.lng,
-            placeId: placeId ?? null,
-            types: [],
-          };
-          if (placeId && placesLib) {
-            try {
-              const place = new placesLib.Place({ id: placeId });
-              await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
-              const loc = place.location;
-              pick = {
-                name: place.displayName ?? pick.name,
-                lat: loc ? loc.lat() : ll.lat,
-                lng: loc ? loc.lng() : ll.lng,
-                placeId: place.id ?? placeId,
-                types: place.types ?? [],
-              };
-            } catch {
-              // keep the coordinate fallback
-            }
-          } else if (geocodingLib) {
-            try {
-              const geocoder = new geocodingLib.Geocoder();
-              const { results } = await geocoder.geocode({ location: { lat: ll.lat, lng: ll.lng } });
-              if (results[0]) {
-                pick = {
-                  name: results[0].formatted_address,
-                  lat: ll.lat,
-                  lng: ll.lng,
-                  placeId: results[0].place_id ?? null,
-                  types: [],
-                };
-              }
-            } catch {
-              // keep the coordinate fallback
-            }
-          }
-          mapPick.consume(pick);
+          mapPick.consume(await resolvePlace(placeId ?? null, ll.lat, ll.lng));
           return;
         }
         // Unarmed: only a labeled place opens the preview popup.
@@ -172,7 +167,7 @@ export function TripMap({
         if (!ll || !dom) return;
         ev.stop();
         dom.preventDefault?.(); // suppress the native browser context menu
-        setMenu({ x: dom.clientX, y: dom.clientY, lat: ll.lat, lng: ll.lng });
+        setMenu({ x: dom.clientX, y: dom.clientY, lat: ll.lat, lng: ll.lng, placeId: ev.detail.placeId ?? null });
       }}
     >
       <AdvancedMarker position={start} title={start.name}>
@@ -265,7 +260,7 @@ export function TripMap({
 
       <FitBounds points={boundsPoints} />
     </Map>
-    {menu && (legPaths.length > 0 || (dayChoices.length > 0 && onSetNight)) && (
+    {menu && (onAddPlace || legPaths.length > 0 || (dayChoices.length > 0 && onSetNight)) && (
       <>
         <div
           className="fixed inset-0 z-20"
@@ -280,6 +275,28 @@ export function TripMap({
           className="fixed z-30 min-w-44 rounded-md border bg-background py-1 text-sm shadow-md"
           style={{ left: menu.x, top: menu.y }}
         >
+          {onAddPlace && (
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left hover:bg-accent"
+              onClick={async () => {
+                const { lat, lng, placeId } = menu;
+                setMenu(null);
+                const p = await resolvePlace(placeId, lat, lng);
+                onAddPlace({
+                  name: p.name,
+                  lat: p.lat,
+                  lng: p.lng,
+                  placeId: p.placeId,
+                  category: categoryFromTypes(p.types),
+                  source: "map",
+                });
+              }}
+            >
+              ➕ Add to Places
+            </button>
+          )}
           {legPaths.length > 0 && (
             <button
               type="button"

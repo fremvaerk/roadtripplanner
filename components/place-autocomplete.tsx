@@ -98,6 +98,9 @@ export function PlaceAutocomplete({
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
       />
+      {armed && predictions.length === 0 && (
+        <p className="mt-1 text-xs text-blue-600">Type to search, or click a spot on the map.</p>
+      )}
       {predictions.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow">
           {predictions.map((p) => (
