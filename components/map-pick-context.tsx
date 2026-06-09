@@ -28,6 +28,7 @@ export function MapPickProvider({ children }: { children: React.ReactNode }) {
   const consume = useCallback((p: PlacePick) => {
     const fn = onPickRef.current;
     if (!fn) return false;
+    onPickRef.current = null;
     fn(p);
     setArmedId(null);
     return true;

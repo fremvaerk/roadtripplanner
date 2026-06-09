@@ -113,21 +113,23 @@ export function TripMap({
         const ll = ev.detail.latLng;
         if (!placeId || !ll) return;
         ev.stop();
-        if (mapPick?.armedId && placesLib) {
+        if (mapPick?.armedId) {
           let pick: PlacePick = { name: "Unnamed place", lat: ll.lat, lng: ll.lng, placeId, types: [] };
-          try {
-            const place = new placesLib.Place({ id: placeId });
-            await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
-            const loc = place.location;
-            pick = {
-              name: place.displayName ?? "Unnamed place",
-              lat: loc ? loc.lat() : ll.lat,
-              lng: loc ? loc.lng() : ll.lng,
-              placeId: place.id ?? placeId,
-              types: place.types ?? [],
-            };
-          } catch {
-            // keep the click-coordinate fallback
+          if (placesLib) {
+            try {
+              const place = new placesLib.Place({ id: placeId });
+              await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+              const loc = place.location;
+              pick = {
+                name: place.displayName ?? "Unnamed place",
+                lat: loc ? loc.lat() : ll.lat,
+                lng: loc ? loc.lng() : ll.lng,
+                placeId: place.id ?? placeId,
+                types: place.types ?? [],
+              };
+            } catch {
+              // keep the click-coordinate fallback
+            }
           }
           mapPick.consume(pick);
           return;
