@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 import { computeRoute, type ComputedRoute } from "@/lib/routing/routes";
-import { orderByCorridor } from "@/lib/routing/corridor";
+import { orderByCorridor, haversineMeters } from "@/lib/routing/corridor";
 import { splitByDriveCap, DEFAULT_DAILY_DRIVE_MAX_SECONDS } from "@/lib/routing/split";
 
 type ComputeRouteFn = (
@@ -19,6 +19,36 @@ function dailyCapFromParams(params: string | null): number {
   } catch {
     return DEFAULT_DAILY_DRIVE_MAX_SECONDS;
   }
+}
+
+type LL = { lat: number; lng: number };
+
+/** Corridor ordering anchor + the actual route terminator for each finish mode.
+ *  - place: order toward, and end the drive at, the destination.
+ *  - round trip: nearest-neighbour ordering (corridorEnd = start) and return to start.
+ *  - open: order toward the farthest stop; the drive ends at the last stop (no terminator). */
+function corridorAnchors(
+  trip: { startLat: number; startLng: number; endLat: number | null; endLng: number | null; isRoundTrip: boolean },
+  stops: LL[],
+): { start: LL; corridorEnd: LL; terminator: LL | null } {
+  const start = { lat: trip.startLat, lng: trip.startLng };
+  if (trip.endLat != null && trip.endLng != null) {
+    const end = { lat: trip.endLat, lng: trip.endLng };
+    return { start, corridorEnd: end, terminator: end };
+  }
+  if (trip.isRoundTrip) {
+    return { start, corridorEnd: start, terminator: start };
+  }
+  let far = start;
+  let farD = -1;
+  for (const s of stops) {
+    const d = haversineMeters(start, s);
+    if (d > farD) {
+      farD = d;
+      far = { lat: s.lat, lng: s.lng };
+    }
+  }
+  return { start, corridorEnd: far, terminator: null };
 }
 
 /**
@@ -41,19 +71,16 @@ export async function splitPoolIntoDays(
   const pool = trip.pois.filter((p) => p.dayId === null);
   if (pool.length === 0) return;
 
-  const start = { lat: trip.startLat, lng: trip.startLng };
-  const end =
-    trip.endLat != null && trip.endLng != null
-      ? { lat: trip.endLat, lng: trip.endLng }
-      : start;
+  const stops = pool.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng }));
+  const { start, corridorEnd, terminator } = corridorAnchors(trip, stops);
 
-  const ordered = orderByCorridor(
-    pool.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng })),
+  const ordered = orderByCorridor(stops, start, corridorEnd);
+
+  const route = await computeFn([
     start,
-    end,
-  );
-
-  const route = await computeFn([start, ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })), end]);
+    ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })),
+    ...(terminator ? [terminator] : []),
+  ]);
   const legSeconds = ordered.map((_, i) => route.legs[i]?.durationSeconds ?? 0);
 
   const cap = capOverride ?? dailyCapFromParams(trip.params);
@@ -101,20 +128,17 @@ export async function resplitAll(
   });
   if (!trip || trip.days.length === 0 || trip.pois.length === 0) return;
 
-  const start = { lat: trip.startLat, lng: trip.startLng };
-  const end =
-    trip.endLat != null && trip.endLng != null
-      ? { lat: trip.endLat, lng: trip.endLng }
-      : start;
+  const stops = trip.pois.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng }));
+  const { start, corridorEnd, terminator } = corridorAnchors(trip, stops);
 
-  const ordered = orderByCorridor(
-    trip.pois.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng })),
-    start,
-    end,
-  );
+  const ordered = orderByCorridor(stops, start, corridorEnd);
 
   // Compute the route first — if this throws, nothing below runs and the DB is unchanged.
-  const route = await computeFn([start, ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })), end]);
+  const route = await computeFn([
+    start,
+    ...ordered.map((s) => ({ lat: s.lat, lng: s.lng })),
+    ...(terminator ? [terminator] : []),
+  ]);
   const legSeconds = ordered.map((_, i) => route.legs[i]?.durationSeconds ?? 0);
   const cap = capOverride ?? dailyCapFromParams(trip.params);
   const dayAssignment = splitByDriveCap(legSeconds, trip.days.length, cap);

@@ -3,7 +3,7 @@ import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { addPoi } from "@/lib/itinerary/operations";
 import { splitPoolIntoDays, resplitAll } from "@/lib/itinerary/split-trip";
-import { createTrip } from "@/lib/trips/service";
+import { createTrip, updateTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 import type { ComputedRoute } from "@/lib/routing/routes";
 
@@ -52,6 +52,43 @@ describe("splitPoolIntoDays", () => {
     expect(dayOf(b.id)).toBe(trip.days[0].id);
     expect(dayOf(c.id)).toBe(trip.days[1].id);
     expect(fresh.every((p) => p.dayId !== null)).toBe(true);
+  });
+
+  test("open finish: the computed route ends at the last stop, not back at start", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2)); // open (no end, not round trip)
+    await addPoi(prisma, trip.id, { name: "A", lat: 0, lng: 2 });
+    await addPoi(prisma, trip.id, { name: "B", lat: 0, lng: 5 });
+    let captured: { lat: number; lng: number }[] = [];
+    await splitPoolIntoDays(
+      prisma,
+      trip.id,
+      async (pts) => {
+        captured = pts;
+        return legRoute([60, 60]);
+      },
+      1000,
+    );
+    expect(captured).toHaveLength(3); // start, A, B — no return leg
+    expect(captured[captured.length - 1]).toEqual({ lat: 0, lng: 5 });
+  });
+
+  test("round trip: the computed route returns to start", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2));
+    await updateTrip(prisma, trip.id, { finish: { mode: "round" } });
+    await addPoi(prisma, trip.id, { name: "A", lat: 0, lng: 2 });
+    await addPoi(prisma, trip.id, { name: "B", lat: 0, lng: 5 });
+    let captured: { lat: number; lng: number }[] = [];
+    await splitPoolIntoDays(
+      prisma,
+      trip.id,
+      async (pts) => {
+        captured = pts;
+        return legRoute([60, 60, 60]);
+      },
+      1000,
+    );
+    expect(captured).toHaveLength(4); // start, A, B, start
+    expect(captured[captured.length - 1]).toEqual({ lat: 0, lng: 0 });
   });
 
   test("does nothing when the pool is empty", async () => {
