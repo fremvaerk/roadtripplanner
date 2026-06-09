@@ -128,3 +128,11 @@
     @apply font-sans;
   }
 }
+
+/* When a place field is armed for map-picking, force a crosshair over the whole
+   Google map surface — Google sets its own URL cursor on the tile layer, so this
+   must override it with !important. */
+.map-armed .gm-style,
+.map-armed .gm-style * {
+  cursor: crosshair !important;
+}

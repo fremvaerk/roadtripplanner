@@ -58,6 +58,7 @@ export function TripMap({
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
   const placesLib = useMapsLibrary("places");
+  const geocodingLib = useMapsLibrary("geocoding");
   const mapPick = useMapPick();
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number } | null>(null);
@@ -101,7 +102,7 @@ export function TripMap({
   );
 
   return (
-    <div className={`relative h-full w-full ${mapPick?.armedId ? "cursor-crosshair" : ""}`}>
+    <div className={`relative h-full w-full ${mapPick?.armedId ? "map-armed cursor-crosshair" : ""}`}>
     <Map
       defaultCenter={{ lat: start.lat, lng: start.lng }}
       defaultZoom={7}
@@ -111,30 +112,59 @@ export function TripMap({
       onClick={async (ev) => {
         const placeId = ev.detail.placeId;
         const ll = ev.detail.latLng;
-        if (!placeId || !ll) return;
-        ev.stop();
+        if (!ll) return;
+        // While a field is armed, ANY click fills it: a Google place (placeId) is
+        // resolved to its name; an empty point is reverse-geocoded (falling back
+        // to its coordinates).
         if (mapPick?.armedId) {
-          let pick: PlacePick = { name: "Unnamed place", lat: ll.lat, lng: ll.lng, placeId, types: [] };
-          if (placesLib) {
+          ev.stop();
+          let pick: PlacePick = {
+            name: `Pin ${ll.lat.toFixed(4)}, ${ll.lng.toFixed(4)}`,
+            lat: ll.lat,
+            lng: ll.lng,
+            placeId: placeId ?? null,
+            types: [],
+          };
+          if (placeId && placesLib) {
             try {
               const place = new placesLib.Place({ id: placeId });
               await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
               const loc = place.location;
               pick = {
-                name: place.displayName ?? "Unnamed place",
+                name: place.displayName ?? pick.name,
                 lat: loc ? loc.lat() : ll.lat,
                 lng: loc ? loc.lng() : ll.lng,
                 placeId: place.id ?? placeId,
                 types: place.types ?? [],
               };
             } catch {
-              // keep the click-coordinate fallback
+              // keep the coordinate fallback
+            }
+          } else if (geocodingLib) {
+            try {
+              const geocoder = new geocodingLib.Geocoder();
+              const { results } = await geocoder.geocode({ location: { lat: ll.lat, lng: ll.lng } });
+              if (results[0]) {
+                pick = {
+                  name: results[0].formatted_address,
+                  lat: ll.lat,
+                  lng: ll.lng,
+                  placeId: results[0].place_id ?? null,
+                  types: [],
+                };
+              }
+            } catch {
+              // keep the coordinate fallback
             }
           }
           mapPick.consume(pick);
           return;
         }
-        if (onPreviewPlace) onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
+        // Unarmed: only a labeled place opens the preview popup.
+        if (placeId && onPreviewPlace) {
+          ev.stop();
+          onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
+        }
       }}
       onContextmenu={(ev) => {
         const ll = ev.detail.latLng;
