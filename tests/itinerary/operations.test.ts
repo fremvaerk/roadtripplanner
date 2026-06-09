@@ -105,6 +105,21 @@ describe("addPoi", () => {
       addPoi(prisma, tripA.id, { name: "X", lat: 1, lng: 1, groupId: gB.id }),
     ).rejects.toBeInstanceOf(ItineraryError);
   });
+
+  test("addPoi persists address, description and imageUrl", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const poi = await addPoi(prisma, trip.id, {
+      name: "Uffizi",
+      lat: 43.76,
+      lng: 11.25,
+      address: "Piazzale degli Uffizi, Firenze",
+      description: "Renaissance gallery",
+      imageUrl: "https://example.com/uffizi.jpg",
+    });
+    expect(poi.address).toBe("Piazzale degli Uffizi, Firenze");
+    expect(poi.description).toBe("Renaissance gallery");
+    expect(poi.imageUrl).toBe("https://example.com/uffizi.jpg");
+  });
 });
 
 describe("removePoi", () => {

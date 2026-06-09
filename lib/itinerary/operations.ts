@@ -20,6 +20,9 @@ export type AddPoiInput = {
   source?: "user" | "search" | "map" | "ai";
   dayId?: string | null;
   groupId?: string | null;
+  address?: string | null;
+  description?: string | null;
+  imageUrl?: string | null;
 };
 
 export async function addPoi(
@@ -58,6 +61,9 @@ export async function addPoi(
       lng: input.lng,
       placeId: input.placeId ?? null,
       category: input.category ?? null,
+      address: input.address ?? null,
+      description: input.description ?? null,
+      imageUrl: input.imageUrl ?? null,
       source: input.source ?? "user",
       status: "accepted",
     },

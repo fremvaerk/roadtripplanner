@@ -72,8 +72,9 @@ model Poi {
   orderInGroup Int?
   source       String   @default("user") // ai | user | search | map
   rating       Float?
-  photoRef     String?
+  imageUrl     String?
   address      String?
+  description  String?
   openingHours String? // serialized JSON
   aiReason     String?
   userNote     String?

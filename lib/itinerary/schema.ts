@@ -9,6 +9,9 @@ export const addPoiSchema = z.object({
   source: z.enum(["user", "search", "map", "ai"]).optional(),
   dayId: z.string().optional(),
   groupId: z.string().optional(),
+  address: z.string().optional(),
+  description: z.string().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export type AddPoiBody = z.infer<typeof addPoiSchema>;
