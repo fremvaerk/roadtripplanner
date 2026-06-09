@@ -136,7 +136,7 @@ export function TripMap({
         </AdvancedMarker>
       )}
 
-      <RouteLegs legs={legs} fallback={path} onAddVia={onAddVia} />
+      <RouteLegs legs={legs} onAddVia={onAddVia} />
 
       {vias.map((v) => (
         <AdvancedMarker
@@ -265,11 +265,9 @@ export function TripMap({
 
 function RouteLegs({
   legs,
-  fallback,
   onAddVia,
 }: {
   legs: RouteLegResult[];
-  fallback: MapPoint[];
   onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
 }) {
   const map = useMap();
@@ -301,20 +299,10 @@ function RouteLegs({
         line.setMap(map);
         lines.push(line);
       }
-    } else if (fallback.length >= 2) {
-      const line = new google.maps.Polyline({
-        path: fallback.map((p) => ({ lat: p.lat, lng: p.lng })),
-        geodesic: true,
-        strokeColor: "#2563eb",
-        strokeOpacity: 0.85,
-        strokeWeight: 4,
-      });
-      line.setMap(map);
-      lines.push(line);
     }
 
     return () => lines.forEach((l) => l.setMap(null));
-  }, [map, geometry, legs, fallback]);
+  }, [map, geometry, legs]);
 
   return null;
 }
