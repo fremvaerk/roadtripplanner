@@ -257,6 +257,15 @@ export async function setStartDateRequest(tripId: string, startDate: string | nu
   if (!res.ok) throw new Error(`Failed to set start date (${res.status})`);
 }
 
+export async function setTripTitleRequest(tripId: string, title: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(`Failed to rename trip (${res.status})`);
+}
+
 export type TripPlaceInput = { name: string; lat: number; lng: number; placeId: string | null };
 export type TripBasePatch = {
   start?: TripPlaceInput;

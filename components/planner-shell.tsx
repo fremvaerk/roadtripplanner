@@ -17,7 +17,8 @@ import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
 import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
-import { useUpdateTripBase } from "@/hooks/use-trip-mutations";
+import { useUpdateTripBase, useSetTripTitle } from "@/hooks/use-trip-mutations";
+import Link from "next/link";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
 
@@ -62,6 +63,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
   const updateBase = useUpdateTripBase(tripId);
+  const setTitle = useSetTripTitle(tripId);
   const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
@@ -187,7 +189,25 @@ export function PlannerShell({ tripId }: { tripId: string }) {
         </div>
 
         <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
-          <h2 className="mb-1 text-lg font-semibold">{trip.title}</h2>
+          <Link
+            href="/"
+            className="mb-2 inline-block text-xs text-muted-foreground hover:text-foreground"
+          >
+            ← Trips
+          </Link>
+          <input
+            key={trip.title}
+            defaultValue={trip.title}
+            aria-label="Trip name"
+            className="mb-1 w-full rounded bg-transparent text-lg font-semibold outline-none hover:bg-muted/40 focus:bg-muted/40"
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && v !== trip.title) setTitle.mutate(v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+          />
           {(() => {
             const finishMode: "open" | "round" | "place" =
               trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
