@@ -5,13 +5,14 @@ import {
   Map,
   AdvancedMarker,
   Pin,
+  InfoWindow,
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
-import { categoryFromTypes } from "@/lib/places/category";
 import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
+import { PlacePreview } from "@/components/place-preview";
 
 export type MapPoint = { lat: number; lng: number; name: string; id?: string };
 
@@ -29,6 +30,10 @@ export function TripMap({
   onMoveNight,
   dayChoices = [],
   onSetNight,
+  preview = null,
+  onPreviewPlace,
+  onPreviewClose,
+  addedPlaceIds,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -43,11 +48,22 @@ export function TripMap({
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
   dayChoices?: { id: string; label: string }[];
   onSetNight?: (dayId: string, lat: number, lng: number) => void;
+  preview?: { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null;
+  onPreviewPlace?: (placeId: string, position: { lat: number; lng: number }, source: "map" | "search") => void;
+  onPreviewClose?: () => void;
+  addedPlaceIds?: Set<string>;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
-  const placesLib = useMapsLibrary("places");
+  const map = useMap();
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number } | null>(null);
+
+  // Pan/zoom to a freshly opened preview so it's in view (esp. for search picks).
+  useEffect(() => {
+    if (!map || !preview) return;
+    if (!map.getBounds()?.contains(preview.position)) map.panTo(preview.position);
+    if ((map.getZoom() ?? 0) < 13) map.setZoom(13);
+  }, [map, preview]);
 
   const legPaths: LegPath[] = useMemo(() => {
     if (!geometryLib) return [];
@@ -88,22 +104,12 @@ export function TripMap({
       mapId={mapId}
       gestureHandling="greedy"
       style={{ width: "100%", height: "100%" }}
-      onClick={async (ev) => {
+      onClick={(ev) => {
         const placeId = ev.detail.placeId;
-        if (!placeId || !onAddPlace || !placesLib) return;
+        const ll = ev.detail.latLng;
+        if (!placeId || !ll || !onPreviewPlace) return;
         ev.stop();
-        const place = new placesLib.Place({ id: placeId });
-        await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
-        const loc = place.location;
-        if (!loc) return;
-        onAddPlace({
-          name: place.displayName ?? "Unnamed place",
-          lat: loc.lat(),
-          lng: loc.lng(),
-          placeId: place.id ?? null,
-          category: categoryFromTypes(place.types ?? []),
-          source: "map",
-        });
+        onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
       }}
       onContextmenu={(ev) => {
         const ll = ev.detail.latLng;
@@ -185,6 +191,18 @@ export function TripMap({
           </div>
         </AdvancedMarker>
       ))}
+
+      {preview && (
+        <InfoWindow position={preview.position} onCloseClick={() => onPreviewClose?.()}>
+          <PlacePreview
+            placeId={preview.placeId}
+            position={preview.position}
+            source={preview.source}
+            alreadyAdded={addedPlaceIds?.has(preview.placeId) ?? false}
+            onAdd={(input) => onAddPlace?.(input)}
+          />
+        </InfoWindow>
+      )}
 
       <FitBounds points={boundsPoints} />
     </Map>
