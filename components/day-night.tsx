@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { NightEditor } from "@/components/night-editor";
 import { useSetNight, useClearNight } from "@/hooks/use-night-mutations";
@@ -18,6 +18,13 @@ export function DayNight({
   const setNight = useSetNight(tripId);
   const clearNight = useClearNight(tripId);
   const [editing, setEditing] = useState(false);
+
+  // If the night is cleared or replaced (different id) while `editing` was left
+  // on, don't auto-open the editor for the new/absent night.
+  const nightId = night?.id;
+  useEffect(() => {
+    setEditing(false);
+  }, [nightId]);
 
   if (!night) {
     return (
@@ -43,8 +50,9 @@ export function DayNight({
       </button>
       <button
         type="button"
-        className="shrink-0 text-muted-foreground hover:text-red-600"
+        className="shrink-0 text-muted-foreground hover:text-red-600 disabled:opacity-50"
         aria-label="Remove night"
+        disabled={clearNight.isPending}
         onClick={() => clearNight.mutate(dayId)}
       >
         ✕
