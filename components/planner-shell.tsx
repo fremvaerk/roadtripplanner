@@ -5,7 +5,6 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
-import { PlaceSearch } from "@/components/place-search";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
 import { Button } from "@/components/ui/button";
@@ -63,6 +62,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const setStartDate = useSetStartDate(tripId);
   const updateBase = useUpdateTripBase(tripId);
   const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
+  const [preview, setPreview] = useState<
+    { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
+  >(null);
 
   // Drop the optimistic override once the server reflects the new finish.
   useEffect(() => {
@@ -102,6 +104,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const dayGroups: Record<string, string[]> = {};
   for (const day of trip.days) dayGroups[day.id] = byDay(day.id).map((p) => p.id);
 
+  const addedPlaceIds = new Set(
+    trip.pois.map((p) => p.placeId).filter((x): x is string => !!x),
+  );
+
   function handleAddFromMap(input: AddPoiInput) {
     addPoi.mutate({
       name: input.name,
@@ -109,8 +115,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
       lng: input.lng,
       placeId: input.placeId ?? undefined,
       category: input.category ?? undefined,
-      source: "map",
+      source: (input.source as "user" | "search" | "map" | "ai" | undefined) ?? "map",
     });
+    setPreview(null);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,6 +164,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                 if (day?.night) updateNight.mutate({ dayId, lat, lng });
                 else setNight.mutate({ dayId, lat, lng });
               }}
+              preview={preview}
+              onPreviewPlace={(placeId, position, source) =>
+                setPreview({ placeId, position, source })
+              }
+              onPreviewClose={() => setPreview(null)}
+              addedPlaceIds={addedPlaceIds}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -275,7 +288,18 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             </label>
 
           <div className="mb-4">
-            <PlaceSearch tripId={tripId} />
+            <PlaceAutocomplete
+              placeholder="Search a place to add…"
+              ariaLabel="Search a place to add"
+              onPick={(p) => {
+                if (p.placeId)
+                  setPreview({
+                    placeId: p.placeId,
+                    position: { lat: p.lat, lng: p.lng },
+                    source: "search",
+                  });
+              }}
+            />
           </div>
 
           <div className="mb-3 flex gap-2">
