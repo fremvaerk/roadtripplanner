@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { useRemovePoi, useMovePoi } from "@/hooks/use-poi-mutations";
 import { PlaceEditor } from "@/components/place-editor";
@@ -30,6 +30,10 @@ export function CatalogRow({
   const movePoi = useMovePoi(tripId);
   const [editing, setEditing] = useState(false);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBrokenUrl(null);
+  }, [poi.imageUrl]);
 
   function onAssign(value: string) {
     if (value === "") {

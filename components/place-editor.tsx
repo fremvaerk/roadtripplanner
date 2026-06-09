@@ -94,7 +94,7 @@ export function PlaceEditor({
           ) : null}
         </div>
         {updatePoi.isError ? (
-          <p className="mt-2 text-xs text-red-600">Couldn’t save — check the image URL is a valid link.</p>
+          <p className="mt-2 text-xs text-red-600">Couldn’t save — check the fields (image must be a valid URL) and try again.</p>
         ) : null}
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
