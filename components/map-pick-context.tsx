@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { PlacePick } from "@/components/place-autocomplete";
 
 type MapPickContextValue = {
@@ -22,39 +22,35 @@ export function MapPickProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const disarm = useCallback((id?: string) => {
-    setArmedId((cur) => {
-      if (id !== undefined && id !== cur) return cur; // stale id: leave the current target armed
-      onPickRef.current = null;
-      return null;
-    });
+    setArmedId((cur) => (id !== undefined && id !== cur ? cur : null));
   }, []);
 
   const consume = useCallback((p: PlacePick) => {
     const fn = onPickRef.current;
     if (!fn) return false;
     fn(p);
-    onPickRef.current = null;
     setArmedId(null);
     return true;
   }, []);
 
+  // Clearing the callback ref is a side-effect, so do it reactively when disarmed —
+  // keeps the setState updaters pure / React-Strict-Mode safe.
+  useEffect(() => {
+    if (armedId === null) onPickRef.current = null;
+  }, [armedId]);
+
   useEffect(() => {
     if (!armedId) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onPickRef.current = null;
-        setArmedId(null);
-      }
+      if (e.key === "Escape") setArmedId(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [armedId]);
 
-  return (
-    <MapPickContext.Provider value={{ armedId, arm, disarm, consume }}>
-      {children}
-    </MapPickContext.Provider>
-  );
+  const value = useMemo(() => ({ armedId, arm, disarm, consume }), [armedId, arm, disarm, consume]);
+
+  return <MapPickContext.Provider value={value}>{children}</MapPickContext.Provider>;
 }
 
 export function useMapPick(): MapPickContextValue | null {
