@@ -25,6 +25,7 @@ export function DayNight({
       <PlaceAutocomplete
         placeholder="🛏️ Where will you sleep? (search address)"
         className="mt-1"
+        pickId={`night-set:${dayId}`}
         onPick={(p) => setNight.mutate({ dayId, lat: p.lat, lng: p.lng, title: p.name })}
       />
     );
@@ -94,6 +95,7 @@ function NightEditor({
       <PlaceAutocomplete
         placeholder="📍 Change location…"
         className="mt-1"
+        pickId={`night-move:${dayId}`}
         onPick={(p) => updateNight.mutate({ dayId, lat: p.lat, lng: p.lng })}
       />
     </div>

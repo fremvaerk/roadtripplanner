@@ -21,6 +21,7 @@ import { useUpdateTripBase, useSetTripTitle } from "@/hooks/use-trip-mutations";
 import Link from "next/link";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
+import { MapPickProvider } from "@/components/map-pick-context";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0 min";
@@ -148,6 +149,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
 
   return (
     <APIProvider apiKey={apiKey}>
+      <MapPickProvider>
       <div className="flex h-screen w-full">
         <div className="relative flex-1">
           {apiKey ? (
@@ -230,6 +232,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     </div>
                     <PlaceAutocomplete
                       placeholder="Change start…"
+                      pickId="start"
                       onPick={(p) =>
                         updateBase.mutate({
                           start: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
@@ -284,6 +287,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                         ) : null}
                         <PlaceAutocomplete
                           placeholder="Search destination…"
+                          pickId="finish"
                           onPick={(p) =>
                             updateBase.mutate({
                               finish: {
@@ -319,6 +323,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             <PlaceAutocomplete
               placeholder="Search a place to add…"
               ariaLabel="Search a place to add"
+              pickId="add"
               onPick={(p) => {
                 if (p.placeId)
                   setPreview({
@@ -431,6 +436,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           </DragDropProvider>
         </aside>
       </div>
+      </MapPickProvider>
     </APIProvider>
   );
 }
