@@ -6,8 +6,9 @@
 
 ## Summary
 
-Let the user type a coordinate pair (e.g. `67.2335, 14.6212`) into any location
-field and pick it as a place. The field detects a decimal lat/lng pair, offers a
+Let the user type a coordinate pair — in **decimal** (`67.2335, 14.6212`) or
+**degrees-minutes-seconds** (`N 59°53'52.6668" E 17°38'7.5552"`) — into any location
+field and pick it as a place. The field detects the pair, offers a
 "📍 Use coordinates" suggestion, and on click reverse-geocodes those exact
 coordinates to a place name (falling back to `Pin <lat>, <lng>`). This covers the
 "all I have is coordinates" case for night stops and every other location field.
@@ -24,14 +25,17 @@ coordinates to a place name (falling back to `Pin <lat>, <lng>`). This covers th
 
 ## Goals
 
-- Detect a decimal coordinate pair typed into the location field.
+- Detect a coordinate pair typed into the location field — **decimal degrees** or
+  **DMS** (degrees-minutes-seconds, with N/S/E/W hemispheres).
 - Offer it as a one-row suggestion; clicking it sets that exact point with a
   reverse-geocoded name.
 - Works in every field that uses `PlaceAutocomplete` (shared component).
 
 ## Non-Goals (YAGNI)
 
-- DMS / degrees-minutes-seconds (`67°14′`) or other notations — decimal degrees only.
+- Plus codes (`9FFW…`), UTM/MGRS, or other grid notations.
+- Degrees-decimal-minutes is accepted incidentally (DMS with seconds omitted) but is
+  not a separately-specified format.
 - Showing both coordinate and text suggestions at once (the coordinate suggestion
   replaces text predictions while a valid pair is typed).
 - A live name preview before clicking (the name is resolved on click).
@@ -45,11 +49,31 @@ coordinates to a place name (falling back to `Pin <lat>, <lng>`). This covers th
 export function parseCoordinates(input: string): { lat: number; lng: number } | null;
 ```
 
-- Matches two decimal numbers separated by a comma (optionally spaced) **or**
-  whitespace: `^\s*(-?\d+(?:\.\d+)?)\s*(?:,\s*|\s+)(-?\d+(?:\.\d+)?)\s*$`.
-- Parses to numbers; returns `null` unless `lat ∈ [-90, 90]` and `lng ∈ [-180, 180]`.
-- Examples that parse: `67.2335, 14.6212`, `67.2335,14.6212`, `67.2335 14.6212`,
-  `-33.86, 151.21`. Examples that don't: `Oslo`, `67.2335`, `200, 14`, `1,2,3`.
+Tries **decimal first, then DMS**; returns `null` if neither matches. After parsing,
+returns `null` unless `lat ∈ [-90, 90]` and `lng ∈ [-180, 180]`.
+
+**Decimal** — two signed decimals separated by a comma (optionally spaced) or
+whitespace:
+`^\s*(-?\d+(?:\.\d+)?)\s*(?:,\s*|\s+)(-?\d+(?:\.\d+)?)\s*$` → `lat`, `lng`.
+Parses: `67.2335, 14.6212`, `67.2335,14.6212`, `67.2335 14.6212`, `-33.86, 151.21`.
+
+**DMS** (only tried when decimal fails) — find exactly two degree-components with a
+global regex; each component:
+```
+([NSEW])?\s*(\d+(?:\.\d+)?)\s*°\s*(?:(\d+(?:\.\d+)?)\s*['’′]\s*)?(?:(\d+(?:\.\d+)?)\s*["”″]\s*)?([NSEW])?
+```
+(case-insensitive hemisphere; minutes delimiter is straight `'`, typographic `’`, or
+prime `′`; seconds delimiter is straight `"`, typographic `”`, or double-prime `″`;
+minutes and seconds are optional). For each component:
+`decimal = deg + min/60 + sec/3600`, negated when the hemisphere is `S` or `W`.
+Assign lat/lng by hemisphere when present (the `N`/`S` component is lat, the `E`/`W`
+component is lng — so order-independent); if no hemispheres, the first component is
+lat and the second is lng. Require exactly two components, else `null`.
+Parses: `N 59°53'52.6668" E 17°38'7.5552"` (and the typographic-quote variant
+`N 59°53’52.6668” E 17°38’7.5552”`), `59°53'52.7"N 17°38'7.6"E`,
+`59°53' N, 17°38' E` (seconds omitted).
+
+**Rejected by both:** `Oslo`, `67.2335`, `200, 14`, `1,2,3`, `Route 66`.
 
 ### 2. `reverseGeocode` — `lib/places/reverse-geocode.ts` (new, shared client helper)
 
@@ -110,10 +134,15 @@ persists. No backend change.
 
 ## Testing
 
-- **Unit** (`tests/places/coordinates.test.ts`): `parseCoordinates` accepts
-  comma-, comma+space-, and whitespace-separated decimal pairs and negatives;
-  rejects a single number, a place name, an extra component (`1,2,3`), and
-  out-of-range values (`200, 14`, `10, 200`).
+- **Unit** (`tests/places/coordinates.test.ts`):
+  - Decimal: accepts comma-, comma+space-, and whitespace-separated pairs and
+    negatives; rejects a single number, a place name, an extra component (`1,2,3`),
+    and out-of-range values (`200, 14`, `10, 200`).
+  - DMS: parses `N 59°53'52.6668" E 17°38'7.5552"` and its typographic-quote variant
+    to ≈`{ lat: 59.8980, lng: 17.6354 }` (assert `toBeCloseTo` to 4 decimals);
+    parses a suffix-hemisphere form (`59°53'52.7"N 17°38'7.6"E`); applies S/W negation
+    (`S 33°51' E 151°12'` → negative lat); tolerates seconds omitted; rejects a DMS
+    string with only one component.
 - **Live smoke** (`bun run build` + browser): in the night editor's
   "Change location…", type a coordinate pair → the "📍 Use coordinates" suggestion
   appears → click it → the night location updates to a reverse-geocoded name at the
