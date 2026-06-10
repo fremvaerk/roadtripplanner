@@ -27,6 +27,8 @@ import { MapPickProvider } from "@/components/map-pick-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceEditor } from "@/components/place-editor";
 import { deleteTripRequest } from "@/lib/api/trips";
+import { useResizableWidth } from "@/hooks/use-resizable-width";
+import { CollapsibleSection } from "@/components/collapsible-section";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0 min";
@@ -101,6 +103,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     [trip?.days],
   );
 
+  const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
+    initial: 320,
+    min: 280,
+    max: 720,
+  });
+
   // Drop the optimistic override once the server reflects the new finish.
   useEffect(() => {
     setPendingMode(null);
@@ -127,6 +135,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
+  const finishMode: "open" | "round" | "place" =
+    trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
+  const activeFinish = pendingMode ?? finishMode;
   const groupColorById = new Map(trip.poiGroups.map((g) => [g.id, g.color]));
   const poiPoints: MapPoint[] = trip.pois.map((p) => {
     const bg = (p.groupId && groupColorById.get(p.groupId)) || UNGROUPED_COLOR;
@@ -178,49 +189,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     <APIProvider apiKey={apiKey}>
       <MapPickProvider>
       <div className="flex h-screen w-full">
-        <div className="relative flex-1">
-          {apiKey ? (
-            <TripMap
-              start={start}
-              end={end}
-              pois={poiPoints}
-              onAddPlace={handleAddFromMap}
-              legs={route?.legs ?? []}
-              dayColors={dayColors}
-              vias={trip.routeVias}
-              onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
-              onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
-              onRemoveVia={(viaId) => removeVia.mutate(viaId)}
-              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng }))}
-              onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
-              dayChoices={trip.days.map((d) => ({
-                id: d.id,
-                label: formatDayDate(trip.startDate, d.dayIndex)
-                  ? `Day ${d.dayIndex + 1} · ${formatDayDate(trip.startDate, d.dayIndex)}`
-                  : `Day ${d.dayIndex + 1}`,
-              }))}
-              onSetNight={(dayId, lat, lng) => {
-                const day = trip.days.find((d) => d.id === dayId);
-                if (day?.night) updateNight.mutate({ dayId, lat, lng });
-                else setNight.mutate({ dayId, lat, lng });
-              }}
-              preview={preview}
-              onPreviewPlace={(placeId, position, source) =>
-                setPreview({ placeId, position, source })
-              }
-              onPreviewClose={() => setPreview(null)}
-              addedPlaceIds={addedPlaceIds}
-              onEditPoi={(id) => setEditingPoiId(id)}
-              onRemovePoi={(id) => removePoi.mutate(id)}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.
-            </div>
-          )}
-        </div>
-
-        <aside className="flex w-80 shrink-0 flex-col overflow-y-auto border-l p-4">
+        <aside
+          style={{ width: sidebarWidth }}
+          className="flex shrink-0 flex-col overflow-y-auto border-r p-4"
+        >
           <Link
             href="/"
             className="mb-2 inline-block text-xs text-muted-foreground hover:text-foreground"
@@ -274,106 +246,98 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
             }}
           />
-          {(() => {
-            const finishMode: "open" | "round" | "place" =
-              trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
-            const activeFinish = pendingMode ?? finishMode;
-            return (
-              <>
-                <p className="mb-2 text-sm text-muted-foreground">
-                  {trip.startName}
-                  {activeFinish === "place"
-                    ? ` → ${trip.endName ?? "destination…"}`
-                    : activeFinish === "round"
-                      ? " ↺ round trip"
-                      : " → (open)"}
-                </p>
-
-                <div className="mb-3 space-y-2">
-                  <div>
-                    <div className="mb-1 text-xs text-muted-foreground">
-                      Start: <span className="text-foreground">{trip.startName}</span>
-                    </div>
-                    <PlaceAutocomplete
-                      placeholder="Change start…"
-                      pickId="start"
-                      onPick={(p) =>
-                        updateBase.mutate({
-                          start: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <div className="mb-1 text-xs text-muted-foreground">Finish</div>
-                    <div role="group" aria-label="Finish mode" className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant={activeFinish === "open" ? "default" : "outline"}
-                        aria-pressed={activeFinish === "open"}
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                          setPendingMode("open");
-                          updateBase.mutate({ finish: { mode: "open" } });
-                        }}
-                      >
-                        Open
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={activeFinish === "round" ? "default" : "outline"}
-                        aria-pressed={activeFinish === "round"}
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                          setPendingMode("round");
-                          updateBase.mutate({ finish: { mode: "round" } });
-                        }}
-                      >
-                        Round trip
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={activeFinish === "place" ? "default" : "outline"}
-                        aria-pressed={activeFinish === "place"}
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setPendingMode("place")}
-                      >
-                        Place
-                      </Button>
-                    </div>
-                    {activeFinish === "place" && !updateBase.isPending && (
-                      <div className="mt-1">
-                        {trip.endName ? (
-                          <div className="mb-1 text-xs text-muted-foreground">
-                            Ends at: <span className="text-foreground">{trip.endName}</span>
-                          </div>
-                        ) : null}
-                        <PlaceAutocomplete
-                          placeholder="Search destination…"
-                          pickId="finish"
-                          onPick={(p) =>
-                            updateBase.mutate({
-                              finish: {
-                                mode: "place",
-                                place: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            );
-          })()}
+          <p className="mb-2 text-sm text-muted-foreground">
+            {trip.startName}
+            {activeFinish === "place"
+              ? ` → ${trip.endName ?? "destination…"}`
+              : activeFinish === "round"
+                ? " ↺ round trip"
+                : " → (open)"}
+          </p>
           {route && route.totalSeconds > 0 && (
             <p className="mb-4 text-xs text-muted-foreground">
               Total driving: {formatDuration(route.totalSeconds)} · {formatKm(route.totalMeters)}
             </p>
           )}
-            <label className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
+
+          <CollapsibleSection title="Settings" storageKey="rtp.section.settings">
+            <div className="mb-3 space-y-2">
+              <div>
+                <div className="mb-1 text-xs text-muted-foreground">
+                  Start: <span className="text-foreground">{trip.startName}</span>
+                </div>
+                <PlaceAutocomplete
+                  placeholder="Change start…"
+                  pickId="start"
+                  onPick={(p) =>
+                    updateBase.mutate({
+                      start: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <div className="mb-1 text-xs text-muted-foreground">Finish</div>
+                <div role="group" aria-label="Finish mode" className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={activeFinish === "open" ? "default" : "outline"}
+                    aria-pressed={activeFinish === "open"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setPendingMode("open");
+                      updateBase.mutate({ finish: { mode: "open" } });
+                    }}
+                  >
+                    Open
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={activeFinish === "round" ? "default" : "outline"}
+                    aria-pressed={activeFinish === "round"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setPendingMode("round");
+                      updateBase.mutate({ finish: { mode: "round" } });
+                    }}
+                  >
+                    Round trip
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={activeFinish === "place" ? "default" : "outline"}
+                    aria-pressed={activeFinish === "place"}
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setPendingMode("place")}
+                  >
+                    Place
+                  </Button>
+                </div>
+                {activeFinish === "place" && !updateBase.isPending && (
+                  <div className="mt-1">
+                    {trip.endName ? (
+                      <div className="mb-1 text-xs text-muted-foreground">
+                        Ends at: <span className="text-foreground">{trip.endName}</span>
+                      </div>
+                    ) : null}
+                    <PlaceAutocomplete
+                      placeholder="Search destination…"
+                      pickId="finish"
+                      onPick={(p) =>
+                        updateBase.mutate({
+                          finish: {
+                            mode: "place",
+                            place: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>Start date</span>
               <input
                 type="date"
@@ -382,130 +346,180 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                 className="rounded border bg-background px-1 py-0.5 text-xs"
               />
             </label>
+          </CollapsibleSection>
 
-          <div className="mb-4">
-            <PlaceAutocomplete
-              placeholder="Search a place to add…"
-              ariaLabel="Search a place to add"
-              pickId="add"
-              onPick={(p) => {
-                if (p.placeId)
-                  setPreview({
-                    placeId: p.placeId,
-                    position: { lat: p.lat, lng: p.lng },
-                    source: "search",
-                  });
-              }}
-            />
-          </div>
-
-          <div className="mb-3 flex gap-2">
-            <Button
-              size="sm"
-              className="flex-1"
-              disabled={unscheduledCount === 0 || buildSplit.isPending}
-              onClick={() => buildSplit.mutate()}
-            >
-              {buildSplit.isPending ? "Splitting…" : "Build route & split into days"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={assignedCount === 0 || resplit.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Re-split the whole trip? This rebuilds every day from scratch.",
-                  )
-                ) {
-                  resplit.mutate();
-                }
-              }}
-            >
-              {resplit.isPending ? "Re-splitting…" : "Re-split all"}
-            </Button>
-          </div>
-
-          <div className="mb-4">
-            <div className="mb-2 text-sm font-medium">Places ({trip.pois.length})</div>
-            <MasterList trip={trip} tripId={tripId} />
-          </div>
-
-          <DragDropProvider onDragEnd={onItineraryDragEnd}>
-            <div className="space-y-3">
-              {trip.days.map((day) => (
-                <div key={day.id} className="rounded-md border p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
-                    <span className="flex items-center gap-2">
-                      <GroupColorPicker
-                        color={day.color ?? defaultDayColor(day.dayIndex)}
-                        label={`Day ${day.dayIndex + 1}`}
-                        onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
-                      />
-                      <span>
-                        Day {day.dayIndex + 1}
-                        {formatDayDate(trip.startDate, day.dayIndex) ? (
-                          <span className="ml-1 font-normal text-muted-foreground">
-                            · {formatDayDate(trip.startDate, day.dayIndex)}
-                          </span>
-                        ) : null}
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-2">
-                      {route?.perDaySeconds[day.id] ? (
-                        <span className="text-xs font-normal text-muted-foreground">
-                          🚗 {formatDuration(route.perDaySeconds[day.id])}
-                          {route.perDayMeters?.[day.id]
-                            ? ` · ${formatKm(route.perDayMeters[day.id])}`
-                            : ""}
-                        </span>
-                      ) : null}
-                      {byDay(day.id).length >= 3 ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs font-normal"
-                          disabled={optimizeDay.isPending && optimizeDay.variables === day.id}
-                          onClick={() => optimizeDay.mutate(day.id)}
-                          aria-label={`Optimize order of day ${day.dayIndex + 1}`}
-                        >
-                          {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
-                        </Button>
-                      ) : null}
-                      <button
-                        type="button"
-                        aria-label={`Remove day ${day.dayIndex + 1}`}
-                        className="px-1 text-xs text-muted-foreground hover:text-red-600"
-                        onClick={() => {
-                          if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
-                            removeDay.mutate(day.id);
-                          }
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  </div>
-                  <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." />
-                  <DayNight
-                    tripId={tripId}
-                    dayId={day.id}
-                    night={day.night}
-                  />
-                </div>
-              ))}
+          <CollapsibleSection title="Places" count={trip.pois.length} storageKey="rtp.section.places">
+            <div className="mb-4">
+              <PlaceAutocomplete
+                placeholder="Search a place to add…"
+                ariaLabel="Search a place to add"
+                pickId="add"
+                onPick={(p) => {
+                  if (p.placeId)
+                    setPreview({
+                      placeId: p.placeId,
+                      position: { lat: p.lat, lng: p.lng },
+                      source: "search",
+                    });
+                }}
+              />
+            </div>
+            <div className="mb-3 flex gap-2">
               <Button
-                variant="outline"
                 size="sm"
-                className="w-full"
-                disabled={addDay.isPending}
-                onClick={() => addDay.mutate()}
+                className="flex-1"
+                disabled={unscheduledCount === 0 || buildSplit.isPending}
+                onClick={() => buildSplit.mutate()}
               >
-                ＋ Add day
+                {buildSplit.isPending ? "Splitting…" : "Build route & split into days"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={assignedCount === 0 || resplit.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Re-split the whole trip? This rebuilds every day from scratch.",
+                    )
+                  ) {
+                    resplit.mutate();
+                  }
+                }}
+              >
+                {resplit.isPending ? "Re-splitting…" : "Re-split all"}
               </Button>
             </div>
-          </DragDropProvider>
+            <MasterList trip={trip} tripId={tripId} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Days" count={trip.days.length} storageKey="rtp.section.days">
+            <DragDropProvider onDragEnd={onItineraryDragEnd}>
+              <div className="space-y-3">
+                {trip.days.map((day) => (
+                  <div key={day.id} className="rounded-md border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
+                      <span className="flex items-center gap-2">
+                        <GroupColorPicker
+                          color={day.color ?? defaultDayColor(day.dayIndex)}
+                          label={`Day ${day.dayIndex + 1}`}
+                          onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
+                        />
+                        <span>
+                          Day {day.dayIndex + 1}
+                          {formatDayDate(trip.startDate, day.dayIndex) ? (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              · {formatDayDate(trip.startDate, day.dayIndex)}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {route?.perDaySeconds[day.id] ? (
+                          <span className="text-xs font-normal text-muted-foreground">
+                            🚗 {formatDuration(route.perDaySeconds[day.id])}
+                            {route.perDayMeters?.[day.id]
+                              ? ` · ${formatKm(route.perDayMeters[day.id])}`
+                              : ""}
+                          </span>
+                        ) : null}
+                        {byDay(day.id).length >= 3 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs font-normal"
+                            disabled={optimizeDay.isPending && optimizeDay.variables === day.id}
+                            onClick={() => optimizeDay.mutate(day.id)}
+                            aria-label={`Optimize order of day ${day.dayIndex + 1}`}
+                          >
+                            {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
+                          </Button>
+                        ) : null}
+                        <button
+                          type="button"
+                          aria-label={`Remove day ${day.dayIndex + 1}`}
+                          className="px-1 text-xs text-muted-foreground hover:text-red-600"
+                          onClick={() => {
+                            if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
+                              removeDay.mutate(day.id);
+                            }
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    </div>
+                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." />
+                    <DayNight
+                      tripId={tripId}
+                      dayId={day.id}
+                      night={day.night}
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={addDay.isPending}
+                  onClick={() => addDay.mutate()}
+                >
+                  ＋ Add day
+                </Button>
+              </div>
+            </DragDropProvider>
+          </CollapsibleSection>
         </aside>
+
+        {/* Mouse-only resize handle. Not exposed as an interactive ARIA separator
+            (no keyboard resize yet), so it carries a label but no role/value. */}
+        <div
+          aria-label="Drag to resize panel"
+          onMouseDown={onHandleMouseDown}
+          className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-accent"
+        />
+
+        <div className="relative flex-1">
+          {apiKey ? (
+            <TripMap
+              start={start}
+              end={end}
+              pois={poiPoints}
+              onAddPlace={handleAddFromMap}
+              legs={route?.legs ?? []}
+              dayColors={dayColors}
+              vias={trip.routeVias}
+              onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
+              onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
+              onRemoveVia={(viaId) => removeVia.mutate(viaId)}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng }))}
+              onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
+              dayChoices={trip.days.map((d) => ({
+                id: d.id,
+                label: formatDayDate(trip.startDate, d.dayIndex)
+                  ? `Day ${d.dayIndex + 1} · ${formatDayDate(trip.startDate, d.dayIndex)}`
+                  : `Day ${d.dayIndex + 1}`,
+              }))}
+              onSetNight={(dayId, lat, lng) => {
+                const day = trip.days.find((d) => d.id === dayId);
+                if (day?.night) updateNight.mutate({ dayId, lat, lng });
+                else setNight.mutate({ dayId, lat, lng });
+              }}
+              preview={preview}
+              onPreviewPlace={(placeId, position, source) =>
+                setPreview({ placeId, position, source })
+              }
+              onPreviewClose={() => setPreview(null)}
+              addedPlaceIds={addedPlaceIds}
+              onEditPoi={(id) => setEditingPoiId(id)}
+              onRemovePoi={(id) => removePoi.mutate(id)}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.
+            </div>
+          )}
+        </div>
       </div>
       {confirmingRemove && (
         <ConfirmDialog
