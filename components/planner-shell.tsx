@@ -241,7 +241,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             )}
             <button
               type="button"
-              className="text-xs text-red-600 hover:text-red-700"
+              className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+              disabled={removing}
               onClick={() => setConfirmingRemove(true)}
             >
               Remove
