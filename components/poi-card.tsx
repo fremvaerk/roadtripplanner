@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
 import { PlaceEditor } from "@/components/place-editor";
@@ -27,6 +27,10 @@ export function PoiCard({
   });
   const movePoi = useMovePoi(tripId);
   const [editing, setEditing] = useState(false);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setBrokenUrl(null);
+  }, [poi.imageUrl]);
 
   return (
     <li
@@ -42,6 +46,15 @@ export function PoiCard({
       >
         ⠿
       </span>
+      {poi.imageUrl && poi.imageUrl !== brokenUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={poi.imageUrl}
+          alt=""
+          onError={() => setBrokenUrl(poi.imageUrl)}
+          className="h-7 w-7 shrink-0 rounded object-cover"
+        />
+      ) : null}
       <span className="flex-1 truncate">{poi.name}</span>
       <button
         type="button"
