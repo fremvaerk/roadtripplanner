@@ -91,6 +91,11 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     [trip?.pois],
   );
 
+  const dayColors = useMemo<Record<string, string>>(
+    () => Object.fromEntries((trip?.days ?? []).map((d) => [d.id, d.color ?? defaultDayColor(d.dayIndex)])),
+    [trip?.days],
+  );
+
   // Drop the optimistic override once the server reflects the new finish.
   useEffect(() => {
     setPendingMode(null);
@@ -117,9 +122,6 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
-  const dayColors: Record<string, string> = Object.fromEntries(
-    trip.days.map((d) => [d.id, d.color ?? defaultDayColor(d.dayIndex)]),
-  );
   const groupColorById = new Map(trip.poiGroups.map((g) => [g.id, g.color]));
   const poiPoints: MapPoint[] = trip.pois.map((p) => {
     const bg = (p.groupId && groupColorById.get(p.groupId)) || UNGROUPED_COLOR;
