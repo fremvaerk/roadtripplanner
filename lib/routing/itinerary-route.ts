@@ -243,6 +243,10 @@ export function buildDayRouteRequests(trip: TripDetail, vias: TripVia[]): DayRou
   }
 
   const segments: DayRouteSegment[] = [];
+  // Cut a segment at each night (the night is shared as the next segment's first
+  // stopover) and at the final node. `if (i > segStart)` drops a zero-width segment
+  // (e.g. an open trip with only a start → no segments at all). The `segStart = i`
+  // advance only matters for the night branch; on the final node the loop then ends.
   let segStart = 0;
   for (let i = 0; i < nodes.length; i++) {
     const isLast = i === nodes.length - 1;

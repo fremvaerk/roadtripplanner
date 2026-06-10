@@ -88,4 +88,14 @@ describe("buildDayRouteRequests", () => {
     expect(segs[0].legDayId).toEqual([null]);
     expect(segs[0].legAfterPoiId).toEqual([null]);
   });
+
+  test("open trip with no stops, nights, or terminator → no segments", () => {
+    // Nothing to route (just a start point); the endpoint treats [] as an empty route.
+    const t = trip({
+      isRoundTrip: false, endLat: null, endLng: null,
+      days: [{ id: "d1", dayIndex: 0, color: null, pois: [], night: null }],
+      pois: [],
+    });
+    expect(buildDayRouteRequests(t, [])).toEqual([]);
+  });
 });
