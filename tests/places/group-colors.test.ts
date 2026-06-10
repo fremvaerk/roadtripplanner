@@ -54,5 +54,6 @@ describe("defaultDayColor", () => {
     expect(defaultDayColor(0)).toBe("#ef4444");
     expect(defaultDayColor(8)).toBe(defaultDayColor(0));
     expect(defaultDayColor(9)).toBe(defaultDayColor(1));
+    expect(defaultDayColor(-1)).toBe(PALETTE[PALETTE.length - 1]);
   });
 });
