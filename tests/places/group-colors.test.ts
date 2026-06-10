@@ -3,6 +3,7 @@ import {
   PALETTE,
   UNGROUPED_COLOR,
   defaultGroupColor,
+  defaultDayColor,
   darken,
   isValidHexColor,
 } from "@/lib/places/group-colors";
@@ -45,5 +46,13 @@ describe("group-colors", () => {
     expect(isValidHexColor("abc123")).toBe(false);
     expect(isValidHexColor("#gggggg")).toBe(false);
     expect(isValidHexColor("")).toBe(false);
+  });
+});
+
+describe("defaultDayColor", () => {
+  test("indexes the palette and wraps with modulo", () => {
+    expect(defaultDayColor(0)).toBe("#ef4444");
+    expect(defaultDayColor(8)).toBe(defaultDayColor(0));
+    expect(defaultDayColor(9)).toBe(defaultDayColor(1));
   });
 });

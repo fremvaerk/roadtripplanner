@@ -27,6 +27,7 @@ export type DayNight = { id: string; lat: number; lng: number; title: string | n
 export type DayDetail = {
   id: string;
   dayIndex: number;
+  color: string | null;
   pois: PoiDetail[];
   night: DayNight | null;
 };
