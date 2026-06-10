@@ -84,7 +84,7 @@ export function TripsList({ trips }: { trips: TripListItem[] }) {
             onClick={() => setShowArchived((v) => !v)}
             aria-expanded={showArchived}
           >
-            {showArchived ? "▾" : "▸"} Show archived ({archived.length})
+            {showArchived ? "▾ Hide archived" : `▸ Show archived (${archived.length})`}
           </button>
           {showArchived && (
             <ul className="mt-2 space-y-2">
@@ -151,6 +151,8 @@ function TripRow({
         <button
           type="button"
           aria-label="Trip actions"
+          aria-haspopup="menu"
+          aria-expanded={open}
           disabled={busy}
           className="rounded px-2 py-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
           onClick={() => setOpen((v) => !v)}
@@ -160,7 +162,7 @@ function TripRow({
         {open && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 z-20 mt-1 w-32 rounded-md border bg-background py-1 shadow-md">
+            <div role="menu" className="absolute right-0 z-20 mt-1 w-32 rounded-md border bg-background py-1 shadow-md">
               {archived ? (
                 <MenuItem
                   label="Restore"
@@ -206,6 +208,7 @@ function MenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-accent ${
         destructive ? "text-red-600" : ""
       }`}
