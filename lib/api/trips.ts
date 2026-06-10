@@ -291,9 +291,14 @@ export async function archiveTripRequest(tripId: string, archived: boolean): Pro
   if (!res.ok) throw new Error(`Failed to ${archived ? "archive" : "restore"} trip (${res.status})`);
 }
 
+/**
+ * Permanently delete a trip. Treats 404 as success: a trip removed from the
+ * list page may already be gone (e.g. a concurrent delete), and the caller's
+ * intent — "this trip should not exist" — is satisfied either way. Do not copy
+ * this 404-tolerance into deletes where a missing resource is a real error.
+ */
 export async function deleteTripRequest(tripId: string): Promise<void> {
   const res = await fetch(`/api/trips/${tripId}`, { method: "DELETE" });
-  // 204 = deleted, 404 = already gone — both are success for our purposes.
   if (!res.ok && res.status !== 404) {
     throw new Error(`Failed to remove trip (${res.status})`);
   }
