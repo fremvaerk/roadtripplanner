@@ -73,12 +73,14 @@ export async function addPoi(
 export async function updatePoi(
   prisma: PrismaClient,
   poiId: string,
-  patch: { name?: string; description?: string | null; imageUrl?: string | null },
+  patch: { name?: string; description?: string | null; imageUrl?: string | null; address?: string | null; placeId?: string | null },
 ) {
-  const data: { name?: string; description?: string | null; imageUrl?: string | null } = {};
+  const data: { name?: string; description?: string | null; imageUrl?: string | null; address?: string | null; placeId?: string | null } = {};
   if (patch.name !== undefined) data.name = patch.name;
   if (patch.description !== undefined) data.description = patch.description;
   if (patch.imageUrl !== undefined) data.imageUrl = patch.imageUrl;
+  if (patch.address !== undefined) data.address = patch.address;
+  if (patch.placeId !== undefined) data.placeId = patch.placeId;
   return prisma.poi.update({ where: { id: poiId }, data });
 }
 

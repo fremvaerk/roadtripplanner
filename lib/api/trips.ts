@@ -88,7 +88,7 @@ export async function patchPoiMove(
 
 export async function updatePoiRequest(
   poiId: string,
-  patch: { name?: string; description?: string | null; imageUrl?: string | null },
+  patch: { name?: string; description?: string | null; imageUrl?: string | null; address?: string | null; placeId?: string | null },
 ): Promise<void> {
   const res = await fetch(`/api/pois/${poiId}`, {
     method: "PATCH",
