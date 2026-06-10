@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Input } from "@/components/ui/input";
 import { useMapPick } from "@/components/map-pick-context";
+import { parseCoordinates } from "@/lib/places/coordinates";
+import { reverseGeocode } from "@/lib/places/reverse-geocode";
 
 export type PlacePick = {
   name: string;
@@ -27,6 +29,7 @@ export function PlaceAutocomplete({
   pickId?: string;
 }) {
   const placesLib = useMapsLibrary("places");
+  const geocodingLib = useMapsLibrary("geocoding");
   const mapPick = useMapPick();
   const armed = !!pickId && mapPick?.armedId === pickId;
   useEffect(() => {
@@ -37,11 +40,19 @@ export function PlaceAutocomplete({
   }, []);
   const [value, setValue] = useState("");
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
+  const [coord, setCoord] = useState<{ lat: number; lng: number } | null>(null);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const reqId = useRef(0);
 
   async function onChange(input: string) {
     setValue(input);
+    const c = parseCoordinates(input);
+    if (c) {
+      setCoord(c);
+      setPredictions([]);
+      return;
+    }
+    setCoord(null);
     if (!placesLib || input.trim().length < 2) {
       setPredictions([]);
       return;
@@ -78,7 +89,21 @@ export function PlaceAutocomplete({
     if (pickId && mapPick) mapPick.disarm(pickId);
     setValue("");
     setPredictions([]);
+    setCoord(null);
     sessionToken.current = null;
+  }
+
+  async function pickCoordinates() {
+    if (!coord) return;
+    const { lat, lng } = coord;
+    const resolved = geocodingLib
+      ? await reverseGeocode(geocodingLib, lat, lng)
+      : { name: `Pin ${lat.toFixed(4)}, ${lng.toFixed(4)}`, placeId: null };
+    onPick({ name: resolved.name, lat, lng, placeId: resolved.placeId, types: [] });
+    if (pickId && mapPick) mapPick.disarm(pickId);
+    setValue("");
+    setPredictions([]);
+    setCoord(null);
   }
 
   function toggleArm() {
@@ -118,8 +143,24 @@ export function PlaceAutocomplete({
           </button>
         )}
       </div>
-      {armed && predictions.length === 0 && (
+      {armed && !coord && predictions.length === 0 && (
         <p className="mt-1 text-xs text-blue-600">Click the map to set this location · Esc to cancel.</p>
+      )}
+      {coord && (
+        <ul className="absolute z-10 mt-1 w-full overflow-auto rounded-md border bg-background shadow">
+          <li>
+            <button
+              type="button"
+              className="block w-full px-3 py-2 text-left text-sm hover:bg-accent"
+              onClick={pickCoordinates}
+            >
+              <span className="font-medium">📍 Use coordinates</span>
+              <span className="block text-xs text-muted-foreground">
+                {coord.lat.toFixed(5)}, {coord.lng.toFixed(5)}
+              </span>
+            </button>
+          </li>
+        </ul>
       )}
       {predictions.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow">
