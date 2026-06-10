@@ -10,7 +10,7 @@ import { MasterList } from "@/components/master-list";
 import { Button } from "@/components/ui/button";
 import { useTrip } from "@/hooks/use-trip";
 import { useRoute } from "@/hooks/use-route";
-import { useAddPoi, useMovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
+import { useAddPoi, useMovePoi, useRemovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
 import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
@@ -25,6 +25,7 @@ import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { PlaceEditor } from "@/components/place-editor";
 import { deleteTripRequest } from "@/lib/api/trips";
 
 function formatDuration(seconds: number): string {
@@ -56,6 +57,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);
   const movePoi = useMovePoi(tripId);
+  const removePoi = useRemovePoi(tripId);
   const optimizeDay = useOptimizeDay(tripId);
   const buildSplit = useBuildSplit(tripId);
   const resplit = useResplit(tripId);
@@ -74,6 +76,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const archiveTrip = useArchiveTrip(tripId);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
   async function removeTrip() {
     setRemoving(true);
     try {
@@ -207,6 +210,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               }
               onPreviewClose={() => setPreview(null)}
               addedPlaceIds={addedPlaceIds}
+              onEditPoi={(id) => setEditingPoiId(id)}
+              onRemovePoi={(id) => removePoi.mutate(id)}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -517,6 +522,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           onClose={() => setConfirmingRemove(false)}
         />
       )}
+      {(() => {
+        const editingPoi = editingPoiId ? trip.pois.find((p) => p.id === editingPoiId) : null;
+        return editingPoi ? (
+          <PlaceEditor poi={editingPoi} tripId={tripId} onClose={() => setEditingPoiId(null)} />
+        ) : null;
+      })()}
       </MapPickProvider>
     </APIProvider>
   );
