@@ -8,6 +8,7 @@ import {
   InfoWindow,
   useMap,
   useMapsLibrary,
+  useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
@@ -191,24 +192,17 @@ export function TripMap({
       </AdvancedMarker>
 
       {pois.map((p, i) => (
-        <AdvancedMarker key={p.id ?? i} position={p} title={p.name}>
-          <div
-            className="inline-block"
-            onContextMenu={(e) => {
-              if (!p.id) return;
-              e.preventDefault();
-              e.stopPropagation();
-              setMenu(null);
-              setPoiMenu({ x: e.clientX, y: e.clientY, poiId: p.id, name: p.name });
-            }}
-          >
-            <Pin
-              background={p.color?.background ?? "#64748b"}
-              borderColor={p.color?.border ?? "#475569"}
-              glyphColor="#ffffff"
-            />
-          </div>
-        </AdvancedMarker>
+        <PoiMarker
+          key={p.id ?? i}
+          point={p}
+          onPoiContextMenu={(e, point) => {
+            if (!point.id) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setMenu(null);
+            setPoiMenu({ x: e.clientX, y: e.clientY, poiId: point.id, name: point.name });
+          }}
+        />
       ))}
 
       {end && (
@@ -410,6 +404,40 @@ export function TripMap({
       </>
     )}
     </div>
+  );
+}
+
+// A place pin. `<Pin>` imperatively replaces the marker's content children, so a
+// React onContextMenu wrapper can't survive — instead we attach a native
+// `contextmenu` listener to the marker's content element (made interactive by
+// `clickable`, which sets pointer-events:all on the content).
+function PoiMarker({
+  point,
+  onPoiContextMenu,
+}: {
+  point: MapPoint;
+  onPoiContextMenu: (e: MouseEvent, point: MapPoint) => void;
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef();
+  const dataRef = useRef({ point, onPoiContextMenu });
+  dataRef.current = { point, onPoiContextMenu };
+
+  useEffect(() => {
+    const content = marker?.content;
+    if (!content) return;
+    const onCtx = (e: Event) => dataRef.current.onPoiContextMenu(e as MouseEvent, dataRef.current.point);
+    content.addEventListener("contextmenu", onCtx);
+    return () => content.removeEventListener("contextmenu", onCtx);
+  }, [marker]);
+
+  return (
+    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable>
+      <Pin
+        background={point.color?.background ?? "#64748b"}
+        borderColor={point.color?.border ?? "#475569"}
+        glyphColor="#ffffff"
+      />
+    </AdvancedMarker>
   );
 }
 
