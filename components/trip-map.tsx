@@ -8,6 +8,7 @@ import {
   InfoWindow,
   useMap,
   useMapsLibrary,
+  useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
@@ -38,6 +39,8 @@ export function TripMap({
   onPreviewClose,
   addedPlaceIds,
   dayColors = {},
+  onEditPoi,
+  onRemovePoi,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -57,6 +60,8 @@ export function TripMap({
   onPreviewClose?: () => void;
   addedPlaceIds?: Set<string>;
   dayColors?: Record<string, string>;
+  onEditPoi?: (poiId: string) => void;
+  onRemovePoi?: (poiId: string) => void;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -65,6 +70,7 @@ export function TripMap({
   const mapPick = useMapPick();
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number; placeId: string | null } | null>(null);
+  const [poiMenu, setPoiMenu] = useState<{ x: number; y: number; poiId: string; name: string } | null>(null);
 
   // Resolve a clicked point to a named place: a Google place (placeId) → its
   // details; an empty point → reverse-geocoded address (fallback: coordinates).
@@ -127,6 +133,15 @@ export function TripMap({
     return () => window.removeEventListener("keydown", onKey);
   }, [menu]);
 
+  useEffect(() => {
+    if (!poiMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPoiMenu(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [poiMenu]);
+
   const path: MapPoint[] = useMemo(
     () => [start, ...pois, ...(end ? [end] : [])],
     [start, end, pois],
@@ -177,13 +192,17 @@ export function TripMap({
       </AdvancedMarker>
 
       {pois.map((p, i) => (
-        <AdvancedMarker key={p.id ?? i} position={p} title={p.name}>
-          <Pin
-            background={p.color?.background ?? "#64748b"}
-            borderColor={p.color?.border ?? "#475569"}
-            glyphColor="#ffffff"
-          />
-        </AdvancedMarker>
+        <PoiMarker
+          key={p.id ?? i}
+          point={p}
+          onPoiContextMenu={(e, point) => {
+            if (!point.id) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setMenu(null);
+            setPoiMenu({ x: e.clientX, y: e.clientY, poiId: point.id, name: point.name });
+          }}
+        />
       ))}
 
       {end && (
@@ -337,7 +356,88 @@ export function TripMap({
         </div>
       </>
     )}
+    {poiMenu && (onEditPoi || onRemovePoi) && (
+      <>
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setPoiMenu(null)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setPoiMenu(null);
+          }}
+        />
+        <div
+          role="menu"
+          className="fixed z-30 min-w-44 rounded-md border bg-background py-1 text-sm shadow-md"
+          style={{ left: poiMenu.x, top: poiMenu.y }}
+        >
+          <div className="truncate border-b px-3 pb-1 pt-1 text-xs font-medium text-muted-foreground">
+            {poiMenu.name}
+          </div>
+          {onEditPoi && (
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left hover:bg-accent"
+              onClick={() => {
+                onEditPoi(poiMenu.poiId);
+                setPoiMenu(null);
+              }}
+            >
+              ✎ Edit
+            </button>
+          )}
+          {onRemovePoi && (
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left text-red-600 hover:bg-accent"
+              onClick={() => {
+                onRemovePoi(poiMenu.poiId);
+                setPoiMenu(null);
+              }}
+            >
+              ✕ Remove
+            </button>
+          )}
+        </div>
+      </>
+    )}
     </div>
+  );
+}
+
+// A place pin. `<Pin>` imperatively replaces the marker's content children, so a
+// React onContextMenu wrapper can't survive — instead we attach a native
+// `contextmenu` listener to the marker's content element (made interactive by
+// `clickable`, which sets pointer-events:all on the content).
+function PoiMarker({
+  point,
+  onPoiContextMenu,
+}: {
+  point: MapPoint;
+  onPoiContextMenu: (e: MouseEvent, point: MapPoint) => void;
+}) {
+  const [markerRef, marker] = useAdvancedMarkerRef();
+  const dataRef = useRef({ point, onPoiContextMenu });
+  dataRef.current = { point, onPoiContextMenu };
+
+  useEffect(() => {
+    const content = marker?.content;
+    if (!content) return;
+    const onCtx = (e: Event) => dataRef.current.onPoiContextMenu(e as MouseEvent, dataRef.current.point);
+    content.addEventListener("contextmenu", onCtx);
+    return () => content.removeEventListener("contextmenu", onCtx);
+  }, [marker]);
+
+  return (
+    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable>
+      <Pin
+        background={point.color?.background ?? "#64748b"}
+        borderColor={point.color?.border ?? "#475569"}
+        glyphColor="#ffffff"
+      />
+    </AdvancedMarker>
   );
 }
 
