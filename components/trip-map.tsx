@@ -175,6 +175,7 @@ export function TripMap({
         // Unarmed: only a labeled place opens the preview popup.
         if (placeId && onPreviewPlace) {
           ev.stop();
+          setSelectedPoiId(null); // close any open place-info popup
           onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
         }
       }}
@@ -195,7 +196,13 @@ export function TripMap({
         <PoiMarker
           key={p.id ?? i}
           point={p}
-          onSelect={(p) => { if (p.id) setSelectedPoiId(p.id); }}
+          onSelect={(p) => {
+            if (mapPick?.armedId) return; // let the map handler consume the pick
+            if (p.id) {
+              onPreviewClose?.(); // don't co-open with the basemap preview
+              setSelectedPoiId(p.id);
+            }
+          }}
           onPoiContextMenu={(e, point) => {
             if (!point.id) return;
             e.preventDefault();
