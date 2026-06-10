@@ -13,9 +13,10 @@ import {
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
-import type { RouteLegResult, TripVia } from "@/lib/api/trips";
+import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
+import { PlaceInfoPopup } from "@/components/place-info-popup";
 import { useMapPick } from "@/components/map-pick-context";
 import type { PlacePick } from "@/components/place-autocomplete";
 
@@ -42,6 +43,8 @@ export function TripMap({
   dayColors = {},
   onEditPoi,
   onRemovePoi,
+  tripId,
+  placeDetails = [],
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -63,6 +66,8 @@ export function TripMap({
   dayColors?: Record<string, string>;
   onEditPoi?: (poiId: string) => void;
   onRemovePoi?: (poiId: string) => void;
+  tripId: string;
+  placeDetails?: PoiDetail[];
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -72,6 +77,7 @@ export function TripMap({
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number; placeId: string | null } | null>(null);
   const [poiMenu, setPoiMenu] = useState<{ x: number; y: number; poiId: string; name: string } | null>(null);
+  const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
 
   // Resolve a clicked point to a named place: a Google place (placeId) → its
   // details; an empty point → reverse-geocoded address (fallback: coordinates).
@@ -189,6 +195,7 @@ export function TripMap({
         <PoiMarker
           key={p.id ?? i}
           point={p}
+          onSelect={(p) => { if (p.id) setSelectedPoiId(p.id); }}
           onPoiContextMenu={(e, point) => {
             if (!point.id) return;
             e.preventDefault();
@@ -272,6 +279,20 @@ export function TripMap({
           />
         </InfoWindow>
       )}
+
+      {(() => {
+        const sel = selectedPoiId ? placeDetails.find((p) => p.id === selectedPoiId) : null;
+        return sel ? (
+          <InfoWindow position={{ lat: sel.lat, lng: sel.lng }} onCloseClick={() => setSelectedPoiId(null)}>
+            <PlaceInfoPopup
+              poi={sel}
+              tripId={tripId}
+              onEdit={() => { onEditPoi?.(sel.id); setSelectedPoiId(null); }}
+              onRemove={() => { onRemovePoi?.(sel.id); setSelectedPoiId(null); }}
+            />
+          </InfoWindow>
+        ) : null;
+      })()}
 
       <FitBounds points={boundsPoints} />
     </Map>
@@ -407,9 +428,11 @@ export function TripMap({
 // `clickable`, which sets pointer-events:all on the content).
 function PoiMarker({
   point,
+  onSelect,
   onPoiContextMenu,
 }: {
   point: MapPoint;
+  onSelect: (point: MapPoint) => void;
   onPoiContextMenu: (e: MouseEvent, point: MapPoint) => void;
 }) {
   const [markerRef, marker] = useAdvancedMarkerRef();
@@ -425,7 +448,7 @@ function PoiMarker({
   }, [marker]);
 
   return (
-    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable>
+    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable onClick={() => onSelect(point)}>
       <Pin
         background={point.color?.background ?? "#64748b"}
         borderColor={point.color?.border ?? "#475569"}
