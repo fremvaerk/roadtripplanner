@@ -61,7 +61,7 @@ export function useMovePoi(tripId: string) {
 export function useUpdatePoi(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { poiId: string; name?: string; description?: string | null; imageUrl?: string | null }) => {
+    mutationFn: (v: { poiId: string; name?: string; description?: string | null; imageUrl?: string | null; address?: string | null; placeId?: string | null }) => {
       const { poiId, ...patch } = v;
       return updatePoiRequest(poiId, patch);
     },

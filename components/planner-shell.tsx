@@ -513,6 +513,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               addedPlaceIds={addedPlaceIds}
               onEditPoi={(id) => setEditingPoiId(id)}
               onRemovePoi={(id) => removePoi.mutate(id)}
+              tripId={tripId}
+              placeDetails={trip.pois}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">

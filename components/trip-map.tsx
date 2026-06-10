@@ -13,9 +13,10 @@ import {
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
-import type { RouteLegResult, TripVia } from "@/lib/api/trips";
+import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
+import { PlaceInfoPopup } from "@/components/place-info-popup";
 import { useMapPick } from "@/components/map-pick-context";
 import type { PlacePick } from "@/components/place-autocomplete";
 
@@ -42,6 +43,8 @@ export function TripMap({
   dayColors = {},
   onEditPoi,
   onRemovePoi,
+  tripId,
+  placeDetails = [],
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -63,6 +66,8 @@ export function TripMap({
   dayColors?: Record<string, string>;
   onEditPoi?: (poiId: string) => void;
   onRemovePoi?: (poiId: string) => void;
+  tripId: string;
+  placeDetails?: PoiDetail[];
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -72,6 +77,7 @@ export function TripMap({
   const geometryLib = useMapsLibrary("geometry");
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number; placeId: string | null } | null>(null);
   const [poiMenu, setPoiMenu] = useState<{ x: number; y: number; poiId: string; name: string } | null>(null);
+  const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
 
   // Resolve a clicked point to a named place: a Google place (placeId) → its
   // details; an empty point → reverse-geocoded address (fallback: coordinates).
@@ -169,6 +175,7 @@ export function TripMap({
         // Unarmed: only a labeled place opens the preview popup.
         if (placeId && onPreviewPlace) {
           ev.stop();
+          setSelectedPoiId(null); // close any open place-info popup
           onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
         }
       }}
@@ -189,6 +196,13 @@ export function TripMap({
         <PoiMarker
           key={p.id ?? i}
           point={p}
+          onSelect={(p) => {
+            if (mapPick?.armedId) return; // let the map handler consume the pick
+            if (p.id) {
+              onPreviewClose?.(); // don't co-open with the basemap preview
+              setSelectedPoiId(p.id);
+            }
+          }}
           onPoiContextMenu={(e, point) => {
             if (!point.id) return;
             e.preventDefault();
@@ -272,6 +286,20 @@ export function TripMap({
           />
         </InfoWindow>
       )}
+
+      {(() => {
+        const sel = selectedPoiId ? placeDetails.find((p) => p.id === selectedPoiId) : null;
+        return sel ? (
+          <InfoWindow position={{ lat: sel.lat, lng: sel.lng }} onCloseClick={() => setSelectedPoiId(null)}>
+            <PlaceInfoPopup
+              poi={sel}
+              tripId={tripId}
+              onEdit={() => { onEditPoi?.(sel.id); setSelectedPoiId(null); }}
+              onRemove={() => { onRemovePoi?.(sel.id); setSelectedPoiId(null); }}
+            />
+          </InfoWindow>
+        ) : null;
+      })()}
 
       <FitBounds points={boundsPoints} />
     </Map>
@@ -407,21 +435,35 @@ export function TripMap({
 // `clickable`, which sets pointer-events:all on the content).
 function PoiMarker({
   point,
+  onSelect,
   onPoiContextMenu,
 }: {
   point: MapPoint;
+  onSelect: (point: MapPoint) => void;
   onPoiContextMenu: (e: MouseEvent, point: MapPoint) => void;
 }) {
   const [markerRef, marker] = useAdvancedMarkerRef();
-  const dataRef = useRef({ point, onPoiContextMenu });
-  dataRef.current = { point, onPoiContextMenu };
+  const dataRef = useRef({ point, onSelect, onPoiContextMenu });
+  dataRef.current = { point, onSelect, onPoiContextMenu };
 
+  // Attach native listeners to the marker content (made interactive by `clickable`).
+  // `<Pin>` replaces React children, and vis.gl's AdvancedMarker `onClick` (the Maps
+  // 'click' event) doesn't fire reliably here — so a DOM `click` listener is used,
+  // matching the proven `contextmenu` one.
   useEffect(() => {
     const content = marker?.content;
     if (!content) return;
     const onCtx = (e: Event) => dataRef.current.onPoiContextMenu(e as MouseEvent, dataRef.current.point);
+    const onClick = (e: Event) => {
+      e.stopPropagation();
+      dataRef.current.onSelect(dataRef.current.point);
+    };
     content.addEventListener("contextmenu", onCtx);
-    return () => content.removeEventListener("contextmenu", onCtx);
+    content.addEventListener("click", onClick);
+    return () => {
+      content.removeEventListener("contextmenu", onCtx);
+      content.removeEventListener("click", onClick);
+    };
   }, [marker]);
 
   return (

@@ -32,6 +32,8 @@ export const patchPoiSchema = z.discriminatedUnion("op", [
     name: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
     imageUrl: z.string().url().nullable().optional(),
+    address: z.string().nullable().optional(),
+    placeId: z.string().nullable().optional(),
   }),
 ]);
 
