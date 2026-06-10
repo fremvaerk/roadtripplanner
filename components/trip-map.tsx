@@ -12,6 +12,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { categoryFromTypes } from "@/lib/places/category";
+import { reverseGeocode } from "@/lib/places/reverse-geocode";
 import type { RouteLegResult, TripVia } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { PlacePreview } from "@/components/place-preview";
@@ -92,15 +93,8 @@ export function TripMap({
         // keep the coordinate fallback
       }
     } else if (geocodingLib) {
-      try {
-        const geocoder = new geocodingLib.Geocoder();
-        const { results } = await geocoder.geocode({ location: { lat, lng } });
-        if (results[0]) {
-          pick = { name: results[0].formatted_address, lat, lng, placeId: results[0].place_id ?? null, types: [] };
-        }
-      } catch {
-        // keep the coordinate fallback
-      }
+      const r = await reverseGeocode(geocodingLib, lat, lng);
+      pick = { name: r.name, lat, lng, placeId: r.placeId, types: [] };
     }
     return pick;
   }
