@@ -81,25 +81,45 @@ export function PlaceAutocomplete({
     sessionToken.current = null;
   }
 
+  function toggleArm() {
+    if (!pickId || !mapPick) return;
+    if (armed) mapPick.disarm(pickId);
+    else mapPick.arm(pickId, onPick);
+  }
+
   return (
     <div className={`relative ${className ?? ""}${armed ? " rounded-md ring-2 ring-blue-500" : ""}`}>
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => {
-          if (pickId && mapPick) mapPick.arm(pickId, onPick);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" && pickId && mapPick) {
-            mapPick.disarm(pickId);
-            (e.currentTarget as HTMLInputElement).blur();
-          }
-        }}
-        placeholder={placeholder}
-        aria-label={ariaLabel ?? placeholder}
-      />
+      <div className="flex gap-1">
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && armed && pickId && mapPick) {
+              mapPick.disarm(pickId);
+              (e.currentTarget as HTMLInputElement).blur();
+            }
+          }}
+          placeholder={placeholder}
+          aria-label={ariaLabel ?? placeholder}
+          className="flex-1"
+        />
+        {pickId && mapPick && (
+          <button
+            type="button"
+            onClick={toggleArm}
+            aria-label="Pick on map"
+            aria-pressed={armed}
+            title="Pick on map"
+            className={`shrink-0 rounded-md border px-2 text-sm ${
+              armed ? "border-blue-400 bg-blue-100 text-blue-700" : "text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            📍
+          </button>
+        )}
+      </div>
       {armed && predictions.length === 0 && (
-        <p className="mt-1 text-xs text-blue-600">Type to search, or click a spot on the map.</p>
+        <p className="mt-1 text-xs text-blue-600">Click the map to set this location · Esc to cancel.</p>
       )}
       {predictions.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-background shadow">

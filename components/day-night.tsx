@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useState } from "react";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
-import { useSetNight, useUpdateNight, useClearNight } from "@/hooks/use-night-mutations";
+import { NightEditor } from "@/components/night-editor";
+import { useSetNight, useClearNight } from "@/hooks/use-night-mutations";
 import type { DayNight as DayNightData } from "@/lib/api/trips";
 
 export function DayNight({
@@ -17,8 +16,15 @@ export function DayNight({
   night: DayNightData | null;
 }) {
   const setNight = useSetNight(tripId);
-  const updateNight = useUpdateNight(tripId);
   const clearNight = useClearNight(tripId);
+  const [editing, setEditing] = useState(false);
+
+  // If the night is cleared or replaced (different id) while `editing` was left
+  // on, don't auto-open the editor for the new/absent night.
+  const nightId = night?.id;
+  useEffect(() => {
+    setEditing(false);
+  }, [nightId]);
 
   if (!night) {
     return (
@@ -32,72 +38,34 @@ export function DayNight({
   }
 
   return (
-    <NightEditor
-      key={night.id}
-      dayId={dayId}
-      night={night}
-      onClear={() => clearNight.mutate(dayId)}
-      updateNight={updateNight}
-    />
-  );
-}
-
-function NightEditor({
-  dayId,
-  night,
-  onClear,
-  updateNight,
-}: {
-  dayId: string;
-  night: DayNightData;
-  onClear: () => void;
-  updateNight: ReturnType<typeof useUpdateNight>;
-}) {
-  const [title, setTitle] = useState(night.title ?? "");
-  const [url, setUrl] = useState(night.url ?? "");
-  const [notes, setNotes] = useState(night.notes ?? "");
-
-  return (
-    <div className="mt-1 rounded-md border bg-muted/30 p-2 text-xs">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="font-medium">🛏️ Night</span>
-        <button type="button" className="text-muted-foreground hover:text-red-600" aria-label="Remove night" onClick={onClear}>
-          ✕
-        </button>
-      </div>
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => updateNight.mutate({ dayId, title: title.trim() || null })}
-        placeholder="Title (e.g. Parking near forest)"
-        className="mb-1 h-7 text-xs"
-      />
-      <Input
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onBlur={() => updateNight.mutate({ dayId, url: url.trim() || null })}
-        placeholder="Link (Airbnb / Booking / campsite)"
-        className="mb-1 h-7 text-xs"
-      />
-      {url.trim() ? (
-        <a href={url.trim()} target="_blank" rel="noreferrer" className="mb-1 block truncate text-blue-600 underline">
-          {url.trim()}
-        </a>
+    <div className="mt-1 flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs">
+      <span className="flex-1 truncate">🛏️ {night.title || "Night stop"}</span>
+      <button
+        type="button"
+        className="shrink-0 text-muted-foreground hover:text-foreground"
+        aria-label="Edit night stop"
+        onClick={() => setEditing(true)}
+      >
+        ✎
+      </button>
+      <button
+        type="button"
+        className="shrink-0 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+        aria-label="Remove night"
+        disabled={clearNight.isPending}
+        onClick={() => clearNight.mutate(dayId)}
+      >
+        ✕
+      </button>
+      {editing ? (
+        <NightEditor
+          key={night.id}
+          tripId={tripId}
+          dayId={dayId}
+          night={night}
+          onClose={() => setEditing(false)}
+        />
       ) : null}
-      <Textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        onBlur={() => updateNight.mutate({ dayId, notes: notes.trim() || null })}
-        placeholder="Notes"
-        rows={2}
-        className="text-xs"
-      />
-      <PlaceAutocomplete
-        placeholder="📍 Change location…"
-        className="mt-1"
-        pickId={`night-move:${dayId}`}
-        onPick={(p) => updateNight.mutate({ dayId, lat: p.lat, lng: p.lng })}
-      />
     </div>
   );
 }
