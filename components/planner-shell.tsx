@@ -21,7 +21,7 @@ import { useUpdateTripBase, useSetTripTitle, useArchiveTrip } from "@/hooks/use-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
-import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
+import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteTripRequest } from "@/lib/api/trips";
@@ -117,6 +117,9 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
+  const dayColors: Record<string, string> = Object.fromEntries(
+    trip.days.map((d) => [d.id, d.color ?? defaultDayColor(d.dayIndex)]),
+  );
   const groupColorById = new Map(trip.poiGroups.map((g) => [g.id, g.color]));
   const poiPoints: MapPoint[] = trip.pois.map((p) => {
     const bg = (p.groupId && groupColorById.get(p.groupId)) || UNGROUPED_COLOR;
@@ -176,6 +179,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               pois={poiPoints}
               onAddPlace={handleAddFromMap}
               legs={route?.legs ?? []}
+              dayColors={dayColors}
               vias={trip.routeVias}
               onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
