@@ -193,6 +193,7 @@ export function TripMap({
       {pois.map((p, i) => (
         <AdvancedMarker key={p.id ?? i} position={p} title={p.name}>
           <div
+            className="inline-block"
             onContextMenu={(e) => {
               if (!p.id) return;
               e.preventDefault();
