@@ -103,6 +103,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     [trip?.days],
   );
 
+  const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
+    initial: 320,
+    min: 280,
+    max: 720,
+  });
+
   // Drop the optimistic override once the server reflects the new finish.
   useEffect(() => {
     setPendingMode(null);
@@ -129,11 +135,6 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
-  const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
-    initial: 320,
-    min: 280,
-    max: 720,
-  });
   const finishMode: "open" | "round" | "place" =
     trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
   const activeFinish = pendingMode ?? finishMode;
