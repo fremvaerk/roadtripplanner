@@ -23,6 +23,12 @@ export function defaultGroupColor(orderIndex: number): string {
   return PALETTE[((orderIndex % n) + n) % n];
 }
 
+/** The palette color for a day at `dayIndex`, wrapping with modulo. */
+export function defaultDayColor(dayIndex: number): string {
+  const n = PALETTE.length;
+  return PALETTE[((dayIndex % n) + n) % n];
+}
+
 /** Darken a #rrggbb color toward black by `amount` (0..1) for a pin border. */
 export function darken(hex: string, amount = 0.2): string {
   const m = /^#([0-9a-fA-F]{6})$/.exec(hex);

@@ -37,6 +37,7 @@ export function TripMap({
   onPreviewPlace,
   onPreviewClose,
   addedPlaceIds,
+  dayColors = {},
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -55,6 +56,7 @@ export function TripMap({
   onPreviewPlace?: (placeId: string, position: { lat: number; lng: number }, source: "map" | "search") => void;
   onPreviewClose?: () => void;
   addedPlaceIds?: Set<string>;
+  dayColors?: Record<string, string>;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -190,7 +192,7 @@ export function TripMap({
         </AdvancedMarker>
       )}
 
-      <RouteLegs legs={legs} onAddVia={onAddVia} />
+      <RouteLegs legs={legs} dayColors={dayColors} onAddVia={onAddVia} />
 
       {vias.map((v) => (
         <AdvancedMarker
@@ -341,9 +343,11 @@ export function TripMap({
 
 function RouteLegs({
   legs,
+  dayColors = {},
   onAddVia,
 }: {
   legs: RouteLegResult[];
+  dayColors?: Record<string, string>;
   onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
 }) {
   const map = useMap();
@@ -364,7 +368,7 @@ function RouteLegs({
         const line = new google.maps.Polyline({
           path: coords,
           clickable: true,
-          strokeColor: "#2563eb",
+          strokeColor: dayColors[leg.dayId ?? ""] ?? "#2563eb",
           strokeOpacity: 0.85,
           strokeWeight: 5,
         });
@@ -378,7 +382,7 @@ function RouteLegs({
     }
 
     return () => lines.forEach((l) => l.setMap(null));
-  }, [map, geometry, legs]);
+  }, [map, geometry, legs, dayColors]);
 
   return null;
 }

@@ -99,3 +99,40 @@ export async function computeRoute(
     optimizedOrder: route.optimizedIntermediateWaypointIndex,
   };
 }
+
+/** Split a waypoint chain so each batch has <= maxIntermediates intermediates,
+ *  cutting only on stopover (non-via) boundaries and SHARING the boundary waypoint
+ *  with the next batch (so the concatenated legs equal the whole chain's legs). */
+export function chunkWaypoints(points: RouteWaypoint[], maxIntermediates = 25): RouteWaypoint[][] {
+  if (points.length <= maxIntermediates + 2) return [points];
+  const batches: RouteWaypoint[][] = [];
+  let start = 0;
+  while (start < points.length - 1) {
+    const end = Math.min(start + maxIntermediates + 1, points.length - 1);
+    let cut = end;
+    // The final destination is always a valid batch end; otherwise back up so the
+    // batch ends on a stopover (not a via pass-through) shared with the next batch.
+    if (cut < points.length - 1) {
+      while (cut > start + 1 && points[cut].via) cut--;
+    }
+    batches.push(points.slice(start, cut + 1));
+    start = cut; // share the boundary waypoint
+  }
+  return batches;
+}
+
+/** Compute a (possibly long) segment by chunking into <=25-intermediate batches
+ *  and concatenating their legs in order. */
+export async function computeRouteChunked(
+  points: RouteWaypoint[],
+  apiKey: string | undefined = process.env.GOOGLE_MAPS_SERVER_KEY,
+  opts: { legPolylines?: boolean; maxIntermediates?: number } = {},
+): Promise<RouteLeg[]> {
+  const batches = chunkWaypoints(points, opts.maxIntermediates);
+  const legs: RouteLeg[] = [];
+  for (const batch of batches) {
+    const r = await computeRoute(batch, apiKey, opts);
+    legs.push(...r.legs);
+  }
+  return legs;
+}

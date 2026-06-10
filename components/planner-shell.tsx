@@ -15,13 +15,14 @@ import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
-import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
+import { useAddDay, useRemoveDay, useSetStartDate, useSetDayColor } from "@/hooks/use-day-mutations";
+import { GroupColorPicker } from "@/components/group-color-picker";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateTripBase, useSetTripTitle, useArchiveTrip } from "@/hooks/use-trip-mutations";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
-import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
+import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { deleteTripRequest } from "@/lib/api/trips";
@@ -66,6 +67,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const addDay = useAddDay(tripId);
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
+  const setDayColor = useSetDayColor(tripId);
   const updateBase = useUpdateTripBase(tripId);
   const setTitle = useSetTripTitle(tripId);
   const router = useRouter();
@@ -89,6 +91,11 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const addedPlaceIds = useMemo(
     () => new Set((trip?.pois ?? []).map((p) => p.placeId).filter((x): x is string => !!x)),
     [trip?.pois],
+  );
+
+  const dayColors = useMemo<Record<string, string>>(
+    () => Object.fromEntries((trip?.days ?? []).map((d) => [d.id, d.color ?? defaultDayColor(d.dayIndex)])),
+    [trip?.days],
   );
 
   // Drop the optimistic override once the server reflects the new finish.
@@ -176,6 +183,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               pois={poiPoints}
               onAddPlace={handleAddFromMap}
               legs={route?.legs ?? []}
+              dayColors={dayColors}
               vias={trip.routeVias}
               onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
@@ -423,13 +431,20 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               {trip.days.map((day) => (
                 <div key={day.id} className="rounded-md border p-3">
                   <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
-                    <span>
-                      Day {day.dayIndex + 1}
-                      {formatDayDate(trip.startDate, day.dayIndex) ? (
-                        <span className="ml-1 font-normal text-muted-foreground">
-                          · {formatDayDate(trip.startDate, day.dayIndex)}
-                        </span>
-                      ) : null}
+                    <span className="flex items-center gap-2">
+                      <GroupColorPicker
+                        color={day.color ?? defaultDayColor(day.dayIndex)}
+                        label={`Day ${day.dayIndex + 1}`}
+                        onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
+                      />
+                      <span>
+                        Day {day.dayIndex + 1}
+                        {formatDayDate(trip.startDate, day.dayIndex) ? (
+                          <span className="ml-1 font-normal text-muted-foreground">
+                            · {formatDayDate(trip.startDate, day.dayIndex)}
+                          </span>
+                        ) : null}
+                      </span>
                     </span>
                     <span className="flex items-center gap-2">
                       {route?.perDaySeconds[day.id] ? (

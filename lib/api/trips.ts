@@ -27,6 +27,7 @@ export type DayNight = { id: string; lat: number; lng: number; title: string | n
 export type DayDetail = {
   id: string;
   dayIndex: number;
+  color: string | null;
   pois: PoiDetail[];
   night: DayNight | null;
 };
@@ -97,13 +98,14 @@ export async function updatePoiRequest(
   if (!res.ok) throw new Error(`Failed to update place (${res.status})`);
 }
 
-export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null };
+export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null; dayId: string | null };
 export type RouteResult = {
   legs: RouteLegResult[];
   perDaySeconds: Record<string, number>;
   perDayMeters: Record<string, number>;
   totalSeconds: number;
   totalMeters: number;
+  failedDayIds: string[];
 };
 
 export async function fetchRoute(tripId: string): Promise<RouteResult> {
@@ -153,6 +155,15 @@ export async function setGroupColorRequest(groupId: string, color: string): Prom
     body: JSON.stringify({ color }),
   });
   if (!res.ok) throw new Error(`Failed to set group color (${res.status})`);
+}
+
+export async function setDayColorRequest(dayId: string, color: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ color }),
+  });
+  if (!res.ok) throw new Error(`Failed to set day color (${res.status})`);
 }
 
 export async function deleteGroupRequest(groupId: string): Promise<void> {
