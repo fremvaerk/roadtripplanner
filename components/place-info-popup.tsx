@@ -20,7 +20,7 @@ export function PlaceInfoPopup({
 }) {
   const placesLib = useMapsLibrary("places");
   const updatePoi = useUpdatePoi(tripId);
-  const [enriched, setEnriched] = useState<{ imageUrl: string | null; address: string | null } | null>(null);
+  const [enriched, setEnriched] = useState<{ imageUrl: string | null; address: string | null; placeId: string | null } | null>(null);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
   const startedRef = useRef(false);
 
@@ -47,10 +47,17 @@ export function PlaceInfoPopup({
         if (!place) return;
         const imageUrl = place.photos?.[0]?.getURI({ maxWidth: 400, maxHeight: 240 }) ?? null;
         const address = place.formattedAddress ?? null;
-        const placeId = place.id ?? poi.placeId ?? undefined;
-        setEnriched({ imageUrl, address });
-        if (imageUrl || address) {
-          updatePoi.mutate({ poiId: poi.id, imageUrl: imageUrl ?? undefined, address, placeId });
+        const newPlaceId = place.id ?? null;
+        setEnriched({ imageUrl, address, placeId: newPlaceId });
+        // Persist when anything new was resolved (incl. a newly-found placeId), and
+        // mirror imageUrl's `?? undefined` so a null never clobbers a stored value.
+        if (imageUrl || address || (newPlaceId && newPlaceId !== poi.placeId)) {
+          updatePoi.mutate({
+            poiId: poi.id,
+            imageUrl: imageUrl ?? undefined,
+            address: address ?? undefined,
+            placeId: newPlaceId ?? undefined,
+          });
         }
       } catch {
         // keep the stored info on any fetch/search failure
@@ -78,7 +85,7 @@ export function PlaceInfoPopup({
       {address ? <div className="mt-0.5 text-xs text-muted-foreground">{address}</div> : null}
       {poi.description ? <p className="mt-1 text-xs">{poi.description}</p> : null}
       <a
-        href={googleMapsUrl(poi.lat, poi.lng, poi.placeId)}
+        href={googleMapsUrl(poi.lat, poi.lng, poi.placeId ?? enriched?.placeId ?? null)}
         target="_blank"
         rel="noreferrer"
         className="mt-1 block text-xs text-blue-600 underline"
