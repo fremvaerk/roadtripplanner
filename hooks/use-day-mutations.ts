@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addDayRequest, removeDayRequest, setStartDateRequest } from "@/lib/api/trips";
+import { addDayRequest, removeDayRequest, setStartDateRequest, setDayColorRequest } from "@/lib/api/trips";
 import { tripQueryKey } from "@/hooks/use-trip";
 import { routeQueryKey } from "@/hooks/use-route";
 
@@ -22,6 +22,14 @@ export function useSetStartDate(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (startDate: string | null) => setStartDateRequest(tripId, startDate),
+    onSuccess: () => invalidate(qc, tripId),
+  });
+}
+
+export function useSetDayColor(tripId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { dayId: string; color: string }) => setDayColorRequest(v.dayId, v.color),
     onSuccess: () => invalidate(qc, tripId),
   });
 }

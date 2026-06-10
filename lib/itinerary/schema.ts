@@ -49,6 +49,10 @@ export const updateGroupSchema = z
   });
 export const reorderGroupsSchema = z.object({ orderedIds: z.array(z.string()) });
 
+export const updateDaySchema = z.object({
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a #rrggbb hex color"),
+});
+
 export const addViaSchema = z.object({
   afterPoiId: z.string().nullable(),
   lat: z.number(),

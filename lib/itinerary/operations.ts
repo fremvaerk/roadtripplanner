@@ -189,6 +189,10 @@ export async function setGroupColor(prisma: PrismaClient, groupId: string, color
   return prisma.poiGroup.update({ where: { id: groupId }, data: { color } });
 }
 
+export async function setDayColor(prisma: PrismaClient, dayId: string, color: string) {
+  return prisma.day.update({ where: { id: dayId }, data: { color } });
+}
+
 export async function deleteGroup(prisma: PrismaClient, groupId: string) {
   return prisma.$transaction(async (tx) => {
     const group = await tx.poiGroup.findUnique({ where: { id: groupId } });

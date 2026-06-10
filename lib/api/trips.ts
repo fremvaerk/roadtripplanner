@@ -157,6 +157,15 @@ export async function setGroupColorRequest(groupId: string, color: string): Prom
   if (!res.ok) throw new Error(`Failed to set group color (${res.status})`);
 }
 
+export async function setDayColorRequest(dayId: string, color: string): Promise<void> {
+  const res = await fetch(`/api/days/${dayId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ color }),
+  });
+  if (!res.ok) throw new Error(`Failed to set day color (${res.status})`);
+}
+
 export async function deleteGroupRequest(groupId: string): Promise<void> {
   const res = await fetch(`/api/groups/${groupId}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to delete group (${res.status})`);
