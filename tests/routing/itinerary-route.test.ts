@@ -1,10 +1,6 @@
 import { test, expect, describe } from "bun:test";
-import { orderedRoutePoints, attributeLegDurations, buildRoute } from "@/lib/routing/itinerary-route";
-import type { TripDetail, PoiDetail, DayNight } from "@/lib/api/trips";
-
-function night(lat: number, lng: number): DayNight {
-  return { id: `n${lat}`, lat, lng, title: null, url: null, notes: null };
-}
+import { orderedRoutePoints, attributeLegDurations } from "@/lib/routing/itinerary-route";
+import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 function poi(id: string, dayId: string | null, orderInDay: number | null, lat: number, lng: number): PoiDetail {
   return {
@@ -82,48 +78,6 @@ describe("attributeLegDurations", () => {
   });
 });
 
-describe("buildRoute night-boundary attribution", () => {
-  function nightsTrip(): TripDetail {
-    return {
-      id: "t", title: "T", description: "",
-      startName: "S", startLat: 0, startLng: 0,
-      endName: "E", endLat: 10, endLng: 10, isRoundTrip: false,
-      startDate: null,
-      days: [
-        { id: "d0", dayIndex: 0, pois: [], night: night(1, 1) },
-        { id: "d1", dayIndex: 1, pois: [], night: night(2, 2) },
-        { id: "d2", dayIndex: 2, pois: [], night: night(3, 3) },
-        { id: "d3", dayIndex: 3, pois: [], night: null },
-      ],
-      pois: [],
-      poiGroups: [],
-      routeVias: [],
-    };
-  }
-
-  test("the drive after the final night belongs to the next (final) day, not the night's own day", () => {
-    // stopovers: start, n0(d0), n1(d1), n2(d2), end
-    // legs:      start->n0, n0->n1, n1->n2, n2->end
-    const { legDayId } = buildRoute(nightsTrip(), []);
-    expect(legDayId).toEqual(["d0", "d1", "d2", "d3"]);
-  });
-
-  test("a trailing leg after a stop (no night) stays on that stop's day", () => {
-    const trip = nightsTrip();
-    trip.days = [
-      { id: "d0", dayIndex: 0, pois: [], night: night(1, 1) },
-      { id: "d1", dayIndex: 1, pois: [], night: null },
-    ];
-    trip.pois = [
-      { id: "a", name: "A", lat: 5, lng: 5, placeId: null, category: null, source: "user",
-        dayId: "d1", orderInDay: 0, status: "accepted", groupId: null, orderInGroup: null },
-    ];
-    // stopovers: start, n0(d0), A(d1), end ; legs: start->n0(d0), n0->A(d1), A->end(d1)
-    const { legDayId } = buildRoute(trip, []);
-    expect(legDayId).toEqual(["d0", "d1", "d1"]);
-  });
-});
-
 describe("finish modes", () => {
   function openTrip(pois: PoiDetail[]): TripDetail {
     return { ...baseTrip(pois, null), isRoundTrip: false };
@@ -157,22 +111,5 @@ describe("finish modes", () => {
     const trip = baseTrip([poi("a", "d1", 0, 1, 1)], { lat: 3, lng: 3 }); // isRoundTrip false
     const { coords } = orderedRoutePoints(trip);
     expect(coords[coords.length - 1]).toEqual({ lat: 3, lng: 3 });
-  });
-
-  test("buildRoute: open finish has no terminator waypoint", () => {
-    const trip = openTrip([poi("a", "d1", 0, 1, 1)]);
-    const { waypoints, legDayId } = buildRoute(trip, []);
-    expect(waypoints).toEqual([
-      { lat: 0, lng: 0 },
-      { lat: 1, lng: 1 },
-    ]);
-    expect(legDayId).toEqual(["d1"]);
-  });
-
-  test("buildRoute: open finish with no stops yields a single waypoint and no legs", () => {
-    const trip = openTrip([]);
-    const { waypoints, legDayId } = buildRoute(trip, []);
-    expect(waypoints).toEqual([{ lat: 0, lng: 0 }]);
-    expect(legDayId).toEqual([]);
   });
 });

@@ -98,13 +98,14 @@ export async function updatePoiRequest(
   if (!res.ok) throw new Error(`Failed to update place (${res.status})`);
 }
 
-export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null };
+export type RouteLegResult = { encodedPolyline: string | null; afterPoiId: string | null; dayId: string | null };
 export type RouteResult = {
   legs: RouteLegResult[];
   perDaySeconds: Record<string, number>;
   perDayMeters: Record<string, number>;
   totalSeconds: number;
   totalMeters: number;
+  failedDayIds: string[];
 };
 
 export async function fetchRoute(tripId: string): Promise<RouteResult> {
