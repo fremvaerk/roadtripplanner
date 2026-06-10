@@ -28,4 +28,18 @@ describe("chunkWaypoints", () => {
       expect(boundary.via).toBeUndefined();
     }
   });
+
+  test("the real destination is the last batch end even when it is a via", () => {
+    // 7 points, max=3 → splits; the final destination (index 6) is a via and must
+    // NOT be backed away from (the trailing-via fix).
+    const pts: RouteWaypoint[] = [
+      { lat: 0, lng: 0 }, { lat: 0, lng: 1 }, { lat: 0, lng: 2 },
+      { lat: 0, lng: 3 }, { lat: 0, lng: 4 }, { lat: 0, lng: 5 },
+      { lat: 0, lng: 6, via: true },
+    ];
+    const batches = chunkWaypoints(pts, 3);
+    const last = batches[batches.length - 1];
+    expect(last[last.length - 1]).toEqual(pts[6]); // ends at the true destination
+    expect(batches.reduce((s, b) => s + b.length - 1, 0)).toBe(pts.length - 1);
+  });
 });

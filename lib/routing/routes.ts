@@ -126,9 +126,9 @@ export function chunkWaypoints(points: RouteWaypoint[], maxIntermediates = 25): 
 export async function computeRouteChunked(
   points: RouteWaypoint[],
   apiKey: string | undefined = process.env.GOOGLE_MAPS_SERVER_KEY,
-  opts: { legPolylines?: boolean } = {},
+  opts: { legPolylines?: boolean; maxIntermediates?: number } = {},
 ): Promise<RouteLeg[]> {
-  const batches = chunkWaypoints(points);
+  const batches = chunkWaypoints(points, opts.maxIntermediates);
   const legs: RouteLeg[] = [];
   for (const batch of batches) {
     const r = await computeRoute(batch, apiKey, opts);
