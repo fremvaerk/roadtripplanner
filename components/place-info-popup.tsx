@@ -21,6 +21,7 @@ export function PlaceInfoPopup({
   const placesLib = useMapsLibrary("places");
   const updatePoi = useUpdatePoi(tripId);
   const [enriched, setEnriched] = useState<{ imageUrl: string | null; address: string | null } | null>(null);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
   const startedRef = useRef(false);
 
   const needsEnrich = !poi.imageUrl && !poi.address;
@@ -46,7 +47,7 @@ export function PlaceInfoPopup({
         if (!place) return;
         const imageUrl = place.photos?.[0]?.getURI({ maxWidth: 400, maxHeight: 240 }) ?? null;
         const address = place.formattedAddress ?? null;
-        const placeId = place.id ?? poi.placeId ?? null;
+        const placeId = place.id ?? poi.placeId ?? undefined;
         setEnriched({ imageUrl, address });
         if (imageUrl || address) {
           updatePoi.mutate({ poiId: poi.id, imageUrl: imageUrl ?? undefined, address, placeId });
@@ -63,9 +64,14 @@ export function PlaceInfoPopup({
 
   return (
     <div className="w-64 text-sm text-foreground">
-      {imageUrl ? (
+      {imageUrl && imageUrl !== brokenUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={poi.name} className="mb-2 h-32 w-full rounded object-cover" />
+        <img
+          src={imageUrl}
+          alt={poi.name}
+          onError={() => setBrokenUrl(imageUrl)}
+          className="mb-2 h-32 w-full rounded object-cover"
+        />
       ) : null}
       <div className="font-medium">{poi.name}</div>
       {poi.category ? <div className="text-xs text-muted-foreground">{poi.category}</div> : null}
