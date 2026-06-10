@@ -38,6 +38,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
         name: data.name,
         description: data.description,
         imageUrl: data.imageUrl,
+        address: data.address,
+        placeId: data.placeId,
       });
     } else {
       data satisfies never;
