@@ -32,6 +32,13 @@ export async function GET(_req: Request, { params }: Ctx) {
   results.forEach((res, i) => {
     const seg = segments[i];
     if (res.status === "fulfilled") {
+      // Each leg must line up 1:1 with the segment's stopover legs. If Google ever
+      // returns a different count, attribution is impossible — fail the day cleanly
+      // rather than silently mislabel legs.
+      if (res.value.length !== seg.legDayId.length) {
+        for (const d of seg.legDayId) if (d) failed.add(d);
+        return;
+      }
       res.value.forEach((leg, j) => {
         legs.push({
           encodedPolyline: leg.encodedPolyline ?? null,
