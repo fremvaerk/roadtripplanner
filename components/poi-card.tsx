@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
+import { PlaceEditor } from "@/components/place-editor";
 import { useMovePoi } from "@/hooks/use-poi-mutations";
 import type { PoiDetail } from "@/lib/api/trips";
 
@@ -24,6 +26,7 @@ export function PoiCard({
     accept: "poi",
   });
   const movePoi = useMovePoi(tripId);
+  const [editing, setEditing] = useState(false);
 
   return (
     <li
@@ -40,6 +43,14 @@ export function PoiCard({
         ⠿
       </span>
       <span className="flex-1 truncate">{poi.name}</span>
+      <button
+        type="button"
+        aria-label={`Edit ${poi.name}`}
+        className="px-1 text-muted-foreground hover:text-foreground"
+        onClick={() => setEditing(true)}
+      >
+        ✎
+      </button>
       <Button
         variant="ghost"
         size="sm"
@@ -48,6 +59,7 @@ export function PoiCard({
       >
         ✕
       </Button>
+      {editing ? <PlaceEditor poi={poi} tripId={tripId} onClose={() => setEditing(false)} /> : null}
     </li>
   );
 }
