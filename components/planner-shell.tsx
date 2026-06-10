@@ -471,10 +471,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           </CollapsibleSection>
         </aside>
 
+        {/* Mouse-only resize handle. Not exposed as an interactive ARIA separator
+            (no keyboard resize yet), so it carries a label but no role/value. */}
         <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="Resize panel"
+          aria-label="Drag to resize panel"
           onMouseDown={onHandleMouseDown}
           className="w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-accent"
         />
