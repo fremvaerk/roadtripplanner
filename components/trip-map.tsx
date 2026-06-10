@@ -443,19 +443,31 @@ function PoiMarker({
   onPoiContextMenu: (e: MouseEvent, point: MapPoint) => void;
 }) {
   const [markerRef, marker] = useAdvancedMarkerRef();
-  const dataRef = useRef({ point, onPoiContextMenu });
-  dataRef.current = { point, onPoiContextMenu };
+  const dataRef = useRef({ point, onSelect, onPoiContextMenu });
+  dataRef.current = { point, onSelect, onPoiContextMenu };
 
+  // Attach native listeners to the marker content (made interactive by `clickable`).
+  // `<Pin>` replaces React children, and vis.gl's AdvancedMarker `onClick` (the Maps
+  // 'click' event) doesn't fire reliably here — so a DOM `click` listener is used,
+  // matching the proven `contextmenu` one.
   useEffect(() => {
     const content = marker?.content;
     if (!content) return;
     const onCtx = (e: Event) => dataRef.current.onPoiContextMenu(e as MouseEvent, dataRef.current.point);
+    const onClick = (e: Event) => {
+      e.stopPropagation();
+      dataRef.current.onSelect(dataRef.current.point);
+    };
     content.addEventListener("contextmenu", onCtx);
-    return () => content.removeEventListener("contextmenu", onCtx);
+    content.addEventListener("click", onClick);
+    return () => {
+      content.removeEventListener("contextmenu", onCtx);
+      content.removeEventListener("click", onClick);
+    };
   }, [marker]);
 
   return (
-    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable onClick={() => onSelect(point)}>
+    <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable>
       <Pin
         background={point.color?.background ?? "#64748b"}
         borderColor={point.color?.border ?? "#475569"}
