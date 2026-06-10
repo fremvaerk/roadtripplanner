@@ -58,12 +58,16 @@ export async function updateTrip(
     startDate?: Date | null;
     start?: TripPlace;
     finish?: { mode: "open" | "round" | "place"; place?: TripPlace };
+    archived?: boolean;
   },
 ) {
   const data: Prisma.TripUpdateInput = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.description !== undefined) data.description = patch.description;
   if (patch.startDate !== undefined) data.startDate = patch.startDate;
+  if (patch.archived !== undefined) {
+    data.archivedAt = patch.archived ? new Date() : null;
+  }
   if (patch.start) {
     data.startName = patch.start.name;
     data.startLat = patch.start.lat;
