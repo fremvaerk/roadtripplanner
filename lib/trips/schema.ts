@@ -21,6 +21,7 @@ export const updateTripSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   startDate: isoDate.nullable().optional(),
+  archived: z.boolean().optional(),
   start: placeInput.optional(),
   finish: z
     .object({

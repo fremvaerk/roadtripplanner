@@ -43,6 +43,7 @@ export type TripDetail = {
   endLng: number | null;
   isRoundTrip: boolean;
   startDate: string | null;
+  archivedAt: string | null;
   days: DayDetail[];
   pois: PoiDetail[];
   poiGroups: TripGroup[];
@@ -279,4 +280,26 @@ export async function setTripBaseRequest(tripId: string, patch: TripBasePatch): 
     body: JSON.stringify(patch),
   });
   if (!res.ok) throw new Error(`Failed to update trip (${res.status})`);
+}
+
+export async function archiveTripRequest(tripId: string, archived: boolean): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ archived }),
+  });
+  if (!res.ok) throw new Error(`Failed to ${archived ? "archive" : "restore"} trip (${res.status})`);
+}
+
+/**
+ * Permanently delete a trip. Treats 404 as success: a trip removed from the
+ * list page may already be gone (e.g. a concurrent delete), and the caller's
+ * intent — "this trip should not exist" — is satisfied either way. Do not copy
+ * this 404-tolerance into deletes where a missing resource is a real error.
+ */
+export async function deleteTripRequest(tripId: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Failed to remove trip (${res.status})`);
+  }
 }

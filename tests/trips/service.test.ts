@@ -130,4 +130,48 @@ describe("trip service", () => {
     expect(await getTrip(prisma, created.id)).toBeNull();
     expect(await prisma.day.count()).toBe(0);
   });
+
+  test("updateTrip archives and restores a trip via archivedAt", async () => {
+    const created = await createTrip(prisma, sampleData());
+    expect(created.archivedAt).toBeNull();
+
+    const archived = await updateTrip(prisma, created.id, { archived: true });
+    expect(archived.archivedAt).toBeInstanceOf(Date);
+
+    const restored = await updateTrip(prisma, created.id, { archived: false });
+    expect(restored.archivedAt).toBeNull();
+  });
+
+  test("updateTrip leaves archivedAt untouched when archived is omitted", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await updateTrip(prisma, created.id, { archived: true });
+    const renamed = await updateTrip(prisma, created.id, { title: "Renamed" });
+    expect(renamed.archivedAt).toBeInstanceOf(Date);
+  });
+
+  test("listTrips includes archived trips", async () => {
+    const created = await createTrip(prisma, sampleData({ title: "A" }));
+    await updateTrip(prisma, created.id, { archived: true });
+    const trips = await listTrips(prisma);
+    expect(trips).toHaveLength(1);
+    expect(trips[0].archivedAt).toBeInstanceOf(Date);
+  });
+
+  test("deleteTrip cascades to pois", async () => {
+    const created = await createTrip(prisma, sampleData());
+    await prisma.poi.create({
+      data: {
+        tripId: created.id,
+        name: "Gelato stop",
+        lat: 43.77,
+        lng: 11.25,
+        placeId: null,
+        source: "manual",
+        status: "unassigned",
+      },
+    });
+    expect(await prisma.poi.count()).toBe(1);
+    await deleteTrip(prisma, created.id);
+    expect(await prisma.poi.count()).toBe(0);
+  });
 });

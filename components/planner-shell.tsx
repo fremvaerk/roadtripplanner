@@ -17,11 +17,14 @@ import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
 import { useAddDay, useRemoveDay, useSetStartDate } from "@/hooks/use-day-mutations";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
-import { useUpdateTripBase, useSetTripTitle } from "@/hooks/use-trip-mutations";
+import { useUpdateTripBase, useSetTripTitle, useArchiveTrip } from "@/hooks/use-trip-mutations";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { deleteTripRequest } from "@/lib/api/trips";
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "0 min";
@@ -65,6 +68,20 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const setStartDate = useSetStartDate(tripId);
   const updateBase = useUpdateTripBase(tripId);
   const setTitle = useSetTripTitle(tripId);
+  const router = useRouter();
+  const archiveTrip = useArchiveTrip(tripId);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  async function removeTrip() {
+    setRemoving(true);
+    try {
+      await deleteTripRequest(tripId);
+      router.push("/");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Remove failed");
+      setRemoving(false);
+    }
+  }
   const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
@@ -197,6 +214,40 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           >
             ← Trips
           </Link>
+          <div className="mb-2 flex items-center gap-2">
+            {trip.archivedAt && (
+              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Archived
+              </span>
+            )}
+            {trip.archivedAt ? (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                disabled={archiveTrip.isPending}
+                onClick={() => archiveTrip.mutate(false)}
+              >
+                Restore
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                disabled={archiveTrip.isPending}
+                onClick={() => archiveTrip.mutate(true)}
+              >
+                Archive
+              </button>
+            )}
+            <button
+              type="button"
+              className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+              disabled={removing}
+              onClick={() => setConfirmingRemove(true)}
+            >
+              Remove
+            </button>
+          </div>
           <input
             key={trip.title}
             defaultValue={trip.title}
@@ -436,6 +487,21 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           </DragDropProvider>
         </aside>
       </div>
+      {confirmingRemove && (
+        <ConfirmDialog
+          title="Remove trip?"
+          message={
+            <>
+              <strong>{trip.title}</strong> and everything in it (days, places,
+              route) will be permanently deleted. This cannot be undone.
+            </>
+          }
+          confirmLabel="Remove"
+          pending={removing}
+          onConfirm={removeTrip}
+          onClose={() => setConfirmingRemove(false)}
+        />
+      )}
       </MapPickProvider>
     </APIProvider>
   );

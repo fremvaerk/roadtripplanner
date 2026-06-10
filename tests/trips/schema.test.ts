@@ -67,4 +67,13 @@ describe("updateTripSchema", () => {
   test("rejects finish place without a place", () => {
     expect(updateTripSchema.safeParse({ finish: { mode: "place" } }).success).toBe(false);
   });
+
+  test("accepts an archived boolean", () => {
+    expect(updateTripSchema.safeParse({ archived: true }).success).toBe(true);
+    expect(updateTripSchema.safeParse({ archived: false }).success).toBe(true);
+  });
+
+  test("rejects a non-boolean archived", () => {
+    expect(updateTripSchema.safeParse({ archived: "yes" }).success).toBe(false);
+  });
 });
