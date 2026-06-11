@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { ExportDay, ExportPoint } from "@/lib/export/itinerary-model";
 
@@ -22,8 +22,14 @@ export function CompanionMap({
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
 
   // Where the day begins (previous night / trip start), then its stops and night.
+  // `day` is referentially stable (the export model is memoized in the parent), so
+  // memoizing keeps `pts` stable across focus-tap re-renders — otherwise DayRoute /
+  // FitBounds would re-run on every tap and yank the viewport back to the day bounds.
   const origin = day.origin ?? start;
-  const pts = [origin, ...day.stops, ...(day.night ? [day.night] : [])];
+  const pts = useMemo(
+    () => [origin, ...day.stops, ...(day.night ? [day.night] : [])],
+    [day, origin],
+  );
 
   return (
     <Map
@@ -149,19 +155,21 @@ function DayRoute({ day, pts }: { day: ExportDay; pts: ExportPoint[] }) {
  */
 function FitBounds({ day, pts }: { day: ExportDay; pts: ExportPoint[] }) {
   const map = useMap();
+  const coreLib = useMapsLibrary("core");
   useEffect(() => {
-    if (!map || pts.length === 0) return;
+    if (!map || !coreLib || pts.length === 0) return;
     if (pts.length === 1) {
       map.setCenter({ lat: pts[0].lat, lng: pts[0].lng });
       map.setZoom(12);
       return;
     }
-    const bounds = new google.maps.LatLngBounds();
+    const bounds = new coreLib.LatLngBounds();
     pts.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
     day.path.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
     map.fitBounds(bounds, 48);
-    // `day.index` is in the deps so switching days re-fits the viewport.
-  }, [map, day.index, day.path, pts]);
+    // `pts` is memoized in the parent, so this re-fits only when the day changes,
+    // not on every render — letting a focus-tap pan survive.
+  }, [map, coreLib, day.path, pts]);
   return null;
 }
 

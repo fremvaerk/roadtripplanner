@@ -27,11 +27,14 @@ export function NavCompanion({
 
   const model = useMemo(() => (trip ? buildExportModel(trip, route) : null), [trip, route]);
 
-  // Default the selected day to "today" once per trip.
+  // Default the selected day to "today" once per trip. `dayIndex` is a POSITION in
+  // model.days[], so map the today day-number to its position (robust to any gaps).
   const [dayIndex, setDayIndex] = useState(0);
   useEffect(() => {
-    if (!trip) return;
-    setDayIndex(todayDayIndex(trip.startDate, trip.days.length) ?? 0);
+    if (!trip || !model) return;
+    const todayNum = todayDayIndex(trip.startDate, trip.days.length) ?? 0;
+    const pos = model.days.findIndex((d) => d.index === todayNum);
+    setDayIndex(pos >= 0 ? pos : 0);
     // Keyed on trip?.id so it only re-runs (and re-defaults) when the trip changes.
   }, [trip?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,15 +123,16 @@ export function NavCompanion({
         </div>
       )}
 
-      {/* Navigate whole day */}
+      {/* Navigate whole day — a real <a> so iOS/Android route it into the Maps app. */}
       {model && day && (
-        <button
-          type="button"
-          onClick={() => window.open(dayDirectionsUrl(model, dayIndex).url, "_blank")}
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+        <a
+          href={dayDirectionsUrl(model, dayIndex).url}
+          target="_blank"
+          rel="noreferrer"
+          className="block rounded-md bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
         >
           ▶ Navigate this day
-        </button>
+        </a>
       )}
 
       {/* Stop timeline */}

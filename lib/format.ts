@@ -1,6 +1,6 @@
 /** Human-readable driving duration: "0 min", "45 min", "2 h", "2 h 3 min". */
 export function formatDuration(seconds: number): string {
-  if (!seconds) return "0 min";
+  if (!Number.isFinite(seconds) || seconds <= 0) return "0 min";
   const h = Math.floor(seconds / 3600);
   const m = Math.round((seconds % 3600) / 60);
   if (h && m) return `${h} h ${m} min`;
