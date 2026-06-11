@@ -47,6 +47,7 @@ export function TripMap({
   tripId,
   placeDetails = [],
   focusTarget = null,
+  canEdit = true,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -71,6 +72,7 @@ export function TripMap({
   tripId: string;
   placeDetails?: PoiDetail[];
   focusTarget?: { lat: number; lng: number; key: number } | null;
+  canEdit?: boolean;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -200,14 +202,16 @@ export function TripMap({
           mapPick.consume(await resolvePlace(placeId ?? null, ll.lat, ll.lng));
           return;
         }
-        // Unarmed: only a labeled place opens the preview popup.
-        if (placeId && onPreviewPlace) {
+        // Unarmed: only a labeled place opens the preview popup. The preview is an
+        // add-place affordance, so it stays closed for read-only viewers.
+        if (canEdit && placeId && onPreviewPlace) {
           ev.stop();
           setSelectedPoiId(null); // close any open place-info popup
           onPreviewPlace(placeId, { lat: ll.lat, lng: ll.lng }, "map");
         }
       }}
       onContextmenu={(ev) => {
+        if (!canEdit) return; // read-only: no add-place / add-via / set-night menu
         const ll = ev.detail.latLng;
         const dom = ev.domEvent as MouseEvent | undefined;
         if (!ll || !dom) return;
@@ -232,6 +236,7 @@ export function TripMap({
             }
           }}
           onPoiContextMenu={(e, point) => {
+            if (!canEdit) return; // read-only: no edit/remove context menu
             if (!point.id) return;
             e.preventDefault();
             e.stopPropagation();
@@ -247,14 +252,15 @@ export function TripMap({
         </AdvancedMarker>
       )}
 
-      <RouteLegs legs={legs} dayColors={dayColors} onAddVia={onAddVia} />
+      <RouteLegs legs={legs} dayColors={dayColors} onAddVia={canEdit ? onAddVia : undefined} />
 
       {vias.map((v) => (
         <AdvancedMarker
           key={v.id}
           position={{ lat: v.lat, lng: v.lng }}
-          draggable
+          draggable={canEdit}
           onDragEnd={(e) => {
+            if (!canEdit) return;
             const lat = e.latLng?.lat();
             const lng = e.latLng?.lng();
             if (lat != null && lng != null && onMoveVia) onMoveVia(v.id, lat, lng);
@@ -262,17 +268,18 @@ export function TripMap({
         >
           <div
             onDoubleClick={(e) => {
+              if (!canEdit) return;
               e.stopPropagation();
               onRemoveVia?.(v.id);
             }}
-            title="Double-click to remove this control point"
+            title={canEdit ? "Double-click to remove this control point" : "Waypoint"}
             style={{
               width: 12,
               height: 12,
               background: "#f59e0b",
               border: "2px solid #b45309",
               transform: "rotate(45deg)",
-              cursor: "grab",
+              cursor: canEdit ? "grab" : "default",
             }}
           />
         </AdvancedMarker>
@@ -285,8 +292,9 @@ export function TripMap({
           <AdvancedMarker
             key={g.dayIds.join("-")}
             position={{ lat: g.lat, lng: g.lng }}
-            draggable
+            draggable={canEdit}
             onDragEnd={(e) => {
+              if (!canEdit) return;
               const lat = e.latLng?.lat();
               const lng = e.latLng?.lng();
               if (lat != null && lng != null && onMoveNight) {
@@ -294,7 +302,7 @@ export function TripMap({
                 for (const dayId of g.dayIds) onMoveNight(dayId, lat, lng);
               }
             }}
-            title={`${many ? "Nights" : "Night"} ${label} (drag to move where you sleep)`}
+            title={canEdit ? `${many ? "Nights" : "Night"} ${label} (drag to move where you sleep)` : `${many ? "Nights" : "Night"} ${label}`}
           >
             <div
               style={{
@@ -312,7 +320,7 @@ export function TripMap({
                 lineHeight: "22px",
                 border: "2px solid #fff",
                 boxShadow: "0 1px 3px rgba(0,0,0,.45)",
-                cursor: "grab",
+                cursor: canEdit ? "grab" : "default",
                 whiteSpace: "nowrap",
               }}
             >
@@ -342,6 +350,7 @@ export function TripMap({
               poi={sel}
               tripId={tripId}
               days={dayChoices}
+              canEdit={canEdit}
               onEdit={() => { onEditPoi?.(sel.id); setSelectedPoiId(null); }}
               onRemove={() => { onRemovePoi?.(sel.id); setSelectedPoiId(null); }}
             />
