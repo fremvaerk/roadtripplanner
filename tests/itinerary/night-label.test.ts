@@ -21,4 +21,8 @@ describe("formatNightLabel", () => {
   test("empty input is an empty string", () => {
     expect(formatNightLabel([])).toBe("");
   });
+  test("duplicate numbers collapse", () => {
+    expect(formatNightLabel([4, 4])).toBe("4");
+    expect(formatNightLabel([3, 4, 4, 5])).toBe("3–5");
+  });
 });
