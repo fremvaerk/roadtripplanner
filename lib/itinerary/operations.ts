@@ -225,6 +225,15 @@ export async function reorderGroups(
   orderedIds: string[],
 ) {
   return prisma.$transaction(async (tx) => {
+    // Reject ids that don't belong to this trip — otherwise an editor of one
+    // trip could reorder (corrupt) another trip's groups by passing foreign ids.
+    const owned = await tx.poiGroup.findMany({
+      where: { tripId, id: { in: orderedIds } },
+      select: { id: true },
+    });
+    if (owned.length !== orderedIds.length) {
+      throw new ItineraryError("Group does not belong to this trip");
+    }
     // Phase 1 parks indices above any existing value to avoid the
     // @@unique([tripId, orderIndex]) collision; offset by length so it's
     // collision-free for any group count.

@@ -29,8 +29,10 @@ import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
+import { PlannerRoleProvider } from "@/components/planner-role";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceEditor } from "@/components/place-editor";
+import { ShareDialog } from "@/components/share-dialog";
 import { deleteTripRequest } from "@/lib/api/trips";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -59,7 +61,7 @@ function formatDayDate(startDate: string | null, dayIndex: number): string | nul
   return d ? DATE_FMT.format(d) : null;
 }
 
-export function PlannerShell({ tripId }: { tripId: string }) {
+export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
   const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);
@@ -85,6 +87,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   async function removeTrip() {
     setRemoving(true);
     try {
@@ -143,6 +146,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     );
   }
 
+  const canEdit = (trip.role ?? role) !== "viewer";
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const start: MapPoint = { lat: trip.startLat, lng: trip.startLng, name: trip.startName };
   const end: MapPoint | null =
@@ -204,6 +208,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   return (
     <APIProvider apiKey={apiKey}>
       <MapPickProvider>
+      <PlannerRoleProvider role={trip.role ?? role}>
       <div className="flex h-screen w-full">
         <aside
           style={{ width: sidebarWidth }}
@@ -215,13 +220,18 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           >
             ← Trips
           </Link>
+          {!canEdit && (
+            <div className="mb-2 rounded-md bg-amber-100 px-3 py-1.5 text-xs text-amber-900">
+              Read-only — this trip was shared with you.
+            </div>
+          )}
           <div className="mb-2 flex items-center gap-2">
             {trip.archivedAt && (
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Archived
               </span>
             )}
-            {trip.archivedAt ? (
+            {canEdit && (trip.archivedAt ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
@@ -239,29 +249,44 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               >
                 Archive
               </button>
+            ))}
+            {canEdit && (
+              <button
+                type="button"
+                className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                disabled={removing}
+                onClick={() => setConfirmingRemove(true)}
+              >
+                Remove
+              </button>
             )}
-            <button
-              type="button"
-              className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
-              disabled={removing}
-              onClick={() => setConfirmingRemove(true)}
-            >
-              Remove
-            </button>
+            {role === "owner" && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setSharing(true)}
+              >
+                Share
+              </button>
+            )}
           </div>
-          <input
-            key={trip.title}
-            defaultValue={trip.title}
-            aria-label="Trip name"
-            className="mb-1 w-full rounded bg-transparent text-lg font-semibold outline-none hover:bg-muted/40 focus:bg-muted/40"
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v && v !== trip.title) setTitle.mutate(v);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-          />
+          {canEdit ? (
+            <input
+              key={trip.title}
+              defaultValue={trip.title}
+              aria-label="Trip name"
+              className="mb-1 w-full rounded bg-transparent text-lg font-semibold outline-none hover:bg-muted/40 focus:bg-muted/40"
+              onBlur={(e) => {
+                const v = e.target.value.trim();
+                if (v && v !== trip.title) setTitle.mutate(v);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+            />
+          ) : (
+            <h1 className="mb-1 w-full text-lg font-semibold">{trip.title}</h1>
+          )}
           <p className="mb-2 text-sm text-muted-foreground">
             {trip.startName}
             {activeFinish === "place"
@@ -276,6 +301,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
             </p>
           )}
 
+          {canEdit && (
           <CollapsibleSection title="Settings" storageKey="rtp.section.settings">
             <div className="mb-3 space-y-2">
               <div>
@@ -363,49 +389,54 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               />
             </label>
           </CollapsibleSection>
+          )}
 
           <CollapsibleSection title="Places" count={trip.pois.length} storageKey="rtp.section.places">
-            <div className="mb-4">
-              <PlaceAutocomplete
-                placeholder="Search a place to add…"
-                ariaLabel="Search a place to add"
-                pickId="add"
-                onPick={(p) => {
-                  if (p.placeId)
-                    setPreview({
-                      placeId: p.placeId,
-                      position: { lat: p.lat, lng: p.lng },
-                      source: "search",
-                    });
-                }}
-              />
-            </div>
-            <div className="mb-3 flex gap-2">
-              <Button
-                size="sm"
-                className="flex-1"
-                disabled={unscheduledCount === 0 || buildSplit.isPending}
-                onClick={() => buildSplit.mutate()}
-              >
-                {buildSplit.isPending ? "Splitting…" : "Build route & split into days"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={assignedCount === 0 || resplit.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Re-split the whole trip? This rebuilds every day from scratch.",
-                    )
-                  ) {
-                    resplit.mutate();
-                  }
-                }}
-              >
-                {resplit.isPending ? "Re-splitting…" : "Re-split all"}
-              </Button>
-            </div>
+            {canEdit && (
+              <div className="mb-4">
+                <PlaceAutocomplete
+                  placeholder="Search a place to add…"
+                  ariaLabel="Search a place to add"
+                  pickId="add"
+                  onPick={(p) => {
+                    if (p.placeId)
+                      setPreview({
+                        placeId: p.placeId,
+                        position: { lat: p.lat, lng: p.lng },
+                        source: "search",
+                      });
+                  }}
+                />
+              </div>
+            )}
+            {canEdit && (
+              <div className="mb-3 flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  disabled={unscheduledCount === 0 || buildSplit.isPending}
+                  onClick={() => buildSplit.mutate()}
+                >
+                  {buildSplit.isPending ? "Splitting…" : "Build route & split into days"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={assignedCount === 0 || resplit.isPending}
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Re-split the whole trip? This rebuilds every day from scratch.",
+                      )
+                    ) {
+                      resplit.mutate();
+                    }
+                  }}
+                >
+                  {resplit.isPending ? "Re-splitting…" : "Re-split all"}
+                </Button>
+              </div>
+            )}
             <MasterList trip={trip} tripId={tripId} onFocusPlace={focusPlace} />
           </CollapsibleSection>
 
@@ -425,11 +456,13 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                   <div className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
                       <span className="flex items-center gap-2">
-                        <GroupColorPicker
-                          color={day.color ?? defaultDayColor(day.dayIndex)}
-                          label={`Day ${day.dayIndex + 1}`}
-                          onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
-                        />
+                        {canEdit && (
+                          <GroupColorPicker
+                            color={day.color ?? defaultDayColor(day.dayIndex)}
+                            label={`Day ${day.dayIndex + 1}`}
+                            onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
+                          />
+                        )}
                         <span>
                           Day {day.dayIndex + 1}
                           {formatDayDate(trip.startDate, day.dayIndex) ? (
@@ -448,7 +481,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                               : ""}
                           </span>
                         ) : null}
-                        {byDay(day.id).length >= 3 ? (
+                        {canEdit && byDay(day.id).length >= 3 ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -477,18 +510,20 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                             );
                           })()
                         ) : null}
-                        <button
-                          type="button"
-                          aria-label={`Remove day ${day.dayIndex + 1}`}
-                          className="px-1 text-xs text-muted-foreground hover:text-red-600"
-                          onClick={() => {
-                            if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
-                              removeDay.mutate(day.id);
-                            }
-                          }}
-                        >
-                          ✕
-                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            aria-label={`Remove day ${day.dayIndex + 1}`}
+                            className="px-1 text-xs text-muted-foreground hover:text-red-600"
+                            onClick={() => {
+                              if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
+                                removeDay.mutate(day.id);
+                              }
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
                       </span>
                     </div>
                     <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} onFocusPlace={focusPlace} />
@@ -499,7 +534,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                       onFocusPlace={focusPlace}
                     />
                   </div>
-                  {i < trip.days.length - 1 ? (
+                  {canEdit && i < trip.days.length - 1 ? (
                     <div className="flex items-center gap-2 px-2">
                       <span className="h-px flex-1 bg-border" />
                       <button
@@ -517,15 +552,17 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                   </Fragment>
                   );
                 })}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  disabled={addDay.isPending}
-                  onClick={() => addDay.mutate()}
-                >
-                  ＋ Add day
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={addDay.isPending}
+                    onClick={() => addDay.mutate()}
+                  >
+                    ＋ Add day
+                  </Button>
+                )}
                 <div className="flex gap-2 pt-1">
                   <Button
                     variant="outline"
@@ -602,6 +639,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               tripId={tripId}
               placeDetails={trip.pois}
               focusTarget={focusTarget}
+              canEdit={canEdit}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
@@ -631,6 +669,10 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           <PlaceEditor poi={editingPoi} tripId={tripId} onClose={() => setEditingPoiId(null)} />
         ) : null;
       })()}
+      {sharing && (
+        <ShareDialog tripId={tripId} onClose={() => setSharing(false)} />
+      )}
+      </PlannerRoleProvider>
       </MapPickProvider>
     </APIProvider>
   );

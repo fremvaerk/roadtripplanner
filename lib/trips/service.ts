@@ -1,10 +1,14 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { CreateTripData } from "@/lib/trips/schema";
+import type { Session } from "@/lib/auth/session";
+import { effectiveRole, type Role } from "@/lib/auth/access";
+import { requireWrite, requireOwner } from "@/lib/auth/guards";
 
-export async function createTrip(prisma: PrismaClient, data: CreateTripData) {
+export async function createTrip(prisma: PrismaClient, data: CreateTripData, userId?: string | null) {
   return prisma.trip.create({
     data: {
+      userId: userId ?? undefined,
       title: data.title,
       description: data.description,
       isRoundTrip: false,
@@ -28,8 +32,10 @@ export async function createTrip(prisma: PrismaClient, data: CreateTripData) {
   });
 }
 
-export async function getTrip(prisma: PrismaClient, id: string) {
-  return prisma.trip.findUnique({
+export async function getTrip(prisma: PrismaClient, id: string, session: Session) {
+  const role = await effectiveRole(prisma, session, id);
+  if (!role) return null;
+  const trip = await prisma.trip.findUnique({
     where: { id },
     include: {
       days: {
@@ -41,10 +47,26 @@ export async function getTrip(prisma: PrismaClient, id: string) {
       routeVias: true,
     },
   });
+  if (!trip) return null;
+  return { ...trip, role };
 }
 
-export async function listTrips(prisma: PrismaClient) {
-  return prisma.trip.findMany({ orderBy: { updatedAt: "desc" } });
+export async function listTrips(prisma: PrismaClient, session: Session) {
+  const email = session.email.toLowerCase();
+  const trips = await prisma.trip.findMany({
+    where: {
+      OR: [{ userId: session.userId }, { shares: { some: { email } } }],
+    },
+    orderBy: { updatedAt: "desc" },
+    include: { shares: { where: { email }, select: { role: true } } },
+  });
+  return trips.map(({ shares, ...t }) => {
+    const role: Role =
+      t.userId === session.userId
+        ? "owner"
+        : ((shares[0]?.role as Role) ?? "viewer");
+    return { ...t, role };
+  });
 }
 
 type TripPlace = { name: string; lat: number; lng: number; placeId: string | null };
@@ -60,7 +82,9 @@ export async function updateTrip(
     finish?: { mode: "open" | "round" | "place"; place?: TripPlace };
     archived?: boolean;
   },
+  session: Session,
 ) {
+  await requireWrite(prisma, session, id);
   const data: Prisma.TripUpdateInput = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.description !== undefined) data.description = patch.description;
@@ -94,6 +118,7 @@ export async function updateTrip(
   return prisma.trip.update({ where: { id }, data });
 }
 
-export async function deleteTrip(prisma: PrismaClient, id: string) {
+export async function deleteTrip(prisma: PrismaClient, id: string, session: Session) {
+  await requireOwner(prisma, session, id);
   return prisma.trip.delete({ where: { id } });
 }

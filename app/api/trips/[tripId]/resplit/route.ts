@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { resplitAll } from "@/lib/itinerary/split-trip";
 import { RouteError } from "@/lib/routing/routes";
+import { guardWriteTrip } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
 export async function POST(_req: Request, { params }: Ctx) {
   const { tripId } = await params;
+  const guard = await guardWriteTrip(tripId);
+  if (guard instanceof NextResponse) return guard;
   try {
     await resplitAll(prisma, tripId);
     return NextResponse.json({ ok: true });

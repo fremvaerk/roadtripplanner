@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { useRemovePoi, useMovePoi } from "@/hooks/use-poi-mutations";
 import { PlaceEditor } from "@/components/place-editor";
+import { usePlannerRole } from "@/components/planner-role";
 import type { PoiDetail, DayDetail } from "@/lib/api/trips";
 
 export function CatalogRow({
@@ -30,6 +31,7 @@ export function CatalogRow({
   });
   const removePoi = useRemovePoi(tripId);
   const movePoi = useMovePoi(tripId);
+  const { canEdit } = usePlannerRole();
   const [editing, setEditing] = useState(false);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
 
@@ -48,13 +50,15 @@ export function CatalogRow({
   return (
     <li ref={ref} className={isDragging ? "opacity-50" : ""}>
       <div className="flex items-start gap-3 rounded-md border bg-background p-2 text-sm">
-        <span
-          ref={handleRef}
-          aria-label="Drag to a group"
-          className="mt-1 cursor-grab select-none px-1 text-muted-foreground"
-        >
-          ⠿
-        </span>
+        {canEdit ? (
+          <span
+            ref={handleRef}
+            aria-label="Drag to a group"
+            className="mt-1 cursor-grab select-none px-1 text-muted-foreground"
+          >
+            ⠿
+          </span>
+        ) : null}
         {poi.imageUrl && poi.imageUrl !== brokenUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -89,39 +93,43 @@ export function CatalogRow({
               {poi.description}
             </p>
           ) : null}
-          <select
-            aria-label={`Assign ${poi.name} to a day`}
-            className="mt-1.5 rounded border bg-background px-1 py-0.5 text-xs"
-            value={poi.dayId ?? ""}
-            onChange={(e) => onAssign(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <option value="">—</option>
-            {days.map((d) => (
-              <option key={d.id} value={d.id}>
-                Day {d.dayIndex + 1}
-              </option>
-            ))}
-          </select>
+          {canEdit ? (
+            <select
+              aria-label={`Assign ${poi.name} to a day`}
+              className="mt-1.5 rounded border bg-background px-1 py-0.5 text-xs"
+              value={poi.dayId ?? ""}
+              onChange={(e) => onAssign(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <option value="">—</option>
+              {days.map((d) => (
+                <option key={d.id} value={d.id}>
+                  Day {d.dayIndex + 1}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
-        <div className="flex shrink-0 items-start">
-          <button
-            type="button"
-            aria-label={`Edit ${poi.name}`}
-            className="px-1 text-muted-foreground hover:text-foreground"
-            onClick={() => setEditing(true)}
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            aria-label={`Delete ${poi.name}`}
-            className="px-1 text-muted-foreground hover:text-red-600"
-            onClick={() => removePoi.mutate(poi.id)}
-          >
-            ✕
-          </button>
-        </div>
+        {canEdit ? (
+          <div className="flex shrink-0 items-start">
+            <button
+              type="button"
+              aria-label={`Edit ${poi.name}`}
+              className="px-1 text-muted-foreground hover:text-foreground"
+              onClick={() => setEditing(true)}
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              aria-label={`Delete ${poi.name}`}
+              className="px-1 text-muted-foreground hover:text-red-600"
+              onClick={() => removePoi.mutate(poi.id)}
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
         {editing ? (
           <PlaceEditor
             poi={poi}

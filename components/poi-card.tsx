@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
 import { PlaceEditor } from "@/components/place-editor";
 import { useMovePoi } from "@/hooks/use-poi-mutations";
+import { usePlannerRole } from "@/components/planner-role";
 import type { PoiDetail } from "@/lib/api/trips";
 
 export function PoiCard({
@@ -30,6 +31,7 @@ export function PoiCard({
     accept: "poi",
   });
   const movePoi = useMovePoi(tripId);
+  const { canEdit } = usePlannerRole();
   const [editing, setEditing] = useState(false);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -39,13 +41,15 @@ export function PoiCard({
   return (
     <li ref={ref} className={isDragging ? "opacity-50" : ""}>
       <div className="flex items-start gap-3 rounded-md border bg-background p-2 text-sm">
-        <span
-          ref={handleRef}
-          aria-label="Drag to reorder"
-          className="mt-1 cursor-grab select-none px-1 text-muted-foreground"
-        >
-          ⠿
-        </span>
+        {canEdit ? (
+          <span
+            ref={handleRef}
+            aria-label="Drag to reorder"
+            className="mt-1 cursor-grab select-none px-1 text-muted-foreground"
+          >
+            ⠿
+          </span>
+        ) : null}
         {poi.imageUrl && poi.imageUrl !== brokenUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -81,26 +85,28 @@ export function PoiCard({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-start">
-          <button
-            type="button"
-            aria-label={`Edit ${poi.name}`}
-            className="px-1 text-muted-foreground hover:text-foreground"
-            onClick={() => setEditing(true)}
-          >
-            ✎
-          </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Remove ${poi.name} from this day`}
-            onClick={() =>
-              movePoi.mutate({ poiId: poi.id, dayId: null, orderInDay: 0 })
-            }
-          >
-            ✕
-          </Button>
-        </div>
+        {canEdit ? (
+          <div className="flex shrink-0 items-start">
+            <button
+              type="button"
+              aria-label={`Edit ${poi.name}`}
+              className="px-1 text-muted-foreground hover:text-foreground"
+              onClick={() => setEditing(true)}
+            >
+              ✎
+            </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Remove ${poi.name} from this day`}
+              onClick={() =>
+                movePoi.mutate({ poiId: poi.id, dayId: null, orderInDay: 0 })
+              }
+            >
+              ✕
+            </Button>
+          </div>
+        ) : null}
         {editing ? (
           <PlaceEditor
             poi={poi}

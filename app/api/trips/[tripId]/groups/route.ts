@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createGroup, reorderGroups } from "@/lib/itinerary/operations";
 import { createGroupSchema, reorderGroupsSchema } from "@/lib/itinerary/schema";
+import { guardWriteTrip } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
 export async function POST(req: Request, { params }: Ctx) {
   const { tripId } = await params;
+  const guard = await guardWriteTrip(tripId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = createGroupSchema.safeParse(body);
   if (!parsed.success) {
@@ -18,6 +21,8 @@ export async function POST(req: Request, { params }: Ctx) {
 
 export async function PUT(req: Request, { params }: Ctx) {
   const { tripId } = await params;
+  const guard = await guardWriteTrip(tripId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = reorderGroupsSchema.safeParse(body);
   if (!parsed.success) {

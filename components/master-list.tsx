@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateGroup, useRenameGroup, useDeleteGroup, useMoveToGroup, useSetGroupColor } from "@/hooks/use-group-mutations";
 import { GroupColorPicker } from "@/components/group-color-picker";
+import { usePlannerRole } from "@/components/planner-role";
 import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 const UNGROUPED = "__ungrouped__";
@@ -26,6 +27,7 @@ export function MasterList({
   const deleteGroup = useDeleteGroup(tripId);
   const setGroupColor = useSetGroupColor(tripId);
   const moveToGroup = useMoveToGroup(tripId);
+  const { canEdit } = usePlannerRole();
   const [newName, setNewName] = useState("");
 
   const inGroup = (groupId: string | null): PoiDetail[] =>
@@ -58,54 +60,66 @@ export function MasterList({
 
   return (
     <div>
-      <form
-        className="mb-2 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (newName.trim()) {
-            createGroup.mutate(newName.trim());
-            setNewName("");
-          }
-        }}
-      >
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New group…"
-          className="h-8 text-sm"
-        />
-        <Button type="submit" size="sm" variant="outline" disabled={!newName.trim()}>
-          Add
-        </Button>
-      </form>
+      {canEdit ? (
+        <form
+          className="mb-2 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (newName.trim()) {
+              createGroup.mutate(newName.trim());
+              setNewName("");
+            }
+          }}
+        >
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New group…"
+            className="h-8 text-sm"
+          />
+          <Button type="submit" size="sm" variant="outline" disabled={!newName.trim()}>
+            Add
+          </Button>
+        </form>
+      ) : null}
 
       <DragDropProvider onDragEnd={onDragEnd}>
         {trip.poiGroups.map((g) => (
           <div key={g.id} className="mb-3">
             <div className="mb-1 flex items-center gap-2">
-              <GroupColorPicker
-                color={g.color}
-                label={g.name}
-                onChange={(hex) => setGroupColor.mutate({ groupId: g.id, color: hex })}
-              />
-              <input
-                key={g.name}
-                className="flex-1 bg-transparent text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none"
-                defaultValue={g.name}
-                onBlur={(e) => {
-                  const name = e.target.value.trim();
-                  if (name && name !== g.name) renameGroup.mutate({ groupId: g.id, name });
-                }}
-                aria-label={`Group name ${g.name}`}
-              />
-              <button
-                type="button"
-                aria-label={`Delete group ${g.name}`}
-                className="px-1 text-xs text-muted-foreground hover:text-red-600"
-                onClick={() => deleteGroup.mutate(g.id)}
-              >
-                ✕
-              </button>
+              {canEdit ? (
+                <GroupColorPicker
+                  color={g.color}
+                  label={g.name}
+                  onChange={(hex) => setGroupColor.mutate({ groupId: g.id, color: hex })}
+                />
+              ) : null}
+              {canEdit ? (
+                <input
+                  key={g.name}
+                  className="flex-1 bg-transparent text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none"
+                  defaultValue={g.name}
+                  onBlur={(e) => {
+                    const name = e.target.value.trim();
+                    if (name && name !== g.name) renameGroup.mutate({ groupId: g.id, name });
+                  }}
+                  aria-label={`Group name ${g.name}`}
+                />
+              ) : (
+                <span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {g.name}
+                </span>
+              )}
+              {canEdit ? (
+                <button
+                  type="button"
+                  aria-label={`Delete group ${g.name}`}
+                  className="px-1 text-xs text-muted-foreground hover:text-red-600"
+                  onClick={() => deleteGroup.mutate(g.id)}
+                >
+                  ✕
+                </button>
+              ) : null}
             </div>
             <GroupSection containerId={g.id} pois={inGroup(g.id)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
           </div>

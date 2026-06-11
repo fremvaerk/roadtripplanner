@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { NightEditor } from "@/components/night-editor";
 import { useSetNight, useClearNight } from "@/hooks/use-night-mutations";
+import { usePlannerRole } from "@/components/planner-role";
 import type { DayNight as DayNightData } from "@/lib/api/trips";
 
 export function DayNight({
@@ -19,6 +20,7 @@ export function DayNight({
 }) {
   const setNight = useSetNight(tripId);
   const clearNight = useClearNight(tripId);
+  const { canEdit } = usePlannerRole();
   const [editing, setEditing] = useState(false);
 
   // If the night is cleared or replaced (different id) while `editing` was left
@@ -29,6 +31,7 @@ export function DayNight({
   }, [nightId]);
 
   if (!night) {
+    if (!canEdit) return null;
     return (
       <PlaceAutocomplete
         placeholder="🛏️ Where will you sleep? (search address)"
@@ -50,23 +53,27 @@ export function DayNight({
       >
         🛏️ {night.title || "Night stop"}
       </span>
-      <button
-        type="button"
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-        aria-label="Edit night stop"
-        onClick={() => setEditing(true)}
-      >
-        ✎
-      </button>
-      <button
-        type="button"
-        className="shrink-0 text-muted-foreground hover:text-red-600 disabled:opacity-50"
-        aria-label="Remove night"
-        disabled={clearNight.isPending}
-        onClick={() => clearNight.mutate(dayId)}
-      >
-        ✕
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label="Edit night stop"
+          onClick={() => setEditing(true)}
+        >
+          ✎
+        </button>
+      ) : null}
+      {canEdit ? (
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground hover:text-red-600 disabled:opacity-50"
+          aria-label="Remove night"
+          disabled={clearNight.isPending}
+          onClick={() => clearNight.mutate(dayId)}
+        >
+          ✕
+        </button>
+      ) : null}
       {editing ? (
         <NightEditor
           key={night.id}

@@ -3,11 +3,14 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { moveVia, removeVia } from "@/lib/itinerary/operations";
 import { moveViaSchema } from "@/lib/itinerary/schema";
+import { guardWriteVia } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ viaId: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { viaId } = await params;
+  const guard = await guardWriteVia(viaId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = moveViaSchema.safeParse(body);
   if (!parsed.success) {
@@ -26,6 +29,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const { viaId } = await params;
+  const guard = await guardWriteVia(viaId);
+  if (guard instanceof NextResponse) return guard;
   try {
     await removeVia(prisma, viaId);
     return new NextResponse(null, { status: 204 });

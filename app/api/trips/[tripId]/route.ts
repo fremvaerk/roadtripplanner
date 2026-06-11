@@ -3,6 +3,8 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getTrip, updateTrip, deleteTrip } from "@/lib/trips/service";
 import { updateTripSchema } from "@/lib/trips/schema";
+import { getSession } from "@/lib/auth/session";
+import { HttpError } from "@/lib/auth/guards";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
@@ -11,13 +13,17 @@ function isNotFound(e: unknown): boolean {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { tripId } = await params;
-  const trip = await getTrip(prisma, tripId);
+  const trip = await getTrip(prisma, tripId, session);
   if (!trip) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(trip);
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { tripId } = await params;
   const body = await req.json().catch(() => null);
   const parsed = updateTripSchema.safeParse(body);
@@ -31,20 +37,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
       ...(startDate !== undefined
         ? { startDate: startDate ? new Date(startDate) : null }
         : {}),
-    });
+    }, session);
     return NextResponse.json(trip);
   } catch (e) {
+    if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
     if (isNotFound(e)) return NextResponse.json({ error: "Not found" }, { status: 404 });
     throw e;
   }
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { tripId } = await params;
   try {
-    await deleteTrip(prisma, tripId);
+    await deleteTrip(prisma, tripId, session);
     return new NextResponse(null, { status: 204 });
   } catch (e) {
+    if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
     if (isNotFound(e)) return NextResponse.json({ error: "Not found" }, { status: 404 });
     throw e;
   }

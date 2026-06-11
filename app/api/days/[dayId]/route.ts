@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { removeDay, setDayColor, ItineraryError } from "@/lib/itinerary/operations";
 import { updateDaySchema } from "@/lib/itinerary/schema";
+import { guardWriteDay } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ dayId: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { dayId } = await params;
+  const guard = await guardWriteDay(dayId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = updateDaySchema.safeParse(body);
   if (!parsed.success) {
@@ -20,6 +23,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const { dayId } = await params;
+  const guard = await guardWriteDay(dayId);
+  if (guard instanceof NextResponse) return guard;
   try {
     await removeDay(prisma, dayId);
     return new NextResponse(null, { status: 204 });

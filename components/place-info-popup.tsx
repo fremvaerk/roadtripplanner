@@ -13,12 +13,14 @@ export function PlaceInfoPopup({
   days = [],
   onEdit,
   onRemove,
+  canEdit = true,
 }: {
   poi: PoiDetail;
   tripId: string;
   days?: { id: string; label: string }[];
   onEdit: () => void;
   onRemove: () => void;
+  canEdit?: boolean;
 }) {
   const placesLib = useMapsLibrary("places");
   const updatePoi = useUpdatePoi(tripId);
@@ -100,7 +102,7 @@ export function PlaceInfoPopup({
       >
         View on Google Maps
       </a>
-      {days.length > 0 ? (
+      {canEdit && days.length > 0 ? (
         <div className="mt-2 flex items-center gap-2">
           <label className="text-xs text-muted-foreground">Day</label>
           <select
@@ -118,14 +120,16 @@ export function PlaceInfoPopup({
           </select>
         </div>
       ) : null}
-      <div className="mt-2 flex gap-2">
-        <Button size="sm" variant="outline" className="h-7 flex-1 text-xs" onClick={onEdit}>
-          ✎ Edit
-        </Button>
-        <Button size="sm" variant="destructive" className="h-7 flex-1 text-xs" onClick={onRemove}>
-          ✕ Remove
-        </Button>
-      </div>
+      {canEdit ? (
+        <div className="mt-2 flex gap-2">
+          <Button size="sm" variant="outline" className="h-7 flex-1 text-xs" onClick={onEdit}>
+            ✎ Edit
+          </Button>
+          <Button size="sm" variant="destructive" className="h-7 flex-1 text-xs" onClick={onRemove}>
+            ✕ Remove
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
