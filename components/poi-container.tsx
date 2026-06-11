@@ -9,11 +9,13 @@ export function PoiContainer({
   pois,
   tripId,
   emptyText,
+  legLabelByAfterPoi = {},
 }: {
   id: string;
   pois: PoiDetail[];
   tripId: string;
   emptyText: string;
+  legLabelByAfterPoi?: Record<string, string>;
 }) {
   const { ref } = useDroppable({ id, type: "poi", accept: "poi" });
   return (
@@ -22,7 +24,16 @@ export function PoiContainer({
         <li className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</li>
       ) : (
         pois.map((p, i) => (
-          <PoiCard key={p.id} poi={p} index={i} group={id} tripId={tripId} />
+          <PoiCard
+            key={p.id}
+            poi={p}
+            index={i}
+            group={id}
+            tripId={tripId}
+            legBelow={
+              i < pois.length - 1 ? (legLabelByAfterPoi[p.id] ?? null) : null
+            }
+          />
         ))
       )}
     </ul>

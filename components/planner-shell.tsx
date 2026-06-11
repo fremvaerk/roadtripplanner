@@ -396,7 +396,14 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           <CollapsibleSection title="Days" count={trip.days.length} storageKey="rtp.section.days">
             <DragDropProvider onDragEnd={onItineraryDragEnd}>
               <div className="space-y-3">
-                {trip.days.map((day) => (
+                {trip.days.map((day) => {
+                  const legLabelByAfterPoi: Record<string, string> = {};
+                  route?.legs.forEach((leg) => {
+                    if (leg.dayId === day.id && leg.afterPoiId) {
+                      legLabelByAfterPoi[leg.afterPoiId] = `${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
+                    }
+                  });
+                  return (
                   <div key={day.id} className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
                       <span className="flex items-center gap-2">
@@ -449,14 +456,15 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                         </button>
                       </span>
                     </div>
-                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." />
+                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} />
                     <DayNight
                       tripId={tripId}
                       dayId={day.id}
                       night={day.night}
                     />
                   </div>
-                ))}
+                  );
+                })}
                 <Button
                   variant="outline"
                   size="sm"
