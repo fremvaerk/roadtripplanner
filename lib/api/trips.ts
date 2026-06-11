@@ -49,6 +49,7 @@ export type TripDetail = {
   pois: PoiDetail[];
   poiGroups: TripGroup[];
   routeVias: TripVia[];
+  role?: "owner" | "editor" | "viewer";
 };
 
 export async function fetchTrip(tripId: string): Promise<TripDetail> {

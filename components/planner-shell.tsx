@@ -59,7 +59,7 @@ function formatDayDate(startDate: string | null, dayIndex: number): string | nul
   return d ? DATE_FMT.format(d) : null;
 }
 
-export function PlannerShell({ tripId }: { tripId: string }) {
+export function PlannerShell({ tripId }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
   const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);

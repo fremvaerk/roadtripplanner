@@ -13,6 +13,7 @@ export type TripListItem = {
   endName: string | null;
   isRoundTrip: boolean;
   archivedAt: string | null;
+  role?: "owner" | "editor" | "viewer";
 };
 
 function subtitle(t: TripListItem): string {

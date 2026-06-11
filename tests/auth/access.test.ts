@@ -66,42 +66,42 @@ async function seed() {
 describe("effectiveRole", () => {
   test("resolves owner/viewer/editor and null for strangers and unknown trips", async () => {
     const { trip, sessionA, sessionB, sessionC, stranger } = await seed();
-    expect(await effectiveRole(sessionA, trip.id)).toBe("owner");
-    expect(await effectiveRole(sessionB, trip.id)).toBe("viewer");
-    expect(await effectiveRole(sessionC, trip.id)).toBe("editor");
-    expect(await effectiveRole(stranger, trip.id)).toBeNull();
-    expect(await effectiveRole(sessionA, "nope")).toBeNull();
+    expect(await effectiveRole(prisma, sessionA, trip.id)).toBe("owner");
+    expect(await effectiveRole(prisma, sessionB, trip.id)).toBe("viewer");
+    expect(await effectiveRole(prisma, sessionC, trip.id)).toBe("editor");
+    expect(await effectiveRole(prisma, stranger, trip.id)).toBeNull();
+    expect(await effectiveRole(prisma, sessionA, "nope")).toBeNull();
   });
 });
 
 describe("requireRead", () => {
   test("any member may read; non-members and unknown trips → 404", async () => {
     const { trip, sessionA, sessionB, sessionC, stranger } = await seed();
-    expect(await requireRead(sessionA, trip.id)).toBe("owner");
-    expect(await requireRead(sessionB, trip.id)).toBe("viewer");
-    expect(await requireRead(sessionC, trip.id)).toBe("editor");
-    await expectStatus(() => requireRead(stranger, trip.id), 404);
-    await expectStatus(() => requireRead(sessionA, "nope"), 404);
+    expect(await requireRead(prisma, sessionA, trip.id)).toBe("owner");
+    expect(await requireRead(prisma, sessionB, trip.id)).toBe("viewer");
+    expect(await requireRead(prisma, sessionC, trip.id)).toBe("editor");
+    await expectStatus(() => requireRead(prisma, stranger, trip.id), 404);
+    await expectStatus(() => requireRead(prisma, sessionA, "nope"), 404);
   });
 });
 
 describe("requireWrite", () => {
   test("owner/editor may write; viewer → 403; stranger → 404", async () => {
     const { trip, sessionA, sessionB, sessionC, stranger } = await seed();
-    expect(await requireWrite(sessionA, trip.id)).toBe("owner");
-    expect(await requireWrite(sessionC, trip.id)).toBe("editor");
-    await expectStatus(() => requireWrite(sessionB, trip.id), 403);
-    await expectStatus(() => requireWrite(stranger, trip.id), 404);
+    expect(await requireWrite(prisma, sessionA, trip.id)).toBe("owner");
+    expect(await requireWrite(prisma, sessionC, trip.id)).toBe("editor");
+    await expectStatus(() => requireWrite(prisma, sessionB, trip.id), 403);
+    await expectStatus(() => requireWrite(prisma, stranger, trip.id), 404);
   });
 });
 
 describe("requireOwner", () => {
   test("owner only; editor and viewer → 403; stranger → 404", async () => {
     const { trip, sessionA, sessionB, sessionC, stranger } = await seed();
-    await requireOwner(sessionA, trip.id); // resolves
-    await expectStatus(() => requireOwner(sessionC, trip.id), 403);
-    await expectStatus(() => requireOwner(sessionB, trip.id), 403);
-    await expectStatus(() => requireOwner(stranger, trip.id), 404);
+    await requireOwner(prisma, sessionA, trip.id); // resolves
+    await expectStatus(() => requireOwner(prisma, sessionC, trip.id), 403);
+    await expectStatus(() => requireOwner(prisma, sessionB, trip.id), 403);
+    await expectStatus(() => requireOwner(prisma, stranger, trip.id), 404);
   });
 });
 
@@ -110,8 +110,8 @@ describe("requireWriteForDay (tripIdOf resolution)", () => {
     const { trip, sessionA, sessionB, sessionC } = await seed();
     const day = await prisma.day.create({ data: { tripId: trip.id, dayIndex: 0 } });
 
-    expect(await requireWriteForDay(sessionC, day.id)).toBe("editor");
-    await expectStatus(() => requireWriteForDay(sessionB, day.id), 403);
-    await expectStatus(() => requireWriteForDay(sessionA, "nope"), 404);
+    expect(await requireWriteForDay(prisma, sessionC, day.id)).toBe("editor");
+    await expectStatus(() => requireWriteForDay(prisma, sessionB, day.id), 403);
+    await expectStatus(() => requireWriteForDay(prisma, sessionA, "nope"), 404);
   });
 });

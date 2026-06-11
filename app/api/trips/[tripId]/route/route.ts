@@ -4,12 +4,22 @@ import { getTrip } from "@/lib/trips/service";
 import { computeRouteChunked, RouteError } from "@/lib/routing/routes";
 import { buildDayRouteRequests, attributeLegDurations, type TripVia } from "@/lib/routing/itinerary-route";
 import type { RouteLegResult, TripDetail } from "@/lib/api/trips";
+import { getSession } from "@/lib/auth/session";
+import { requireRead, HttpError } from "@/lib/auth/guards";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { tripId } = await params;
-  const trip = await getTrip(prisma, tripId);
+  try {
+    await requireRead(prisma, session, tripId);
+  } catch (e) {
+    if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
+    throw e;
+  }
+  const trip = await getTrip(prisma, tripId, session);
   if (!trip) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const vias = ((trip as unknown as { routeVias?: TripVia[] }).routeVias ?? []) as TripVia[];
