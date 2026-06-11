@@ -3,23 +3,31 @@
 import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Button } from "@/components/ui/button";
-import { useUpdatePoi } from "@/hooks/use-poi-mutations";
+import { useUpdatePoi, useMovePoi } from "@/hooks/use-poi-mutations";
 import { googleMapsUrl } from "@/lib/places/maps-url";
 import type { PoiDetail } from "@/lib/api/trips";
 
 export function PlaceInfoPopup({
   poi,
   tripId,
+  days = [],
   onEdit,
   onRemove,
 }: {
   poi: PoiDetail;
   tripId: string;
+  days?: { id: string; label: string }[];
   onEdit: () => void;
   onRemove: () => void;
 }) {
   const placesLib = useMapsLibrary("places");
   const updatePoi = useUpdatePoi(tripId);
+  const movePoi = useMovePoi(tripId);
+
+  function onAssign(value: string) {
+    if (value === "") movePoi.mutate({ poiId: poi.id, dayId: null, orderInDay: 0 });
+    else movePoi.mutate({ poiId: poi.id, dayId: value, orderInDay: 9999 });
+  }
   const [enriched, setEnriched] = useState<{ imageUrl: string | null; address: string | null; placeId: string | null } | null>(null);
   const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
   const startedRef = useRef(false);
@@ -92,6 +100,24 @@ export function PlaceInfoPopup({
       >
         View on Google Maps
       </a>
+      {days.length > 0 ? (
+        <div className="mt-2 flex items-center gap-2">
+          <label className="text-xs text-muted-foreground">Day</label>
+          <select
+            aria-label={`Assign ${poi.name} to a day`}
+            className="min-w-0 flex-1 rounded border bg-background px-1 py-0.5 text-xs"
+            value={poi.dayId ?? ""}
+            onChange={(e) => onAssign(e.target.value)}
+          >
+            <option value="">— Unassigned</option>
+            {days.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       <div className="mt-2 flex gap-2">
         <Button size="sm" variant="outline" className="h-7 flex-1 text-xs" onClick={onEdit}>
           ✎ Edit
