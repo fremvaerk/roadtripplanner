@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { dayDirectionsUrl } from "@/lib/export/maps-links";
+import { dayDirectionsUrl, stopDirectionsUrl } from "@/lib/export/maps-links";
 import type { ExportModel, ExportDay, ExportPoint, ExportPlace } from "@/lib/export/itinerary-model";
 
 const pt = (lat: number, lng: number, name: string): ExportPoint => ({ lat, lng, name });
@@ -118,5 +118,19 @@ describe("dayDirectionsUrl", () => {
     const { url } = dayDirectionsUrl(m, 0);
     expect(url).toContain("origin=11,22");
     expect(url).toContain("destination=33,44");
+  });
+});
+
+describe("stopDirectionsUrl", () => {
+  test("destination-only link (origin = current location)", () => {
+    expect(stopDirectionsUrl({ lat: 10, lng: 20 })).toBe(
+      "https://www.google.com/maps/dir/?api=1&destination=10,20&travelmode=driving",
+    );
+  });
+  test("carries no origin and no waypoints", () => {
+    const url = stopDirectionsUrl({ lat: 1.5, lng: -2.25 });
+    expect(url).not.toContain("origin=");
+    expect(url).not.toContain("waypoints=");
+    expect(url).toContain("destination=1.5,-2.25");
   });
 });
