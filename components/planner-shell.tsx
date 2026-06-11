@@ -31,6 +31,7 @@ import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-col
 import { MapPickProvider } from "@/components/map-pick-context";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceEditor } from "@/components/place-editor";
+import { ShareDialog } from "@/components/share-dialog";
 import { deleteTripRequest } from "@/lib/api/trips";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -59,7 +60,7 @@ function formatDayDate(startDate: string | null, dayIndex: number): string | nul
   return d ? DATE_FMT.format(d) : null;
 }
 
-export function PlannerShell({ tripId }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
+export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
   const { data: route } = useRoute(tripId);
   const addPoi = useAddPoi(tripId);
@@ -85,6 +86,7 @@ export function PlannerShell({ tripId }: { tripId: string; role?: "owner" | "edi
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   async function removeTrip() {
     setRemoving(true);
     try {
@@ -248,6 +250,15 @@ export function PlannerShell({ tripId }: { tripId: string; role?: "owner" | "edi
             >
               Remove
             </button>
+            {role === "owner" && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => setSharing(true)}
+              >
+                Share
+              </button>
+            )}
           </div>
           <input
             key={trip.title}
@@ -631,6 +642,9 @@ export function PlannerShell({ tripId }: { tripId: string; role?: "owner" | "edi
           <PlaceEditor poi={editingPoi} tripId={tripId} onClose={() => setEditingPoiId(null)} />
         ) : null;
       })()}
+      {sharing && (
+        <ShareDialog tripId={tripId} onClose={() => setSharing(false)} />
+      )}
       </MapPickProvider>
     </APIProvider>
   );

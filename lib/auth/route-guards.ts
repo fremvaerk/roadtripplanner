@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession, type Session } from "@/lib/auth/session";
-import { HttpError, requireWrite, requireWriteForDay, requireWriteForPoi, requireWriteForGroup, requireWriteForVia } from "@/lib/auth/guards";
+import { HttpError, requireWrite, requireWriteForDay, requireWriteForPoi, requireWriteForGroup, requireWriteForVia, requireOwner } from "@/lib/auth/guards";
 
 async function run(check: (session: Session) => Promise<unknown>): Promise<NextResponse | Session> {
   const session = await getSession();
@@ -16,6 +16,7 @@ async function run(check: (session: Session) => Promise<unknown>): Promise<NextR
 }
 
 export const guardWriteTrip = (tripId: string) => run((s) => requireWrite(prisma, s, tripId));
+export const guardOwnerTrip = (tripId: string) => run((s) => requireOwner(prisma, s, tripId));
 export const guardWriteDay = (dayId: string) => run((s) => requireWriteForDay(prisma, s, dayId));
 export const guardWritePoi = (poiId: string) => run((s) => requireWriteForPoi(prisma, s, poiId));
 export const guardWriteGroup = (groupId: string) => run((s) => requireWriteForGroup(prisma, s, groupId));

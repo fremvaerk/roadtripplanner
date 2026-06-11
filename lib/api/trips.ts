@@ -330,3 +330,42 @@ export async function deleteTripRequest(tripId: string): Promise<void> {
     throw new Error(`Failed to remove trip (${res.status})`);
   }
 }
+
+export type TripShareItem = { id: string; email: string; role: "viewer" | "editor" };
+
+export async function fetchShares(tripId: string): Promise<TripShareItem[]> {
+  const res = await fetch(`/api/trips/${tripId}/shares`);
+  if (!res.ok) throw new Error(`Failed to load shares (${res.status})`);
+  return res.json();
+}
+
+export async function addShareRequest(
+  tripId: string,
+  email: string,
+  role: "viewer" | "editor",
+): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/shares`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, role }),
+  });
+  if (!res.ok) throw new Error(`Failed to add share (${res.status})`);
+}
+
+export async function setShareRoleRequest(
+  tripId: string,
+  shareId: string,
+  role: "viewer" | "editor",
+): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/shares/${shareId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) throw new Error(`Failed to update share (${res.status})`);
+}
+
+export async function removeShareRequest(tripId: string, shareId: string): Promise<void> {
+  const res = await fetch(`/api/trips/${tripId}/shares/${shareId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Failed to remove share (${res.status})`);
+}
