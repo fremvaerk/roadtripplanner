@@ -5,6 +5,7 @@ import { dayDate } from "@/lib/dates";
 
 export type ExportPoint = { lat: number; lng: number; name: string };
 export type ExportPlace = ExportPoint & {
+  id?: string;
   category?: string | null;
   address?: string | null;
   imageUrl?: string | null;
@@ -62,6 +63,7 @@ export function buildExportModel(
       const stops: ExportPlace[] = [...day.pois]
         .sort((a, b) => (a.orderInDay ?? 0) - (b.orderInDay ?? 0))
         .map((p) => ({
+          id: p.id,
           lat: p.lat,
           lng: p.lng,
           name: p.name,

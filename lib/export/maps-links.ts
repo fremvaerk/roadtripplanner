@@ -23,3 +23,8 @@ export function dayDirectionsUrl(model: ExportModel, i: number): { url: string; 
   ];
   return { url: `https://www.google.com/maps/dir/?api=1&${params.join("&")}`, truncated };
 }
+
+/** Google Maps directions to a single stop from the device's current location (no origin). */
+export function stopDirectionsUrl(stop: { lat: number; lng: number }): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}&travelmode=driving`;
+}

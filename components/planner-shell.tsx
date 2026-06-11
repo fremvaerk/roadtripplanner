@@ -36,19 +36,7 @@ import { ShareDialog } from "@/components/share-dialog";
 import { deleteTripRequest } from "@/lib/api/trips";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return "0 min";
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  if (h && m) return `${h} h ${m} min`;
-  if (h) return `${h} h`;
-  return `${m} min`;
-}
-
-function formatKm(meters: number): string {
-  return `${Math.round(meters / 1000)} km`;
-}
+import { formatDuration, formatKm } from "@/lib/format";
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
