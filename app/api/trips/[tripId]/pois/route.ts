@@ -3,11 +3,14 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { addPoiSchema } from "@/lib/itinerary/schema";
 import { addPoi, ItineraryError } from "@/lib/itinerary/operations";
+import { guardWriteTrip } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ tripId: string }> };
 
 export async function POST(req: Request, { params }: Ctx) {
   const { tripId } = await params;
+  const guard = await guardWriteTrip(tripId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = addPoiSchema.safeParse(body);
   if (!parsed.success) {

@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { renameGroup, setGroupColor, deleteGroup } from "@/lib/itinerary/operations";
 import { updateGroupSchema } from "@/lib/itinerary/schema";
+import { guardWriteGroup } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ groupId: string }> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { groupId } = await params;
+  const guard = await guardWriteGroup(groupId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = updateGroupSchema.safeParse(body);
   if (!parsed.success) {
@@ -22,6 +25,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const { groupId } = await params;
+  const guard = await guardWriteGroup(groupId);
+  if (guard instanceof NextResponse) return guard;
   await deleteGroup(prisma, groupId);
   return new NextResponse(null, { status: 204 });
 }

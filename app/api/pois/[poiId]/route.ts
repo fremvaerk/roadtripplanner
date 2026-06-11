@@ -3,11 +3,14 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { removePoi, movePoi, moveToGroup, updatePoi, ItineraryError } from "@/lib/itinerary/operations";
 import { patchPoiSchema } from "@/lib/itinerary/schema";
+import { guardWritePoi } from "@/lib/auth/route-guards";
 
 type Ctx = { params: Promise<{ poiId: string }> };
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const { poiId } = await params;
+  const guard = await guardWritePoi(poiId);
+  if (guard instanceof NextResponse) return guard;
   try {
     await removePoi(prisma, poiId);
     return new NextResponse(null, { status: 204 });
@@ -21,6 +24,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { poiId } = await params;
+  const guard = await guardWritePoi(poiId);
+  if (guard instanceof NextResponse) return guard;
   const body = await req.json().catch(() => null);
   const parsed = patchPoiSchema.safeParse(body);
   if (!parsed.success) {
