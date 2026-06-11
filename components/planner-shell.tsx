@@ -15,6 +15,11 @@ import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
+import { buildExportModel } from "@/lib/export/itinerary-model";
+import { dayDirectionsUrl } from "@/lib/export/maps-links";
+import { buildKml } from "@/lib/export/kml";
+import { buildGpx } from "@/lib/export/gpx";
+import { downloadText, slugify } from "@/lib/export/download";
 import { useAddDay, useInsertDayAfter, useRemoveDay, useSetStartDate, useSetDayColor } from "@/hooks/use-day-mutations";
 import { GroupColorPicker } from "@/components/group-color-picker";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
@@ -142,6 +147,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
+  const exportModel = buildExportModel(trip, route);
   const finishMode: "open" | "round" | "place" =
     trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
   const activeFinish = pendingMode ?? finishMode;
@@ -451,6 +457,23 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                             {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
                           </Button>
                         ) : null}
+                        {byDay(day.id).length > 0 ? (
+                          (() => {
+                            const nav = dayDirectionsUrl(exportModel, i);
+                            return (
+                              <a
+                                href={nav.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-normal text-muted-foreground hover:text-foreground"
+                                title={nav.truncated ? "Only the first 9 stops fit a Google Maps link" : "Open turn-by-turn in Google Maps"}
+                                aria-label={`Navigate day ${day.dayIndex + 1} in Google Maps`}
+                              >
+                                ▸ Navigate
+                              </a>
+                            );
+                          })()
+                        ) : null}
                         <button
                           type="button"
                           aria-label={`Remove day ${day.dayIndex + 1}`}
@@ -500,6 +523,28 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                 >
                   ＋ Add day
                 </Button>
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    title="Download a KML file to import into Google My Maps"
+                    onClick={() =>
+                      downloadText(`${slugify(trip.title)}.kml`, "application/vnd.google-earth.kml+xml", buildKml(exportModel))
+                    }
+                  >
+                    ⬇ KML (My Maps)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    title="Download a GPX file for offline nav apps / GPS devices"
+                    onClick={() => downloadText(`${slugify(trip.title)}.gpx`, "application/gpx+xml", buildGpx(exportModel))}
+                  >
+                    ⬇ GPX
+                  </Button>
+                </div>
               </div>
             </DragDropProvider>
           </CollapsibleSection>
