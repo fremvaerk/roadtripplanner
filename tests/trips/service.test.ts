@@ -182,3 +182,57 @@ describe("trip service", () => {
     expect(await prisma.poi.count()).toBe(0);
   });
 });
+
+describe("trip service — cross-user isolation & sharing", () => {
+  async function status(fn: () => Promise<unknown>): Promise<number | "ok"> {
+    try {
+      await fn();
+      return "ok";
+    } catch (e) {
+      return (e as { status?: number }).status ?? -1;
+    }
+  }
+
+  test("a stranger cannot read, list, update, or delete another user's trip", async () => {
+    const a = await prisma.user.create({ data: { email: "a@x.com" } });
+    const b = await prisma.user.create({ data: { email: "b@x.com" } });
+    const sA: Session = { userId: a.id, email: "a@x.com" };
+    const sB: Session = { userId: b.id, email: "b@x.com" };
+    const trip = await createTrip(prisma, sampleData(), a.id);
+
+    expect(await getTrip(prisma, trip.id, sB)).toBeNull(); // existence not leaked
+    expect(await listTrips(prisma, sB)).toHaveLength(0);
+    expect(await status(() => updateTrip(prisma, trip.id, { title: "x" }, sB))).toBe(404);
+    expect(await status(() => deleteTrip(prisma, trip.id, sB))).toBe(404);
+    // owner still has full access
+    expect((await getTrip(prisma, trip.id, sA))?.role).toBe("owner");
+  });
+
+  test("a viewer share grants read (with role) but not write", async () => {
+    const a = await prisma.user.create({ data: { email: "a@x.com" } });
+    const b = await prisma.user.create({ data: { email: "b@x.com" } });
+    const sB: Session = { userId: b.id, email: "b@x.com" };
+    const trip = await createTrip(prisma, sampleData(), a.id);
+    await prisma.tripShare.create({ data: { tripId: trip.id, email: "b@x.com", role: "viewer" } });
+
+    expect((await getTrip(prisma, trip.id, sB))?.role).toBe("viewer");
+    const listed = await listTrips(prisma, sB);
+    expect(listed).toHaveLength(1);
+    expect((listed[0] as { role: string }).role).toBe("viewer");
+    expect(await status(() => updateTrip(prisma, trip.id, { title: "x" }, sB))).toBe(403);
+    expect(await status(() => deleteTrip(prisma, trip.id, sB))).toBe(403);
+  });
+
+  test("an editor share grants write but not delete (owner-only)", async () => {
+    const a = await prisma.user.create({ data: { email: "a@x.com" } });
+    const c = await prisma.user.create({ data: { email: "c@x.com" } });
+    const sC: Session = { userId: c.id, email: "c@x.com" };
+    const trip = await createTrip(prisma, sampleData(), a.id);
+    await prisma.tripShare.create({ data: { tripId: trip.id, email: "c@x.com", role: "editor" } });
+
+    expect((await getTrip(prisma, trip.id, sC))?.role).toBe("editor");
+    const updated = await updateTrip(prisma, trip.id, { title: "Renamed by editor" }, sC);
+    expect(updated.title).toBe("Renamed by editor");
+    expect(await status(() => deleteTrip(prisma, trip.id, sC))).toBe(403);
+  });
+});

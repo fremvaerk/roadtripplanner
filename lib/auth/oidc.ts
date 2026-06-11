@@ -5,8 +5,13 @@ const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const JWKS_URI = "https://www.googleapis.com/oauth2/v3/certs";
 const ISSUERS = ["accounts.google.com", "https://accounts.google.com"];
 
-const clientId = () => process.env.GOOGLE_CLIENT_ID ?? "";
-const clientSecret = () => process.env.GOOGLE_CLIENT_SECRET ?? "";
+function required(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`${name} must be set`);
+  return v;
+}
+const clientId = () => required("GOOGLE_CLIENT_ID");
+const clientSecret = () => required("GOOGLE_CLIENT_SECRET");
 const redirectUri = () => `${process.env.APP_URL ?? ""}/api/auth/callback`;
 
 export function buildAuthUrl({ state, nonce }: { state: string; nonce: string }): string {

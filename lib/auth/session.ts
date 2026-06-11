@@ -3,7 +3,15 @@ import { cookies } from "next/headers";
 
 export type Session = { userId: string; email: string; name?: string | null; image?: string | null };
 
-const secret = () => new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
+const secret = () => {
+  // Fail loudly: an empty/short secret would let anyone forge session cookies
+  // (HMAC accepts a 0-byte key). Never silently sign/verify with a weak key.
+  const raw = process.env.AUTH_SECRET;
+  if (!raw || raw.length < 32) {
+    throw new Error("AUTH_SECRET must be set and at least 32 characters");
+  }
+  return new TextEncoder().encode(raw);
+};
 
 export async function signSession(s: Session): Promise<string> {
   return new SignJWT({ email: s.email, name: s.name ?? null, image: s.image ?? null })
