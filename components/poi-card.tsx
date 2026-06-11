@@ -50,12 +50,12 @@ export function PoiCard({
             src={poi.imageUrl}
             alt=""
             onError={() => setBrokenUrl(poi.imageUrl)}
-            className="h-14 w-14 shrink-0 rounded object-cover"
+            className="h-28 w-28 shrink-0 rounded object-cover"
           />
         ) : (
           <div
             aria-hidden="true"
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground"
+            className="flex h-28 w-28 shrink-0 items-center justify-center rounded bg-muted text-2xl text-muted-foreground"
           >
             📍
           </div>

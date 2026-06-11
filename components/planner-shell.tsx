@@ -399,7 +399,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                 {trip.days.map((day) => {
                   const legLabelByAfterPoi: Record<string, string> = {};
                   route?.legs.forEach((leg) => {
-                    if (leg.dayId === day.id && leg.afterPoiId) {
+                    // Skip zero-length legs (e.g. a night stop sitting on the last place).
+                    if (leg.dayId === day.id && leg.afterPoiId && (leg.durationSeconds > 0 || leg.distanceMeters > 0)) {
                       legLabelByAfterPoi[leg.afterPoiId] = `${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
                     }
                   });
