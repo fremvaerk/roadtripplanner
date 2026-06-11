@@ -41,7 +41,7 @@ export function buildGpx(model: ExportModel): string {
     const points =
       day.path.length > 0
         ? day.path
-        : [...day.stops, ...(day.night ? [day.night] : [])];
+        : [...(day.origin ? [day.origin] : []), ...day.stops, ...(day.night ? [day.night] : [])];
     parts.push("<trk>");
     parts.push(`<name>${esc(day.label)}</name>`);
     parts.push("<trkseg>");

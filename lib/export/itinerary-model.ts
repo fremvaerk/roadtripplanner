@@ -13,6 +13,9 @@ export type ExportDay = {
   index: number;
   label: string;
   color: string;
+  /** Where the day begins — the previous night, or the trip start on day 0.
+   *  Always set by buildExportModel; optional so test fixtures can omit it. */
+  origin?: ExportPoint;
   stops: ExportPlace[];
   night: ExportPoint | null;
   path: { lat: number; lng: number }[];
@@ -24,16 +27,17 @@ export type ExportModel = {
   days: ExportDay[];
 };
 
+const LABEL_DATE_FMT = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
 function dayLabel(startDate: string | null, dayIndex: number): string {
   const base = `Day ${dayIndex + 1}`;
   const d = dayDate(startDate, dayIndex);
-  if (!d) return base;
-  const short = new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(d);
-  return base + " · " + short;
+  return d ? `${base} · ${LABEL_DATE_FMT.format(d)}` : base;
 }
 
 export function buildExportModel(
@@ -48,9 +52,13 @@ export function buildExportModel(
         ? { ...start }
         : null;
 
+  let prevNight: ExportPoint | null = null;
   const days: ExportDay[] = [...trip.days]
     .sort((a, b) => a.dayIndex - b.dayIndex)
-    .map((day) => {
+    .map((day, i) => {
+      // Where this day starts: the previous night, or the trip start on day 0
+      // (falling back to start if the previous day had no night).
+      const origin: ExportPoint = i === 0 ? start : (prevNight ?? start);
       const stops: ExportPlace[] = [...day.pois]
         .sort((a, b) => (a.orderInDay ?? 0) - (b.orderInDay ?? 0))
         .map((p) => ({
@@ -78,10 +86,12 @@ export function buildExportModel(
         }
       }
 
+      prevNight = night;
       return {
         index: day.dayIndex,
         label: dayLabel(trip.startDate, day.dayIndex),
         color,
+        origin,
         stops,
         night,
         path,

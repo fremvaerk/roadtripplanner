@@ -160,6 +160,26 @@ describe("buildExportModel", () => {
     expect(m.days[1].night).toEqual({ lat: 7, lng: 8, name: "Night stop" });
   });
 
+  test("origin is the trip start on day 0 and the previous night after that", () => {
+    const t = trip({
+      days: [
+        day({ id: "d1", dayIndex: 0, night: { id: "n1", lat: 30, lng: 40, title: "Night 1", url: null, notes: null } }),
+        day({ id: "d2", dayIndex: 1, night: { id: "n2", lat: 50, lng: 60, title: "Night 2", url: null, notes: null } }),
+      ],
+    });
+    const m = buildExportModel(t);
+    expect(m.days[0].origin).toEqual({ lat: 10, lng: 20, name: "Start City" });
+    expect(m.days[1].origin).toEqual({ lat: 30, lng: 40, name: "Night 1" });
+  });
+
+  test("origin falls back to start when the previous day had no night", () => {
+    const t = trip({
+      days: [day({ id: "d1", dayIndex: 0 }), day({ id: "d2", dayIndex: 1 })],
+    });
+    const m = buildExportModel(t);
+    expect(m.days[1].origin).toEqual({ lat: 10, lng: 20, name: "Start City" });
+  });
+
   test("path is empty with no route", () => {
     const t = trip({ days: [day({ id: "d1", dayIndex: 0 })] });
     expect(buildExportModel(t).days[0].path).toEqual([]);

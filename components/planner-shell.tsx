@@ -114,6 +114,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     () => Object.fromEntries((trip?.days ?? []).map((d) => [d.id, d.color ?? defaultDayColor(d.dayIndex)])),
     [trip?.days],
   );
+  // Decodes route polylines, so memoize to avoid rebuilding on every render.
+  const exportModel = useMemo(() => (trip ? buildExportModel(trip, route) : null), [trip, route]);
 
   const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
     initial: 320,
@@ -147,7 +149,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
     trip.endLat != null && trip.endLng != null
       ? { lat: trip.endLat, lng: trip.endLng, name: trip.endName ?? "End" }
       : null;
-  const exportModel = buildExportModel(trip, route);
+  // Non-null past the `!trip` guard above.
+  const model = exportModel!;
   const finishMode: "open" | "round" | "place" =
     trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
   const activeFinish = pendingMode ?? finishMode;
@@ -459,7 +462,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                         ) : null}
                         {byDay(day.id).length > 0 ? (
                           (() => {
-                            const nav = dayDirectionsUrl(exportModel, i);
+                            const nav = dayDirectionsUrl(model, i);
                             return (
                               <a
                                 href={nav.url}
@@ -528,9 +531,13 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    title="Download a KML file to import into Google My Maps"
+                    title={
+                      model.days.length > 10
+                        ? "Google My Maps imports only the first 10 days (layers)"
+                        : "Download a KML file to import into Google My Maps"
+                    }
                     onClick={() =>
-                      downloadText(`${slugify(trip.title)}.kml`, "application/vnd.google-earth.kml+xml", buildKml(exportModel))
+                      downloadText(`${slugify(trip.title)}.kml`, "application/vnd.google-earth.kml+xml", buildKml(model))
                     }
                   >
                     ⬇ KML (My Maps)
@@ -540,7 +547,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     size="sm"
                     className="flex-1"
                     title="Download a GPX file for offline nav apps / GPS devices"
-                    onClick={() => downloadText(`${slugify(trip.title)}.gpx`, "application/gpx+xml", buildGpx(exportModel))}
+                    onClick={() => downloadText(`${slugify(trip.title)}.gpx`, "application/gpx+xml", buildGpx(model))}
                   >
                     ⬇ GPX
                   </Button>

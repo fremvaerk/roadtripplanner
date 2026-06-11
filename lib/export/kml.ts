@@ -74,7 +74,7 @@ export function buildKml(model: ExportModel): string {
     const routePoints =
       day.path.length > 0
         ? day.path
-        : [...day.stops, ...(day.night ? [day.night] : [])];
+        : [...(day.origin ? [day.origin] : []), ...day.stops, ...(day.night ? [day.night] : [])];
     let route = `<Placemark>` + `<styleUrl>#day${day.index}</styleUrl>`;
     if (routePoints.length > 0) {
       route +=

@@ -55,6 +55,27 @@ describe("buildKml", () => {
     expect(count).toBe(m.days.length);
   });
 
+  test("straight-line fallback (empty path) starts at the day's origin", () => {
+    const m = model({
+      days: [
+        {
+          index: 0,
+          label: "Day 1",
+          color: "#16a34a",
+          origin: { lat: 100, lng: 200, name: "Origin" },
+          stops: [{ lat: 10, lng: 20, name: "Stop" }],
+          night: { lat: 11, lng: 21, name: "Hotel" },
+          path: [],
+        },
+      ],
+    });
+    const out = buildKml(m);
+    // the LineString coordinates (not the start Placemark's point)
+    const coords = out.match(/<LineString>.*?<coordinates>([^<]*)<\/coordinates>/)?.[1] ?? "";
+    // origin first (lng,lat,0), then stop, then night
+    expect(coords).toBe("200,100,0 20,10,0 21,11,0");
+  });
+
   test("has start Placemark and end Placemark when end set", () => {
     const out = buildKml(model());
     expect(out).toContain("Start:");
