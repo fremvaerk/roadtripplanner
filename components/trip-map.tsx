@@ -341,6 +341,7 @@ export function TripMap({
             <PlaceInfoPopup
               poi={sel}
               tripId={tripId}
+              days={dayChoices}
               onEdit={() => { onEditPoi?.(sel.id); setSelectedPoiId(null); }}
               onRemove={() => { onRemovePoi?.(sel.id); setSelectedPoiId(null); }}
             />
