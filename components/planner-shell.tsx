@@ -508,7 +508,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               onAddVia={(afterPoiId, lat, lng) => addVia.mutate({ afterPoiId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
-              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng }))}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1 }))}
               onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
               dayChoices={trip.days.map((d) => ({
                 id: d.id,

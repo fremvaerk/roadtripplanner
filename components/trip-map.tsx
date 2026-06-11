@@ -15,6 +15,7 @@ import { categoryFromTypes } from "@/lib/places/category";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
 import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
+import { formatNightLabel } from "@/lib/itinerary/night-label";
 import { PlacePreview } from "@/components/place-preview";
 import { PlaceInfoPopup } from "@/components/place-info-popup";
 import { useMapPick } from "@/components/map-pick-context";
@@ -56,7 +57,7 @@ export function TripMap({
   onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
-  nights?: { dayId: string; lat: number; lng: number }[];
+  nights?: { dayId: string; lat: number; lng: number; nightNumber: number }[];
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
   dayChoices?: { id: string; label: string }[];
   onSetNight?: (dayId: string, lat: number, lng: number) => void;
@@ -161,6 +162,23 @@ export function TripMap({
     () => [...path, ...(nights ?? []).map((n) => ({ lat: n.lat, lng: n.lng, name: "night" }))],
     [path, nights],
   );
+  // Collapse nights at the same spot into one marker (e.g. a 3-night stay), so we
+  // show a single pill labelled with the night range instead of stacked circles.
+  const nightGroups = useMemo(() => {
+    // Keyed by rounded coords. `Map` is shadowed by the vis.gl import, so use a plain object.
+    const byLocation: Record<
+      string,
+      { lat: number; lng: number; dayIds: string[]; numbers: number[] }
+    > = {};
+    for (const n of nights ?? []) {
+      const key = `${n.lat.toFixed(5)},${n.lng.toFixed(5)}`;
+      const g = byLocation[key] ?? { lat: n.lat, lng: n.lng, dayIds: [], numbers: [] };
+      g.dayIds.push(n.dayId);
+      g.numbers.push(n.nightNumber);
+      byLocation[key] = g;
+    }
+    return Object.values(byLocation);
+  }, [nights]);
 
   return (
     <div className={`relative h-full w-full ${mapPick?.armedId ? "map-armed cursor-crosshair" : ""}`}>
@@ -260,30 +278,49 @@ export function TripMap({
         </AdvancedMarker>
       ))}
 
-      {(nights ?? []).map((n) => (
-        <AdvancedMarker
-          key={n.dayId}
-          position={{ lat: n.lat, lng: n.lng }}
-          draggable
-          onDragEnd={(e) => {
-            const lat = e.latLng?.lat();
-            const lng = e.latLng?.lng();
-            if (lat != null && lng != null && onMoveNight) onMoveNight(n.dayId, lat, lng);
-          }}
-          title="Night stop (drag to move where you sleep)"
-        >
-          <div
-            style={{
-              fontSize: 18,
-              lineHeight: "18px",
-              cursor: "grab",
-              filter: "drop-shadow(0 1px 1px rgba(0,0,0,.4))",
+      {nightGroups.map((g) => {
+        const label = formatNightLabel(g.numbers);
+        const many = g.numbers.length > 1;
+        return (
+          <AdvancedMarker
+            key={g.dayIds.join("-")}
+            position={{ lat: g.lat, lng: g.lng }}
+            draggable
+            onDragEnd={(e) => {
+              const lat = e.latLng?.lat();
+              const lng = e.latLng?.lng();
+              if (lat != null && lng != null && onMoveNight) {
+                // Drag moves every night sharing this spot together.
+                for (const dayId of g.dayIds) onMoveNight(dayId, lat, lng);
+              }
             }}
+            title={`${many ? "Nights" : "Night"} ${label} (drag to move where you sleep)`}
           >
-            🛏️
-          </div>
-        </AdvancedMarker>
-      ))}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 22,
+                height: 22,
+                padding: "0 6px",
+                borderRadius: 9999,
+                background: "#4f46e5",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: "22px",
+                border: "2px solid #fff",
+                boxShadow: "0 1px 3px rgba(0,0,0,.45)",
+                cursor: "grab",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+            </div>
+          </AdvancedMarker>
+        );
+      })}
 
       {preview && (
         <InfoWindow position={preview.position} onCloseClick={() => onPreviewClose?.()}>
