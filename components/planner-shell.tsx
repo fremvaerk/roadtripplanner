@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -15,7 +15,7 @@ import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { dayDate } from "@/lib/dates";
-import { useAddDay, useRemoveDay, useSetStartDate, useSetDayColor } from "@/hooks/use-day-mutations";
+import { useAddDay, useInsertDayAfter, useRemoveDay, useSetStartDate, useSetDayColor } from "@/hooks/use-day-mutations";
 import { GroupColorPicker } from "@/components/group-color-picker";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateTripBase, useSetTripTitle, useArchiveTrip } from "@/hooks/use-trip-mutations";
@@ -69,6 +69,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const updateNight = useUpdateNight(tripId);
   const setNight = useSetNight(tripId);
   const addDay = useAddDay(tripId);
+  const insertDay = useInsertDayAfter(tripId);
   const removeDay = useRemoveDay(tripId);
   const setStartDate = useSetStartDate(tripId);
   const setDayColor = useSetDayColor(tripId);
@@ -402,7 +403,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
           <CollapsibleSection title="Days" count={trip.days.length} storageKey="rtp.section.days">
             <DragDropProvider onDragEnd={onItineraryDragEnd}>
               <div className="space-y-3">
-                {trip.days.map((day) => {
+                {trip.days.map((day, i) => {
                   const legLabelByAfterPoi: Record<string, string> = {};
                   route?.legs.forEach((leg) => {
                     // Skip zero-length legs (e.g. a night stop sitting on the last place).
@@ -411,7 +412,8 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                     }
                   });
                   return (
-                  <div key={day.id} className="rounded-md border p-3">
+                  <Fragment key={day.id}>
+                  <div className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
                       <span className="flex items-center gap-2">
                         <GroupColorPicker
@@ -471,6 +473,22 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                       onFocusPlace={focusPlace}
                     />
                   </div>
+                  {i < trip.days.length - 1 ? (
+                    <div className="flex items-center gap-2 px-2">
+                      <span className="h-px flex-1 bg-border" />
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        disabled={insertDay.isPending}
+                        onClick={() => insertDay.mutate(day.id)}
+                        aria-label={`Insert a new day after day ${day.dayIndex + 1}`}
+                      >
+                        ＋ Insert day
+                      </button>
+                      <span className="h-px flex-1 bg-border" />
+                    </div>
+                  ) : null}
+                  </Fragment>
                   );
                 })}
                 <Button

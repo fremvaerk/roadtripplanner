@@ -1,7 +1,7 @@
 import { test, expect, describe, beforeEach, afterAll } from "bun:test";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { addDay, removeDay, addPoi, setNight, ItineraryError } from "@/lib/itinerary/operations";
+import { addDay, insertDayAfter, removeDay, addPoi, setNight, ItineraryError } from "@/lib/itinerary/operations";
 import { createTrip } from "@/lib/trips/service";
 import type { CreateTripData } from "@/lib/trips/schema";
 
@@ -35,6 +35,59 @@ describe("addDay", () => {
     const d = await addDay(prisma, trip.id);
     expect(d.dayIndex).toBe(2);
     expect(await prisma.day.count({ where: { tripId: trip.id } })).toBe(3);
+  });
+});
+
+describe("insertDayAfter", () => {
+  test("inserts a day at index+1 and shifts later days up, keeping their ids", async () => {
+    const trip = await createTrip(prisma, sampleTrip(3));
+    const [d0, d1, d2] = trip.days.map((d) => d.id); // indices 0,1,2
+
+    const inserted = await insertDayAfter(prisma, trip.id, d0);
+    expect(inserted.dayIndex).toBe(1);
+
+    const days = await prisma.day.findMany({ where: { tripId: trip.id }, orderBy: { dayIndex: "asc" } });
+    expect(days.map((d) => d.dayIndex)).toEqual([0, 1, 2, 3]);
+    expect(days.map((d) => d.id)).toEqual([d0, inserted.id, d1, d2]);
+  });
+
+  test("inserting after the last day appends", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2));
+    const last = trip.days[1].id;
+    const inserted = await insertDayAfter(prisma, trip.id, last);
+    expect(inserted.dayIndex).toBe(2);
+    expect(await prisma.day.count({ where: { tripId: trip.id } })).toBe(3);
+  });
+
+  test("a place assigned to a shifted day stays on that same day", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2));
+    const [d0, d1] = trip.days.map((d) => d.id);
+    const p = await addPoi(prisma, trip.id, { name: "P", lat: 1, lng: 1, dayId: d1 });
+
+    await insertDayAfter(prisma, trip.id, d0); // d1 shifts from index 1 to 2
+
+    const fresh = await prisma.poi.findUnique({ where: { id: p.id } });
+    expect(fresh?.dayId).toBe(d1);
+    const shifted = await prisma.day.findUnique({ where: { id: d1 } });
+    expect(shifted?.dayIndex).toBe(2);
+  });
+
+  test("a night on a shifted day rides along with it", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2));
+    const [d0, d1] = trip.days.map((d) => d.id);
+    await setNight(prisma, d1, { lat: 0.5, lng: 0.5 });
+
+    await insertDayAfter(prisma, trip.id, d0); // d1 shifts to index 2
+
+    const night = await prisma.nightStop.findUnique({ where: { dayId: d1 } });
+    expect(night).not.toBeNull();
+    const shifted = await prisma.day.findUnique({ where: { id: d1 } });
+    expect(shifted?.dayIndex).toBe(2);
+  });
+
+  test("throws for a day that isn't in the trip", async () => {
+    const trip = await createTrip(prisma, sampleTrip(1));
+    await expect(insertDayAfter(prisma, trip.id, "nope")).rejects.toBeInstanceOf(ItineraryError);
   });
 });
 
