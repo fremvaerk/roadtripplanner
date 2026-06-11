@@ -30,9 +30,7 @@ export function PoiContainer({
             index={i}
             group={id}
             tripId={tripId}
-            legBelow={
-              i < pois.length - 1 ? (legLabelByAfterPoi[p.id] ?? null) : null
-            }
+            legBelow={legLabelByAfterPoi[p.id] ?? null}
           />
         ))
       )}
