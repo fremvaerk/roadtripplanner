@@ -361,7 +361,8 @@ export async function addDay(prisma: PrismaClient, tripId: string) {
 export async function insertDayAfter(prisma: PrismaClient, tripId: string, afterDayId: string) {
   return prisma.$transaction(async (tx) => {
     const day = await tx.day.findUnique({ where: { id: afterDayId } });
-    if (!day || day.tripId !== tripId) throw new ItineraryError("Day not found");
+    if (!day) throw new ItineraryError("Day not found");
+    if (day.tripId !== tripId) throw new ItineraryError("Day does not belong to this trip");
     const newIndex = day.dayIndex + 1;
     // Open a slot at newIndex: shift later days up by one, highest-index first so
     // each update lands on a free slot (the unique [tripId, dayIndex] is checked

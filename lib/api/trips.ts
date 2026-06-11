@@ -264,7 +264,7 @@ export async function addDayRequest(tripId: string): Promise<void> {
 export async function insertDayAfterRequest(tripId: string, afterDayId: string): Promise<void> {
   const res = await fetch(`/api/trips/${tripId}/days`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ afterDayId }),
   });
   if (!res.ok) throw new Error(`Failed to insert day (${res.status})`);

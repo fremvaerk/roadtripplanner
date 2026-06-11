@@ -72,6 +72,19 @@ describe("insertDayAfter", () => {
     expect(shifted?.dayIndex).toBe(2);
   });
 
+  test("a night on a shifted day rides along with it", async () => {
+    const trip = await createTrip(prisma, sampleTrip(2));
+    const [d0, d1] = trip.days.map((d) => d.id);
+    await setNight(prisma, d1, { lat: 0.5, lng: 0.5 });
+
+    await insertDayAfter(prisma, trip.id, d0); // d1 shifts to index 2
+
+    const night = await prisma.nightStop.findUnique({ where: { dayId: d1 } });
+    expect(night).not.toBeNull();
+    const shifted = await prisma.day.findUnique({ where: { id: d1 } });
+    expect(shifted?.dayIndex).toBe(2);
+  });
+
   test("throws for a day that isn't in the trip", async () => {
     const trip = await createTrip(prisma, sampleTrip(1));
     await expect(insertDayAfter(prisma, trip.id, "nope")).rejects.toBeInstanceOf(ItineraryError);
