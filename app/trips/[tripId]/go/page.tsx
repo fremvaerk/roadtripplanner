@@ -2,11 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getTrip } from "@/lib/trips/service";
 import { getSession } from "@/lib/auth/session";
-import { TripView } from "@/components/trip-view";
+import { NavCompanion } from "@/components/mobile/nav-companion";
 
 export const dynamic = "force-dynamic";
 
-export default async function TripPage({
+export default async function TripGoPage({
   params,
 }: {
   params: Promise<{ tripId: string }>;
@@ -18,5 +18,5 @@ export default async function TripPage({
   const trip = await getTrip(prisma, tripId, session);
   if (!trip) notFound();
 
-  return <TripView tripId={tripId} role={trip.role} />;
+  return <NavCompanion tripId={tripId} role={trip.role} />;
 }
