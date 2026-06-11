@@ -358,6 +358,25 @@ export async function addDay(prisma: PrismaClient, tripId: string) {
   return prisma.day.create({ data: { tripId, dayIndex } });
 }
 
+export async function insertDayAfter(prisma: PrismaClient, tripId: string, afterDayId: string) {
+  return prisma.$transaction(async (tx) => {
+    const day = await tx.day.findUnique({ where: { id: afterDayId } });
+    if (!day || day.tripId !== tripId) throw new ItineraryError("Day not found");
+    const newIndex = day.dayIndex + 1;
+    // Open a slot at newIndex: shift later days up by one, highest-index first so
+    // each update lands on a free slot (the unique [tripId, dayIndex] is checked
+    // immediately, not deferred). Places/nights keep their dayId, so they ride along.
+    const later = await tx.day.findMany({
+      where: { tripId, dayIndex: { gte: newIndex } },
+      orderBy: { dayIndex: "desc" },
+    });
+    for (const d of later) {
+      await tx.day.update({ where: { id: d.id }, data: { dayIndex: d.dayIndex + 1 } });
+    }
+    return tx.day.create({ data: { tripId, dayIndex: newIndex } });
+  });
+}
+
 export async function removeDay(prisma: PrismaClient, dayId: string) {
   return prisma.$transaction(async (tx) => {
     const day = await tx.day.findUnique({ where: { id: dayId } });
