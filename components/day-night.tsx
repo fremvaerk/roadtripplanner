@@ -10,10 +10,12 @@ export function DayNight({
   tripId,
   dayId,
   night,
+  onFocusPlace,
 }: {
   tripId: string;
   dayId: string;
   night: DayNightData | null;
+  onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const setNight = useSetNight(tripId);
   const clearNight = useClearNight(tripId);
@@ -32,14 +34,22 @@ export function DayNight({
         placeholder="🛏️ Where will you sleep? (search address)"
         className="mt-1"
         pickId={`night-set:${dayId}`}
-        onPick={(p) => setNight.mutate({ dayId, lat: p.lat, lng: p.lng, title: p.name })}
+        onPick={(p) =>
+          setNight.mutate({ dayId, lat: p.lat, lng: p.lng, title: p.name })
+        }
       />
     );
   }
 
   return (
     <div className="mt-1 flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs">
-      <span className="flex-1 truncate">🛏️ {night.title || "Night stop"}</span>
+      <span
+        className="flex-1 cursor-pointer truncate"
+        title="Show on map"
+        onClick={() => onFocusPlace?.(night.lat, night.lng)}
+      >
+        🛏️ {night.title || "Night stop"}
+      </span>
       <button
         type="button"
         className="shrink-0 text-muted-foreground hover:text-foreground"

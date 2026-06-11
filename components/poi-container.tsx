@@ -10,12 +10,14 @@ export function PoiContainer({
   tripId,
   emptyText,
   legLabelByAfterPoi = {},
+  onFocusPlace,
 }: {
   id: string;
   pois: PoiDetail[];
   tripId: string;
   emptyText: string;
   legLabelByAfterPoi?: Record<string, string>;
+  onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const { ref } = useDroppable({ id, type: "poi", accept: "poi" });
   return (
@@ -31,6 +33,7 @@ export function PoiContainer({
             group={id}
             tripId={tripId}
             legBelow={legLabelByAfterPoi[p.id] ?? null}
+            onFocusPlace={onFocusPlace}
           />
         ))
       )}

@@ -45,6 +45,7 @@ export function TripMap({
   onRemovePoi,
   tripId,
   placeDetails = [],
+  focusTarget = null,
 }: {
   start: MapPoint;
   end?: MapPoint | null;
@@ -68,6 +69,7 @@ export function TripMap({
   onRemovePoi?: (poiId: string) => void;
   tripId: string;
   placeDetails?: PoiDetail[];
+  focusTarget?: { lat: number; lng: number; key: number } | null;
 }) {
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
   const map = useMap();
@@ -111,6 +113,14 @@ export function TripMap({
     if (!map.getBounds()?.contains(preview.position)) map.panTo(preview.position);
     if ((map.getZoom() ?? 0) < 13) map.setZoom(13);
   }, [map, preview]);
+
+  // Pan to a place/night when its card is clicked in the sidebar. `focusTarget`
+  // carries an incrementing key so re-clicking the same location re-pans.
+  useEffect(() => {
+    if (!map || !focusTarget) return;
+    map.panTo({ lat: focusTarget.lat, lng: focusTarget.lng });
+    if ((map.getZoom() ?? 0) < 13) map.setZoom(13);
+  }, [map, focusTarget]);
 
   const legPaths: LegPath[] = useMemo(() => {
     if (!geometryLib) return [];

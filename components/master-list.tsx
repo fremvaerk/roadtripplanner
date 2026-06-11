@@ -12,7 +12,15 @@ import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 const UNGROUPED = "__ungrouped__";
 
-export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string }) {
+export function MasterList({
+  trip,
+  tripId,
+  onFocusPlace,
+}: {
+  trip: TripDetail;
+  tripId: string;
+  onFocusPlace?: (lat: number, lng: number) => void;
+}) {
   const createGroup = useCreateGroup(tripId);
   const renameGroup = useRenameGroup(tripId);
   const deleteGroup = useDeleteGroup(tripId);
@@ -99,7 +107,7 @@ export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string 
                 ✕
               </button>
             </div>
-            <GroupSection containerId={g.id} pois={inGroup(g.id)} tripId={tripId} days={trip.days} />
+            <GroupSection containerId={g.id} pois={inGroup(g.id)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
           </div>
         ))}
 
@@ -107,7 +115,7 @@ export function MasterList({ trip, tripId }: { trip: TripDetail; tripId: string 
           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Ungrouped
           </div>
-          <GroupSection containerId={UNGROUPED} pois={inGroup(null)} tripId={tripId} days={trip.days} />
+          <GroupSection containerId={UNGROUPED} pois={inGroup(null)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
         </div>
       </DragDropProvider>
     </div>

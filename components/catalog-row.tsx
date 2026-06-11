@@ -12,12 +12,14 @@ export function CatalogRow({
   group,
   tripId,
   days,
+  onFocusPlace,
 }: {
   poi: PoiDetail;
   index: number;
   group: string;
   tripId: string;
   days: DayDetail[];
+  onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const { ref, handleRef, isDragging } = useSortable({
     id: poi.id,
@@ -59,17 +61,23 @@ export function CatalogRow({
             src={poi.imageUrl}
             alt=""
             onError={() => setBrokenUrl(poi.imageUrl)}
-            className="h-28 w-28 shrink-0 rounded object-cover"
+            onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
+            className="h-28 w-28 shrink-0 cursor-pointer rounded object-cover"
           />
         ) : (
           <div
             aria-hidden="true"
-            className="flex h-28 w-28 shrink-0 items-center justify-center rounded bg-muted text-2xl text-muted-foreground"
+            onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
+            className="flex h-28 w-28 shrink-0 cursor-pointer items-center justify-center rounded bg-muted text-2xl text-muted-foreground"
           >
             📍
           </div>
         )}
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0 flex-1 cursor-pointer"
+          title="Show on map"
+          onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
+        >
           <p className="truncate font-medium">{poi.name}</p>
           {poi.category ? (
             <p className="truncate text-xs text-muted-foreground">
@@ -86,6 +94,7 @@ export function CatalogRow({
             className="mt-1.5 rounded border bg-background px-1 py-0.5 text-xs"
             value={poi.dayId ?? ""}
             onChange={(e) => onAssign(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
           >
             <option value="">—</option>
             {days.map((d) => (
