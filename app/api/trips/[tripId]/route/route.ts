@@ -44,6 +44,8 @@ export async function GET(_req: Request, { params }: Ctx) {
           encodedPolyline: leg.encodedPolyline ?? null,
           afterPoiId: seg.legAfterPoiId[j] ?? null,
           dayId: seg.legDayId[j] ?? null,
+          durationSeconds: leg.durationSeconds,
+          distanceMeters: leg.distanceMeters,
         });
         legDayIdAll.push(seg.legDayId[j] ?? null);
         legSeconds.push(leg.durationSeconds);

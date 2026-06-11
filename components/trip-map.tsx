@@ -469,6 +469,7 @@ function PoiMarker({
   return (
     <AdvancedMarker ref={markerRef} position={point} title={point.name} clickable>
       <Pin
+        scale={0.7}
         background={point.color?.background ?? "#64748b"}
         borderColor={point.color?.border ?? "#475569"}
         glyphColor="#ffffff"
