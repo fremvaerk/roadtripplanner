@@ -1,0 +1,29 @@
+# Convenience runner. Values interpolate from a `.env` file in this directory.
+# Build:  docker compose build
+# Run:    docker compose up -d
+# The host port is 5001 to match APP_URL / the registered OAuth redirect URI.
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        # NEXT_PUBLIC_* are baked into the client bundle at build time.
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: ${NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID:-DEMO_MAP_ID}
+    ports:
+      - "5001:3000"
+    environment:
+      DATABASE_URL: file:/data/app.db
+      APP_URL: ${APP_URL:-http://localhost:5001}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET (openssl rand -base64 32)}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET}
+      ALLOWED_EMAILS: ${ALLOWED_EMAILS:-}
+      GOOGLE_MAPS_SERVER_KEY: ${GOOGLE_MAPS_SERVER_KEY:-}
+    volumes:
+      - rtp-data:/data
+    restart: unless-stopped
+
+volumes:
+  rtp-data:

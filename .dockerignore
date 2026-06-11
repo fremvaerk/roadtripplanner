@@ -1,0 +1,25 @@
+# Reproduce deps inside the image (libSQL has platform-native bindings) — never
+# copy the host's node_modules.
+node_modules
+.next
+lib/generated
+
+# Local state / secrets / databases
+.env
+.env.local
+*.db
+*.db-journal
+.git
+.remember
+.superpowers
+.playwright-mcp
+.claude
+
+# Not needed in the build
+tests
+docs
+/*.png
+*.md
+.DS_Store
+tsconfig.tsbuildinfo
+next-env.d.ts
