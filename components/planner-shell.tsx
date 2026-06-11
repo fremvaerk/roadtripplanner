@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -93,6 +93,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
   >(null);
+  const focusKey = useRef(0);
+  const [focusTarget, setFocusTarget] = useState<{ lat: number; lng: number; key: number } | null>(null);
+  const focusPlace = useCallback((lat: number, lng: number) => {
+    focusKey.current += 1;
+    setFocusTarget({ lat, lng, key: focusKey.current });
+  }, []);
   const addedPlaceIds = useMemo(
     () => new Set((trip?.pois ?? []).map((p) => p.placeId).filter((x): x is string => !!x)),
     [trip?.pois],
@@ -390,7 +396,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                 {resplit.isPending ? "Re-splitting…" : "Re-split all"}
               </Button>
             </div>
-            <MasterList trip={trip} tripId={tripId} />
+            <MasterList trip={trip} tripId={tripId} onFocusPlace={focusPlace} />
           </CollapsibleSection>
 
           <CollapsibleSection title="Days" count={trip.days.length} storageKey="rtp.section.days">
@@ -457,11 +463,12 @@ export function PlannerShell({ tripId }: { tripId: string }) {
                         </button>
                       </span>
                     </div>
-                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} />
+                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} onFocusPlace={focusPlace} />
                     <DayNight
                       tripId={tripId}
                       dayId={day.id}
                       night={day.night}
+                      onFocusPlace={focusPlace}
                     />
                   </div>
                   );
@@ -524,6 +531,7 @@ export function PlannerShell({ tripId }: { tripId: string }) {
               onRemovePoi={(id) => removePoi.mutate(id)}
               tripId={tripId}
               placeDetails={trip.pois}
+              focusTarget={focusTarget}
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
