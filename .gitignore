@@ -10,5 +10,8 @@ lib/generated/
 .playwright-mcp/
 tsconfig.tsbuildinfo
 
+# Local smoke-test screenshots dropped in the repo root (never meant to be committed)
+/*.png
+
 # Next.js generated (regenerated on dev/build; flip-flops dev vs build path)
 next-env.d.ts
