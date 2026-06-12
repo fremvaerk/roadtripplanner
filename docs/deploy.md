@@ -25,12 +25,9 @@ git push origin v1.0.0
 
 ## Required GitHub settings
 
-**Build-time** (inlined into the client bundle — `NEXT_PUBLIC_*`):
-
-| Where | Name | Notes |
-|---|---|---|
-| Secret | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser Maps JS key. Restrict by HTTP referrer to your domain. |
-| Variable (optional) | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Falls back to `DEMO_MAP_ID` if unset. |
+**None for the build.** The image bakes in no Maps keys — the browser key and map
+id are runtime env (read server-side, passed to the client), so CI needs no Maps
+secrets and the build is fully reproducible from public source.
 
 `GITHUB_TOKEN` (automatic) pushes to GHCR — the workflow has `packages: write`. The
 first push creates the package as **private**; link it to the repo and set its
@@ -41,6 +38,8 @@ visibility under the org's *Packages* settings if you want it pullable.
 | Var | Purpose |
 |---|---|
 | `DATABASE_URL` | SQLite path on the volume, e.g. `file:/data/app.db` (the image defaults to this). |
+| `GOOGLE_MAPS_BROWSER_KEY` | Browser Maps-JS key (public; restrict by HTTP referrer). Served to the client at request time. |
+| `GOOGLE_MAPS_MAP_ID` | Map ID for Advanced Markers (optional; defaults to `DEMO_MAP_ID`). |
 | `AUTH_SECRET` | Signs the session JWT. `openssl rand -base64 32`. |
 | `APP_URL` | Public base URL; builds the OAuth redirect URI. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OIDC web client. Authorized redirect: `${APP_URL}/api/auth/callback`. |
@@ -57,6 +56,7 @@ persist the database.
 docker run -p 3000:3000 -v roadtrip-data:/data \
   -e AUTH_SECRET=... -e APP_URL=https://trips.example.com \
   -e GOOGLE_CLIENT_ID=... -e GOOGLE_CLIENT_SECRET=... \
-  -e GOOGLE_MAPS_SERVER_KEY=... -e MCP_AUTH_TOKEN=... \
+  -e GOOGLE_MAPS_SERVER_KEY=... -e GOOGLE_MAPS_BROWSER_KEY=... \
+  -e MCP_AUTH_TOKEN=... \
   ghcr.io/fremvaerk/roadtripplanner:latest
 ```

@@ -19,13 +19,10 @@ RUN bun install --frozen-lockfile --ignore-scripts
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_* are inlined into the client bundle at build time, so they must be
-# present now (pass with --build-arg). The browser Maps key is referrer-restricted.
-ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=""
-ARG NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID="DEMO_MAP_ID"
-ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY \
-    NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=$NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID \
-    DATABASE_URL="file:/tmp/build.db"
+# The Google Maps browser key + map id are now read at RUNTIME (server reads env
+# and passes them to the client via MapsConfigProvider), so the build needs no
+# Maps secrets — nothing Maps-related is baked into the image.
+ENV DATABASE_URL="file:/tmp/build.db"
 RUN bunx prisma generate
 RUN bun run build
 

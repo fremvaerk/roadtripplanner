@@ -54,12 +54,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # NEXT_PUBLIC_* are inlined into the client bundle at build time. The
-          # browser Maps key is referrer-restricted; set it as a repo/org secret.
-          # The Map ID falls back to DEMO_MAP_ID when the variable is unset.
-          build-args: |
-            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
-            NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID' }}
+          # No build-args: the Maps browser key/map id are runtime env (read by the
+          # server and passed to the client), so no secrets are baked into the image.
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
