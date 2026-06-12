@@ -10,6 +10,7 @@ export function PoiContainer({
   tripId,
   emptyText,
   legLabelByAfterPoi = {},
+  entryLegLabel = null,
   onFocusPlace,
 }: {
   id: string;
@@ -17,6 +18,7 @@ export function PoiContainer({
   tripId: string;
   emptyText: string;
   legLabelByAfterPoi?: Record<string, string>;
+  entryLegLabel?: string | null;
   onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const { ref } = useDroppable({ id, type: "poi", accept: "poi" });
@@ -25,17 +27,29 @@ export function PoiContainer({
       {pois.length === 0 ? (
         <li className="px-1 py-2 text-xs text-muted-foreground">{emptyText}</li>
       ) : (
-        pois.map((p, i) => (
-          <PoiCard
-            key={p.id}
-            poi={p}
-            index={i}
-            group={id}
-            tripId={tripId}
-            legBelow={legLabelByAfterPoi[p.id] ?? null}
-            onFocusPlace={onFocusPlace}
-          />
-        ))
+        <>
+          {/* Drive from the previous night / trip start into the first place. */}
+          {entryLegLabel ? (
+            <li
+              aria-hidden="true"
+              className="flex items-center gap-1.5 pl-7 text-xs text-muted-foreground"
+            >
+              <span className="text-muted-foreground/40">│</span>
+              <span>🚗 {entryLegLabel}</span>
+            </li>
+          ) : null}
+          {pois.map((p, i) => (
+            <PoiCard
+              key={p.id}
+              poi={p}
+              index={i}
+              group={id}
+              tripId={tripId}
+              legBelow={legLabelByAfterPoi[p.id] ?? null}
+              onFocusPlace={onFocusPlace}
+            />
+          ))}
+        </>
       )}
     </ul>
   );

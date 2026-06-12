@@ -433,11 +433,16 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               <div className="space-y-3">
                 {trip.days.map((day, i) => {
                   const legLabelByAfterPoi: Record<string, string> = {};
+                  // The drive INTO the first place departs from the previous night /
+                  // trip start (no afterPoiId), so capture it separately.
+                  let entryLegLabel: string | null = null;
                   route?.legs.forEach((leg) => {
+                    if (leg.dayId !== day.id) return;
                     // Skip zero-length legs (e.g. a night stop sitting on the last place).
-                    if (leg.dayId === day.id && leg.afterPoiId && (leg.durationSeconds > 0 || leg.distanceMeters > 0)) {
-                      legLabelByAfterPoi[leg.afterPoiId] = `${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
-                    }
+                    if (!(leg.durationSeconds > 0 || leg.distanceMeters > 0)) return;
+                    const label = `${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
+                    if (leg.afterPoiId) legLabelByAfterPoi[leg.afterPoiId] = label;
+                    else if (entryLegLabel === null) entryLegLabel = label;
                   });
                   return (
                   <Fragment key={day.id}>
@@ -514,7 +519,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                         )}
                       </span>
                     </div>
-                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} onFocusPlace={focusPlace} />
+                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} entryLegLabel={entryLegLabel} onFocusPlace={focusPlace} />
                     <DayNight
                       tripId={tripId}
                       dayId={day.id}
