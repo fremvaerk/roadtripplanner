@@ -3,9 +3,19 @@ import type { Session } from "@/lib/auth/session";
 
 let cached: Promise<Session> | null = null;
 
-/** The single owner this MCP server acts as. Memoized per process. */
+/**
+ * The single owner this MCP server acts as. Memoized per process, but ONLY on
+ * success — a transient failure (e.g. DB unavailable at cold start) clears the
+ * cache so the next request can retry instead of being permanently poisoned.
+ */
 export function resolveOwnerSession(): Promise<Session> {
-  return (cached ??= resolve());
+  return (
+    cached ??
+    (cached = resolve().catch((e) => {
+      cached = null;
+      throw e;
+    }))
+  );
 }
 
 async function resolve(): Promise<Session> {
