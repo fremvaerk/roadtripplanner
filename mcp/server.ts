@@ -112,7 +112,7 @@ async function main() {
     async ({ tripId }) =>
       run(async () => {
         const trip = await getTrip(prisma, tripId, session);
-        if (!trip) return fail("not found");
+        if (!trip) throw new Error("Trip not found or not accessible");
         return ok(trip);
       }),
   );

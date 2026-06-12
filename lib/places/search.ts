@@ -5,7 +5,7 @@ export type PlaceResult = {
   lat: number;
   lng: number;
   placeId: string | null;
-  category: string | null;
+  category: string; // categoryFromTypes always returns a value ("other" fallback)
   address: string | null;
   types: string[];
 };
