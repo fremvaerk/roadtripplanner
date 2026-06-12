@@ -44,11 +44,17 @@ describe("serializeTrip + importTrip", () => {
     await moveToGroup(prisma, poi.id, group.id, 0);
     await setNight(prisma, day0, { lat: 0.5, lng: 0.5, title: "Hotel" });
     await addVia(prisma, trip.id, { afterPoiId: poi.id, lat: 0.2, lng: 0.2 });
+    // Non-default fields that must survive a round-trip.
+    await prisma.trip.update({ where: { id: trip.id }, data: { isRoundTrip: true } });
+    await prisma.poi.update({ where: { id: poi.id }, data: { source: "ai", status: "suggested" } });
 
     // --- serialize
     const exp = serializeTrip((await loadTripGraph(prisma, trip.id))!);
     expect(exp.format).toBe("roadtripplanner.trip");
     expect(exp.version).toBe(1);
+    expect(exp.trip.isRoundTrip).toBe(true);
+    expect(exp.pois[0].source).toBe("ai");
+    expect(exp.pois[0].status).toBe("suggested");
     expect(exp.days.length).toBe(2);
     expect(exp.pois.length).toBeGreaterThanOrEqual(1);
     expect(exp.groups.length).toBe(1);
@@ -62,6 +68,10 @@ describe("serializeTrip + importTrip", () => {
     const cloned = (await loadTripGraph(prisma, newId))!;
     expect(cloned.userId).toBe(other.id);
     expect(cloned.archivedAt).toBeNull();
+    expect(cloned.isRoundTrip).toBe(true);
+    const clonedNamedPoi = cloned.pois.find((p) => p.name === "P")!;
+    expect(clonedNamedPoi.source).toBe("ai");
+    expect(clonedNamedPoi.status).toBe("suggested");
 
     // same counts
     expect(cloned.days.length).toBe(2);

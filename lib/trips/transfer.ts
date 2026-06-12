@@ -18,6 +18,7 @@ export type TripExport = {
     endLat: number | null;
     endLng: number | null;
     endPlaceId: string | null;
+    isRoundTrip: boolean;
     description: string;
     startDate: string | null;
     params: string | null;
@@ -44,6 +45,8 @@ export type TripExport = {
     lng: number;
     placeId: string | null;
     category: string | null;
+    source: string;
+    status: string;
     groupId: string | null;
     orderInGroup: number | null;
     rating: number | null;
@@ -99,6 +102,7 @@ export function serializeTrip(graph: TripGraph): TripExport {
       endLat: graph.endLat,
       endLng: graph.endLng,
       endPlaceId: graph.endPlaceId,
+      isRoundTrip: graph.isRoundTrip,
       description: graph.description,
       startDate: graph.startDate ? graph.startDate.toISOString() : null,
       params: graph.params,
@@ -125,6 +129,8 @@ export function serializeTrip(graph: TripGraph): TripExport {
       lng: p.lng,
       placeId: p.placeId,
       category: p.category,
+      source: p.source,
+      status: p.status,
       groupId: p.groupId,
       orderInGroup: p.orderInGroup,
       rating: p.rating,
@@ -175,6 +181,7 @@ export const tripImportSchema = z.object({
     endLat: z.number().finite().nullable().optional().default(null),
     endLng: z.number().finite().nullable().optional().default(null),
     endPlaceId: nullableString,
+    isRoundTrip: z.boolean().optional().default(false),
     description: z.string().default(""),
     startDate: z.string().datetime().nullable().optional().default(null),
     params: nullableString,
@@ -211,6 +218,8 @@ export const tripImportSchema = z.object({
         lng: z.number().finite(),
         placeId: nullableString,
         category: nullableString,
+        source: z.string().optional().default("user"),
+        status: z.string().optional().default("accepted"),
         groupId: nullableString,
         orderInGroup: z.number().nullable().optional().default(null),
         rating: z.number().nullable().optional().default(null),
@@ -269,6 +278,7 @@ export async function importTrip(
         endLat: parsed.trip.endLat,
         endLng: parsed.trip.endLng,
         endPlaceId: parsed.trip.endPlaceId,
+        isRoundTrip: parsed.trip.isRoundTrip,
         description: parsed.trip.description,
         startDate: parsed.trip.startDate ? new Date(parsed.trip.startDate) : null,
         params: parsed.trip.params,
@@ -277,7 +287,10 @@ export async function importTrip(
     });
 
     const dayIdMap = new Map<string, string>();
-    for (const day of parsed.days) {
+    // Create in dayIndex order so the @@unique([tripId, dayIndex]) constraint is
+    // never tripped by an oddly-ordered export array.
+    const sortedDays = [...parsed.days].sort((a, b) => a.dayIndex - b.dayIndex);
+    for (const day of sortedDays) {
       const created = await tx.day.create({
         data: {
           tripId: trip.id,
@@ -316,6 +329,8 @@ export async function importTrip(
           lng: poi.lng,
           placeId: poi.placeId,
           category: poi.category,
+          source: poi.source,
+          status: poi.status,
           orderInGroup: poi.orderInGroup,
           rating: poi.rating,
           imageUrl: poi.imageUrl,

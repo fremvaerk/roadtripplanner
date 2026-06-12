@@ -22,6 +22,7 @@ export function ImportTripButton() {
         throw new Error("That file isn't valid JSON.");
       }
       const { id } = await importTripRequest(json);
+      router.refresh(); // bust the trips-list cache so it shows on Back
       router.push(`/trips/${id}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Import failed");
