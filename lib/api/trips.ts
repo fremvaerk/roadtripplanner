@@ -331,6 +331,23 @@ export async function deleteTripRequest(tripId: string): Promise<void> {
   }
 }
 
+export function exportTripUrl(id: string): string {
+  return `/api/trips/${id}/export`;
+}
+
+export async function importTripRequest(data: unknown): Promise<{ id: string }> {
+  const res = await fetch("/api/trips/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const msg = (await res.json().catch(() => ({}))).error;
+    throw new Error(typeof msg === "string" ? msg : `Import failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export type TripShareItem = { id: string; email: string; role: "viewer" | "editor" };
 
 export async function fetchShares(tripId: string): Promise<TripShareItem[]> {

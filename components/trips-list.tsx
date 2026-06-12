@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { archiveTripRequest, deleteTripRequest } from "@/lib/api/trips";
+import { archiveTripRequest, deleteTripRequest, exportTripUrl } from "@/lib/api/trips";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export type TripListItem = {
@@ -123,6 +123,15 @@ export function TripsList({ trips }: { trips: TripListItem[] }) {
   );
 }
 
+function downloadExport(id: string) {
+  const a = document.createElement("a");
+  a.href = exportTripUrl(id);
+  a.download = ""; // let the server's Content-Disposition filename win
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function TripRow({
   trip,
   archived = false,
@@ -164,6 +173,13 @@ function TripRow({
           <>
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
             <div role="menu" className="absolute right-0 z-20 mt-1 w-32 rounded-md border bg-background py-1 shadow-md">
+              <MenuItem
+                label="Export"
+                onClick={() => {
+                  setOpen(false);
+                  downloadExport(trip.id);
+                }}
+              />
               {archived ? (
                 <MenuItem
                   label="Restore"
