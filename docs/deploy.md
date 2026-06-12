@@ -38,7 +38,7 @@ visibility under the org's *Packages* settings if you want it pullable.
 | Var | Purpose |
 |---|---|
 | `DATABASE_URL` | SQLite path on the volume, e.g. `file:/data/app.db` (the image defaults to this). |
-| `GOOGLE_MAPS_BROWSER_KEY` | Browser Maps-JS key (public; restrict by HTTP referrer). Served to the client at request time. |
+| `GOOGLE_MAPS_BROWSER_KEY` | Browser Maps-JS key (public; restrict by HTTP referrer). Served to the client at request time. See [google-maps.md](./google-maps.md) for required APIs. |
 | `GOOGLE_MAPS_MAP_ID` | Map ID for Advanced Markers (optional; defaults to `DEMO_MAP_ID`). |
 | `AUTH_SECRET` | Signs the session JWT. `openssl rand -base64 32`. |
 | `APP_URL` | Public base URL; builds the OAuth redirect URI. |
