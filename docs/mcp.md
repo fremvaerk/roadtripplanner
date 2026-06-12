@@ -10,6 +10,69 @@ The server resolves a single **owner** from `MCP_OWNER_EMAIL` (falling back to t
 first `ALLOWED_EMAILS` entry), upserts that user, and performs every operation as
 them. There is no per-request auth — it acts as one configured user.
 
+There are two ways to run it:
+
+- **HTTP (deployed)** — `app/api/mcp/route.ts`, served by the Next app. Use this
+  for remote clients (see below).
+- **stdio (local dev)** — `mcp/server.ts`, registered via `.mcp.json`. No auth.
+
+## HTTP (deployed)
+
+The HTTP transport ships as part of the Next app: `POST /api/mcp`. It deploys
+with the same Docker image and shares the same database, so a remote Claude
+client can plan trips against your live data.
+
+```
+POST https://<your-host>/api/mcp
+```
+
+### Auth
+
+A static **bearer token**. Set `MCP_AUTH_TOKEN` to a long random secret in the
+deploy environment:
+
+```bash
+openssl rand -base64 32   # generate a secret
+```
+
+The endpoint is **fail-closed**: if `MCP_AUTH_TOKEN` is unset the endpoint is
+disabled and returns `401` for every request. `MCP_OWNER_EMAIL` still selects
+which user the server acts as.
+
+### Remote MCP client config
+
+Point Claude Code or Claude Desktop at the HTTP endpoint with the bearer header:
+
+```json
+{
+  "mcpServers": {
+    "roadtrip": {
+      "type": "http",
+      "url": "https://<your-host>/api/mcp",
+      "headers": { "Authorization": "Bearer <MCP_AUTH_TOKEN>" }
+    }
+  }
+}
+```
+
+### Smoke test
+
+```bash
+curl -s -XPOST https://<host>/api/mcp \
+  -H "Authorization: Bearer $MCP_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+### Auth roadmap
+
+Bearer token today. The planned upgrade is **OAuth 2.1** — RFC 9728
+protected-resource metadata plus an authorization server — so the endpoint can
+resolve a real per-user session instead of acting as one configured owner. This
+is isolated behind `authenticateMcp()` in `mcp/auth.ts`: callers (the route)
+stay unchanged when the seam swaps from bearer to OAuth.
+
 ## Required environment
 
 The server reads its environment from the spawning process (Bun auto-loads `.env`
@@ -21,10 +84,12 @@ when run directly):
 | `AUTH_SECRET`            | ≥32 chars; imported transitively via `lib/db` → session.      |
 | `GOOGLE_MAPS_SERVER_KEY` | Geocoding/Places/Routes — needed for search, geocode, routing.|
 | `MCP_OWNER_EMAIL`        | Owner the server acts as. Defaults to first `ALLOWED_EMAILS`. |
+| `MCP_AUTH_TOKEN`         | HTTP only: bearer token for `POST /api/mcp`. Unset ⇒ 401 for all. |
 
-## Registering with Claude Code
+## Registering with Claude Code (local, stdio)
 
-The repo ships a `.mcp.json` at its root, which Claude Code auto-detects when you
+For local development the stdio server is the simpler path — no auth needed. The
+repo ships a `.mcp.json` at its root, which Claude Code auto-detects when you
 open the project:
 
 ```json
