@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { ExportDay, ExportPoint } from "@/lib/export/itinerary-model";
+import { useMapsConfig } from "@/components/maps-config";
 
 /**
  * A lightweight, read-only map for a single day of a trip, used by the mobile
@@ -19,7 +20,7 @@ export function CompanionMap({
   start: ExportPoint;
   focusTarget?: { lat: number; lng: number; key: number } | null;
 }) {
-  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+  const { mapId } = useMapsConfig();
 
   // Where the day begins (previous night / trip start), then its stops and night.
   // `day` is referentially stable (the export model is memoized in the parent), so

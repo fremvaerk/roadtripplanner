@@ -9,6 +9,7 @@ import { dayDirectionsUrl, stopDirectionsUrl } from "@/lib/export/maps-links";
 import { todayDayIndex } from "@/lib/dates";
 import { formatDuration, formatKm } from "@/lib/format";
 import { CompanionMap } from "@/components/mobile/companion-map";
+import { useMapsConfig } from "@/components/maps-config";
 
 /**
  * Mobile-first, read-only trip view focused on launching turn-by-turn
@@ -24,6 +25,7 @@ export function NavCompanion({
 }) {
   const { data: trip } = useTrip(tripId);
   const { data: route } = useRoute(tripId);
+  const { apiKey } = useMapsConfig(); // runtime-provided Google Maps browser key
 
   const model = useMemo(() => (trip ? buildExportModel(trip, route) : null), [trip, route]);
 
@@ -77,7 +79,6 @@ export function NavCompanion({
     );
   }
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const day = model?.days[dayIndex] ?? null;
 
   return (

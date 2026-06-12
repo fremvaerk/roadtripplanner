@@ -17,6 +17,7 @@ import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
 import { formatNightLabel } from "@/lib/itinerary/night-label";
 import { PlacePreview } from "@/components/place-preview";
+import { useMapsConfig } from "@/components/maps-config";
 import { PlaceInfoPopup } from "@/components/place-info-popup";
 import { useMapPick } from "@/components/map-pick-context";
 import type { PlacePick } from "@/components/place-autocomplete";
@@ -74,7 +75,7 @@ export function TripMap({
   focusTarget?: { lat: number; lng: number; key: number } | null;
   canEdit?: boolean;
 }) {
-  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "DEMO_MAP_ID";
+  const { mapId } = useMapsConfig();
   const map = useMap();
   const placesLib = useMapsLibrary("places");
   const geocodingLib = useMapsLibrary("geocoding");

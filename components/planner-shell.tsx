@@ -5,6 +5,7 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
+import { useMapsConfig } from "@/components/maps-config";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const setTitle = useSetTripTitle(tripId);
   const router = useRouter();
   const archiveTrip = useArchiveTrip(tripId);
+  const { apiKey } = useMapsConfig(); // runtime-provided Google Maps browser key
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
@@ -135,7 +137,6 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   }
 
   const canEdit = (trip.role ?? role) !== "viewer";
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
   const start: MapPoint = { lat: trip.startLat, lng: trip.startLng, name: trip.startName };
   const end: MapPoint | null =
     trip.endLat != null && trip.endLng != null
@@ -636,7 +637,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
             />
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search.
+              Set GOOGLE_MAPS_BROWSER_KEY (or NEXT_PUBLIC_GOOGLE_MAPS_API_KEY for
+              local dev) to enable the map and place search.
             </div>
           )}
         </div>
