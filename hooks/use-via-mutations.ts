@@ -1,15 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addViaRequest, moveViaRequest, removeViaRequest } from "@/lib/api/trips";
 import { tripQueryKey } from "@/hooks/use-trip";
-import { routeQueryKey } from "@/hooks/use-route";
 
 function useViaMutation<TArgs>(tripId: string, fn: (a: TArgs) => Promise<void>) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: fn,
+    // The route follows the trip's signature (see useRoute) — invalidating the
+    // trip is enough; the route refetches itself when its inputs change.
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
     },
   });
 }
