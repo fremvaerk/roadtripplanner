@@ -12,16 +12,13 @@ import {
 import type { AddPoiBody } from "@/lib/itinerary/schema";
 import { applyMove } from "@/lib/itinerary/move";
 import { tripQueryKey } from "@/hooks/use-trip";
-import { routeQueryKey } from "@/hooks/use-route";
 
 export function useAddPoi(tripId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: AddPoiBody) => postPoi(tripId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
 
@@ -30,9 +27,7 @@ export function useRemovePoi(tripId: string) {
   return useMutation({
     mutationFn: (poiId: string) => deletePoi(poiId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
 
@@ -52,9 +47,7 @@ export function useMovePoi(tripId: string) {
       if (ctx?.prev) qc.setQueryData(tripQueryKey(tripId), ctx.prev);
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
 
@@ -74,9 +67,7 @@ export function useOptimizeDay(tripId: string) {
   return useMutation({
     mutationFn: (dayId: string) => optimizeDayRequest(dayId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
 
@@ -85,9 +76,7 @@ export function useBuildSplit(tripId: string) {
   return useMutation({
     mutationFn: () => buildSplitRequest(tripId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
 
@@ -96,8 +85,6 @@ export function useResplit(tripId: string) {
   return useMutation({
     mutationFn: () => resplitRequest(tripId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });
-      qc.invalidateQueries({ queryKey: routeQueryKey(tripId) });
-    },
+      qc.invalidateQueries({ queryKey: tripQueryKey(tripId) });    },
   });
 }
