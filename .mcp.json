@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "roadtrip": {
+      "command": "bun",
+      "args": ["mcp/server.ts"]
+    }
+  }
+}
