@@ -45,24 +45,28 @@ export function NavCompanion({
     setFocus({ lat, lng, key: focusKey.current });
   };
 
-  // Per-day leg labels: a stop's poi id → the drive AFTER it.
-  const labels = useMemo<Record<string, string>>(() => {
+  // Per-day leg labels: a stop's poi id → the drive AFTER it, plus the entry leg
+  // (from the previous night / trip start into the day's first stop, which has a
+  // null afterPoiId so it isn't keyed by any stop).
+  const { stopLegs, entryLeg } = useMemo<{
+    stopLegs: Record<string, string>;
+    entryLeg: string | null;
+  }>(() => {
     const out: Record<string, string> = {};
-    if (!trip || !model) return out;
+    let entry: string | null = null;
+    if (!trip || !model) return { stopLegs: out, entryLeg: null };
     const day = model.days[dayIndex];
-    if (!day) return out;
+    if (!day) return { stopLegs: out, entryLeg: null };
     const dayId = trip.days.find((td) => td.dayIndex === day.index)?.id;
-    if (!dayId) return out;
+    if (!dayId) return { stopLegs: out, entryLeg: null };
     for (const leg of route?.legs ?? []) {
-      if (
-        leg.dayId === dayId &&
-        leg.afterPoiId &&
-        (leg.durationSeconds > 0 || leg.distanceMeters > 0)
-      ) {
-        out[leg.afterPoiId] = `🚗 ${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
-      }
+      if (leg.dayId !== dayId) continue;
+      if (!(leg.durationSeconds > 0 || leg.distanceMeters > 0)) continue;
+      const label = `🚗 ${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
+      if (leg.afterPoiId) out[leg.afterPoiId] = label;
+      else if (entry === null) entry = label; // the day's first (arrival) leg
     }
-    return out;
+    return { stopLegs: out, entryLeg: entry };
   }, [trip, route, model, dayIndex]);
 
   if (!trip) {
@@ -141,12 +145,15 @@ export function NavCompanion({
           <p className="text-xs text-muted-foreground">
             Start: {day.origin?.name ?? model.start.name}
           </p>
+          {entryLeg && (
+            <p className="-mt-1 pl-1 text-xs text-muted-foreground">{entryLeg}</p>
+          )}
 
           {day.stops.map((stop, i) => (
             <StopCard
               key={stop.id ?? i}
               stop={stop}
-              legLabel={stop.id ? labels[stop.id] : undefined}
+              legLabel={stop.id ? stopLegs[stop.id] : undefined}
               onFocus={() => focusOn(stop.lat, stop.lng)}
             />
           ))}
