@@ -295,6 +295,7 @@ export function TripMap({
         const last = sorted[sorted.length - 1]?.date;
         const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
         const base = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
+        const tip = canEdit ? `${base} (drag to move where you sleep)` : base;
         return (
           <AdvancedMarker
             key={g.dayIds.join("-")}
@@ -309,9 +310,13 @@ export function TripMap({
                 for (const dayId of g.dayIds) onMoveNight(dayId, lat, lng);
               }
             }}
-            title={canEdit ? `${base} (drag to move where you sleep)` : base}
+            title={tip}
           >
+            {/* title on the inner element too: Advanced Markers with custom HTML
+                content surface the browser tooltip from the content, not the
+                marker wrapper. */}
             <div
+              title={tip}
               style={{
                 display: "flex",
                 alignItems: "center",
