@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useCreateGroup, useRenameGroup, useDeleteGroup, useMoveToGroup, useSetGroupColor } from "@/hooks/use-group-mutations";
 import { GroupColorPicker } from "@/components/group-color-picker";
 import { usePlannerRole } from "@/components/planner-role";
+import { useCollapsed } from "@/hooks/use-collapsed";
 import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 const UNGROUPED = "__ungrouped__";
@@ -28,6 +29,7 @@ export function MasterList({
   const setGroupColor = useSetGroupColor(tripId);
   const moveToGroup = useMoveToGroup(tripId);
   const { canEdit } = usePlannerRole();
+  const collapse = useCollapsed(`rtp.collapsed.groups.${tripId}`);
   const [newName, setNewName] = useState("");
 
   const inGroup = (groupId: string | null): PoiDetail[] =>
@@ -84,9 +86,20 @@ export function MasterList({
       ) : null}
 
       <DragDropProvider onDragEnd={onDragEnd}>
-        {trip.poiGroups.map((g) => (
+        {trip.poiGroups.map((g) => {
+          const groupCollapsed = collapse.isCollapsed(g.id);
+          return (
           <div key={g.id} className="mb-3">
             <div className="mb-1 flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={groupCollapsed ? `Expand group ${g.name}` : `Collapse group ${g.name}`}
+                aria-expanded={!groupCollapsed}
+                className="w-3 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => collapse.toggle(g.id)}
+              >
+                {groupCollapsed ? "▸" : "▾"}
+              </button>
               {canEdit ? (
                 <GroupColorPicker
                   color={g.color}
@@ -120,17 +133,46 @@ export function MasterList({
                   ✕
                 </button>
               ) : null}
+              {groupCollapsed ? (
+                <span className="text-xs font-normal text-muted-foreground">
+                  {inGroup(g.id).length}
+                </span>
+              ) : null}
             </div>
-            <GroupSection containerId={g.id} pois={inGroup(g.id)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
+            {!groupCollapsed ? (
+              <GroupSection containerId={g.id} pois={inGroup(g.id)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
+            ) : null}
           </div>
-        ))}
+          );
+        })}
 
-        <div className="mb-3">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Ungrouped
+        {(() => {
+          const ungroupedCollapsed = collapse.isCollapsed(UNGROUPED);
+          return (
+          <div className="mb-3">
+            <div className="mb-1 flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={ungroupedCollapsed ? "Expand ungrouped" : "Collapse ungrouped"}
+                aria-expanded={!ungroupedCollapsed}
+                className="w-3 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => collapse.toggle(UNGROUPED)}
+              >
+                {ungroupedCollapsed ? "▸" : "▾"}
+              </button>
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Ungrouped
+              </span>
+              {ungroupedCollapsed ? (
+                <span className="text-xs font-normal text-muted-foreground">{inGroup(null).length}</span>
+              ) : null}
+            </div>
+            {!ungroupedCollapsed ? (
+              <GroupSection containerId={UNGROUPED} pois={inGroup(null)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
+            ) : null}
           </div>
-          <GroupSection containerId={UNGROUPED} pois={inGroup(null)} tripId={tripId} days={trip.days} onFocusPlace={onFocusPlace} />
-        </div>
+          );
+        })()}
       </DragDropProvider>
     </div>
   );
