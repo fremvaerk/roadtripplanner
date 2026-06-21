@@ -50,6 +50,16 @@ function formatDayDate(startDate: string | null, dayIndex: number): string | nul
   const d = dayDate(startDate, dayIndex);
   return d ? DATE_FMT.format(d) : null;
 }
+// Compact (no weekday) — for night-stay spans like "11 Jul → 12 Jul".
+const DATE_FMT_SHORT = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+function formatDayDateShort(startDate: string | null, dayIndex: number): string | null {
+  const d = dayDate(startDate, dayIndex);
+  return d ? DATE_FMT_SHORT.format(d) : null;
+}
 
 export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
@@ -545,7 +555,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                           tripId={tripId}
                           dayId={day.id}
                           night={day.night}
-                          dateLabel={formatDayDate(trip.startDate, day.dayIndex)}
+                          dateLabel={formatDayDateShort(trip.startDate, day.dayIndex)}
+                          checkoutLabel={formatDayDateShort(trip.startDate, day.dayIndex + 1)}
                           onFocusPlace={focusPlace}
                         />
                       </>
@@ -633,7 +644,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               onAddVia={(afterPoiId, dayId, lat, lng) => addVia.mutate({ afterPoiId, dayId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
-              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDate(trip.startDate, d.dayIndex) }))}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDateShort(trip.startDate, d.dayIndex), checkoutDate: formatDayDateShort(trip.startDate, d.dayIndex + 1) }))}
               onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
               dayChoices={trip.days.map((d) => ({
                 id: d.id,

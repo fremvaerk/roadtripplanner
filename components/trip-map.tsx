@@ -15,7 +15,7 @@ import { categoryFromTypes } from "@/lib/places/category";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
 import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
-import { formatNightLabel } from "@/lib/itinerary/night-label";
+import { formatNightLabel, formatNightStay } from "@/lib/itinerary/night-label";
 import { PlacePreview } from "@/components/place-preview";
 import { useMapsConfig } from "@/components/maps-config";
 import { PlaceInfoPopup } from "@/components/place-info-popup";
@@ -59,7 +59,7 @@ export function TripMap({
   onAddVia?: (afterPoiId: string | null, dayId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
-  nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null }[];
+  nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null; checkoutDate?: string | null }[];
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
   dayChoices?: { id: string; label: string }[];
   onSetNight?: (dayId: string, lat: number, lng: number) => void;
@@ -172,13 +172,13 @@ export function TripMap({
     // Keyed by rounded coords. `Map` is shadowed by the vis.gl import, so use a plain object.
     const byLocation: Record<
       string,
-      { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null }[] }
+      { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null }[] }
     > = {};
     for (const n of nights ?? []) {
       const key = `${n.lat.toFixed(5)},${n.lng.toFixed(5)}`;
       const g = byLocation[key] ?? { lat: n.lat, lng: n.lng, dayIds: [], entries: [] };
       g.dayIds.push(n.dayId);
-      g.entries.push({ number: n.nightNumber, date: n.date });
+      g.entries.push({ number: n.nightNumber, date: n.date, checkoutDate: n.checkoutDate });
       byLocation[key] = g;
     }
     return Object.values(byLocation);
@@ -542,7 +542,7 @@ function RouteLegs({
   return null;
 }
 
-type NightGroup = { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null }[] };
+type NightGroup = { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null }[] };
 
 /**
  * A night marker (one stay; may cover several consecutive nights at one spot).
@@ -561,12 +561,11 @@ function NightMarker({
   const [hover, setHover] = useState(false);
   const sorted = [...group.entries].sort((a, b) => a.number - b.number);
   const label = formatNightLabel(sorted.map((e) => e.number));
-  const many = sorted.length > 1;
-  // Date hint: a single date, or first–last for a multi-night stay.
-  const first = sorted[0]?.date;
-  const last = sorted[sorted.length - 1]?.date;
-  const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
-  const tip = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
+  // Read the stay as a span: "1 night · 13 Jun → 14 Jun" / "3 nights · 13 Jun → 16 Jun".
+  // checkIn = first night's date; checkOut = the morning after the last night.
+  const checkIn = sorted[0]?.date ?? null;
+  const checkOut = sorted[sorted.length - 1]?.checkoutDate ?? null;
+  const tip = formatNightStay(sorted.map((e) => e.number), checkIn, checkOut);
 
   return (
     <AdvancedMarker
