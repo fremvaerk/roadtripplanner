@@ -59,7 +59,7 @@ export function TripMap({
   onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
-  nights?: { dayId: string; lat: number; lng: number; nightNumber: number }[];
+  nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null }[];
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
   dayChoices?: { id: string; label: string }[];
   onSetNight?: (dayId: string, lat: number, lng: number) => void;
@@ -171,13 +171,13 @@ export function TripMap({
     // Keyed by rounded coords. `Map` is shadowed by the vis.gl import, so use a plain object.
     const byLocation: Record<
       string,
-      { lat: number; lng: number; dayIds: string[]; numbers: number[] }
+      { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null }[] }
     > = {};
     for (const n of nights ?? []) {
       const key = `${n.lat.toFixed(5)},${n.lng.toFixed(5)}`;
-      const g = byLocation[key] ?? { lat: n.lat, lng: n.lng, dayIds: [], numbers: [] };
+      const g = byLocation[key] ?? { lat: n.lat, lng: n.lng, dayIds: [], entries: [] };
       g.dayIds.push(n.dayId);
-      g.numbers.push(n.nightNumber);
+      g.entries.push({ number: n.nightNumber, date: n.date });
       byLocation[key] = g;
     }
     return Object.values(byLocation);
@@ -287,8 +287,14 @@ export function TripMap({
       ))}
 
       {nightGroups.map((g) => {
-        const label = formatNightLabel(g.numbers);
-        const many = g.numbers.length > 1;
+        const sorted = [...g.entries].sort((a, b) => a.number - b.number);
+        const label = formatNightLabel(sorted.map((e) => e.number));
+        const many = sorted.length > 1;
+        // Date hint: a single date, or first–last for a multi-night stay.
+        const first = sorted[0]?.date;
+        const last = sorted[sorted.length - 1]?.date;
+        const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
+        const base = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
         return (
           <AdvancedMarker
             key={g.dayIds.join("-")}
@@ -303,7 +309,7 @@ export function TripMap({
                 for (const dayId of g.dayIds) onMoveNight(dayId, lat, lng);
               }
             }}
-            title={canEdit ? `${many ? "Nights" : "Night"} ${label} (drag to move where you sleep)` : `${many ? "Nights" : "Night"} ${label}`}
+            title={canEdit ? `${base} (drag to move where you sleep)` : base}
           >
             <div
               style={{
