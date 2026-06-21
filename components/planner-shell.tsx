@@ -525,6 +525,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                       tripId={tripId}
                       dayId={day.id}
                       night={day.night}
+                      dateLabel={formatDayDate(trip.startDate, day.dayIndex)}
                       onFocusPlace={focusPlace}
                     />
                   </div>

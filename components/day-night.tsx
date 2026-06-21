@@ -11,11 +11,14 @@ export function DayNight({
   tripId,
   dayId,
   night,
+  dateLabel,
   onFocusPlace,
 }: {
   tripId: string;
   dayId: string;
   night: DayNightData | null;
+  /** Formatted date of the day this night belongs to (shown on hover). */
+  dateLabel?: string | null;
   onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const setNight = useSetNight(tripId);
@@ -48,7 +51,7 @@ export function DayNight({
     <div className="mt-1 flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs">
       <span
         className="flex-1 cursor-pointer truncate"
-        title="Show on map"
+        title={dateLabel ? `Night of ${dateLabel} · click to show on map` : "Show on map"}
         onClick={() => onFocusPlace?.(night.lat, night.lng)}
       >
         🛏️ {night.title || "Night stop"}
