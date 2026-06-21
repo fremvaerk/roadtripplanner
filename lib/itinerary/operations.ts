@@ -398,6 +398,9 @@ export async function removeDay(prisma: PrismaClient, dayId: string) {
     const day = await tx.day.findUnique({ where: { id: dayId } });
     if (!day) throw new ItineraryError("Day not found");
     await tx.poi.updateMany({ where: { dayId }, data: { dayId: null, orderInDay: null } });
+    // Entry vias anchored to this day (dayId has no FK) become legacy vias at the
+    // trip start instead of silently orphaned, stale-dayId rows.
+    await tx.routeVia.updateMany({ where: { dayId }, data: { dayId: null } });
     await tx.day.delete({ where: { id: dayId } });
     const remaining = await tx.day.findMany({
       where: { tripId: day.tripId },
