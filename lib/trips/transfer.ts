@@ -66,6 +66,7 @@ export type TripExport = {
     notes: string | null;
   }[];
   vias: {
+    dayId: string | null;
     afterPoiId: string | null;
     lat: number;
     lng: number;
@@ -153,6 +154,7 @@ export function serializeTrip(graph: TripGraph): TripExport {
         notes: n.notes,
       })),
     vias: graph.routeVias.map((v) => ({
+      dayId: v.dayId,
       afterPoiId: v.afterPoiId,
       lat: v.lat,
       lng: v.lng,
@@ -247,6 +249,7 @@ export const tripImportSchema = z.object({
   vias: z
     .array(
       z.object({
+        dayId: nullableString,
         afterPoiId: nullableString,
         lat: z.number().finite(),
         lng: z.number().finite(),
@@ -364,6 +367,7 @@ export async function importTrip(
       await tx.routeVia.create({
         data: {
           tripId: trip.id,
+          dayId: via.dayId ? dayIdMap.get(via.dayId) ?? null : null,
           afterPoiId: via.afterPoiId ? poiIdMap.get(via.afterPoiId) ?? null : null,
           lat: via.lat,
           lng: via.lng,

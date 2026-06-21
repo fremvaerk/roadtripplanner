@@ -15,8 +15,10 @@ function useViaMutation<TArgs>(tripId: string, fn: (a: TArgs) => Promise<void>) 
 }
 
 export function useAddVia(tripId: string) {
-  return useViaMutation(tripId, (v: { afterPoiId: string | null; lat: number; lng: number }) =>
-    addViaRequest(tripId, v.afterPoiId, v.lat, v.lng),
+  return useViaMutation(
+    tripId,
+    (v: { afterPoiId: string | null; dayId: string | null; lat: number; lng: number }) =>
+      addViaRequest(tripId, v.afterPoiId, v.dayId, v.lat, v.lng),
   );
 }
 

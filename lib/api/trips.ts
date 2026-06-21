@@ -20,7 +20,7 @@ export type PoiDetail = {
 
 export type TripGroup = { id: string; name: string; orderIndex: number; color: string };
 
-export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
+export type TripVia = { id: string; dayId: string | null; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
 export type DayNight = { id: string; lat: number; lng: number; title: string | null; url: string | null; notes: string | null };
 
@@ -203,13 +203,14 @@ export async function moveToGroupRequest(
 export async function addViaRequest(
   tripId: string,
   afterPoiId: string | null,
+  dayId: string | null,
   lat: number,
   lng: number,
 ): Promise<void> {
   const res = await fetch(`/api/trips/${tripId}/vias`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ afterPoiId, lat, lng }),
+    body: JSON.stringify({ afterPoiId, dayId, lat, lng }),
   });
   if (!res.ok) throw new Error(`Failed to add via (${res.status})`);
 }

@@ -44,6 +44,8 @@ describe("serializeTrip + importTrip", () => {
     await moveToGroup(prisma, poi.id, group.id, 0);
     await setNight(prisma, day0, { lat: 0.5, lng: 0.5, title: "Hotel" });
     await addVia(prisma, trip.id, { afterPoiId: poi.id, lat: 0.2, lng: 0.2 });
+    // An entry via anchored to a day (afterPoiId null) — its dayId must remap.
+    await addVia(prisma, trip.id, { afterPoiId: null, dayId: day0, lat: 0.15, lng: 0.15 });
     // Non-default fields that must survive a round-trip.
     await prisma.trip.update({ where: { id: trip.id }, data: { isRoundTrip: true } });
     await prisma.poi.update({ where: { id: poi.id }, data: { source: "ai", status: "suggested" } });
@@ -59,7 +61,7 @@ describe("serializeTrip + importTrip", () => {
     expect(exp.pois.length).toBeGreaterThanOrEqual(1);
     expect(exp.groups.length).toBe(1);
     expect(exp.nights.length).toBe(1);
-    expect(exp.vias.length).toBe(1);
+    expect(exp.vias.length).toBe(2);
 
     // --- import as the other user
     const { id: newId } = await importTrip(prisma, exp, other.id);
@@ -78,7 +80,7 @@ describe("serializeTrip + importTrip", () => {
     expect(cloned.pois.length).toBe(exp.pois.length);
     expect(cloned.poiGroups.length).toBe(1);
     expect(cloned.days.filter((d) => d.night != null).length).toBe(1);
-    expect(cloned.routeVias.length).toBe(1);
+    expect(cloned.routeVias.length).toBe(2);
 
     // remapped cross-refs resolve within the new trip
     const clonedPoi = cloned.pois[0];
@@ -87,9 +89,13 @@ describe("serializeTrip + importTrip", () => {
     expect(clonedPoi.groupId).not.toBeNull();
     expect(cloned.poiGroups.some((g) => g.id === clonedPoi.groupId)).toBe(true);
 
-    const clonedVia = cloned.routeVias[0];
-    expect(clonedVia.afterPoiId).not.toBeNull();
-    expect(cloned.pois.some((p) => p.id === clonedVia.afterPoiId)).toBe(true);
+    // the poi-anchored via remaps its afterPoiId to a poi in the new trip
+    const poiVia = cloned.routeVias.find((v) => v.afterPoiId != null)!;
+    expect(cloned.pois.some((p) => p.id === poiVia.afterPoiId)).toBe(true);
+    // the entry via remaps its dayId to a day in the new trip
+    const entryVia = cloned.routeVias.find((v) => v.dayId != null && v.afterPoiId == null)!;
+    expect(entryVia).toBeDefined();
+    expect(cloned.days.some((d) => d.id === entryVia.dayId)).toBe(true);
 
     // no id overlaps with the original (ids regenerated)
     const originalGraph = (await loadTripGraph(prisma, trip.id))!;

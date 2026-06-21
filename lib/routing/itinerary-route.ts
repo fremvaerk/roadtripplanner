@@ -29,7 +29,7 @@ export function attributeLegDurations(
   return { perDaySeconds, perDayMeters, totalSeconds, totalMeters };
 }
 
-export type TripVia = { id: string; afterPoiId: string | null; lat: number; lng: number; seq: number };
+export type TripVia = { id: string; dayId: string | null; afterPoiId: string | null; lat: number; lng: number; seq: number };
 
 export type DayRouteSegment = {
   waypoints: RouteWaypoint[];
@@ -81,25 +81,49 @@ export function buildDayRouteRequests(trip: TripDetail, vias: TripVia[]): DayRou
         : null;
 
   const scheduled = new Set(trip.pois.filter((p) => p.dayId !== null).map((p) => p.id));
-  const byAnchor = new Map<string | null, TripVia[]>();
+  // Vias anchored after a real (scheduled) stop — keyed by that poi id.
+  const byPoi = new Map<string, TripVia[]>();
+  // "Entry" vias (afterPoiId === null): they sit at the START of a day's leg,
+  // right after the night/start that begins the day — keyed by the via's dayId.
+  const byDayEntry = new Map<string, TripVia[]>();
+  // Legacy vias from before vias had a dayId (null afterPoiId AND null dayId):
+  // preserve the old behaviour — attach to the trip start (day 1's entry).
+  const legacyEntry: TripVia[] = [];
   for (const v of vias) {
-    if (v.afterPoiId !== null && !scheduled.has(v.afterPoiId)) continue;
-    const list = byAnchor.get(v.afterPoiId) ?? [];
-    list.push(v);
-    byAnchor.set(v.afterPoiId, list);
+    if (v.afterPoiId !== null) {
+      if (!scheduled.has(v.afterPoiId)) continue;
+      const list = byPoi.get(v.afterPoiId) ?? [];
+      list.push(v);
+      byPoi.set(v.afterPoiId, list);
+    } else if (v.dayId !== null) {
+      const list = byDayEntry.get(v.dayId) ?? [];
+      list.push(v);
+      byDayEntry.set(v.dayId, list);
+    } else {
+      legacyEntry.push(v);
+    }
   }
-  for (const list of byAnchor.values()) list.sort((p, q) => p.seq - q.seq);
-  const viaWps = (anchor: string | null): RouteWaypoint[] =>
-    (byAnchor.get(anchor) ?? []).map((v) => ({ lat: v.lat, lng: v.lng, via: true }));
+  const toWps = (list: TripVia[] | undefined): RouteWaypoint[] =>
+    (list ?? []).slice().sort((p, q) => p.seq - q.seq).map((v) => ({ lat: v.lat, lng: v.lng, via: true }));
+  const poiViaWps = (poiId: string): RouteWaypoint[] => toWps(byPoi.get(poiId));
+  const entryViaWps = (dayId: string): RouteWaypoint[] => toWps(byDayEntry.get(dayId));
 
   const nodes: SegNode[] = [];
-  nodes.push({ wp: start, dayId: null, poiId: null, isNight: false, trailingVias: viaWps(null) });
+  // Start node carries the legacy day-1 entry vias; the loop appends day 1's own.
+  nodes.push({ wp: start, dayId: null, poiId: null, isNight: false, trailingVias: toWps(legacyEntry) });
+  let prevBoundary = 0; // node that precedes the current day's first stop
   for (const day of daysOrdered) {
-    for (const s of stopsByDay.get(day.id) ?? []) {
-      nodes.push({ wp: { lat: s.lat, lng: s.lng }, dayId: day.id, poiId: s.id, isNight: false, trailingVias: viaWps(s.id) });
+    const stops = stopsByDay.get(day.id) ?? [];
+    // This day's entry vias attach to the node just before its first stop.
+    nodes[prevBoundary].trailingVias.push(...entryViaWps(day.id));
+    for (const s of stops) {
+      nodes.push({ wp: { lat: s.lat, lng: s.lng }, dayId: day.id, poiId: s.id, isNight: false, trailingVias: poiViaWps(s.id) });
     }
     if (day.night) {
       nodes.push({ wp: { lat: day.night.lat, lng: day.night.lng }, dayId: day.id, poiId: null, isNight: true, trailingVias: [] });
+      prevBoundary = nodes.length - 1; // the night begins the next day's leg
+    } else if (stops.length) {
+      prevBoundary = nodes.length - 1; // no night: next day's entry follows this last stop
     }
   }
   if (terminator) nodes.push({ wp: terminator, dayId: null, poiId: null, isNight: false, trailingVias: [] });

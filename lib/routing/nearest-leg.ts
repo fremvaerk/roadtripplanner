@@ -1,5 +1,5 @@
 export type LatLng = { lat: number; lng: number };
-export type LegPath = { afterPoiId: string | null; coords: LatLng[] };
+export type LegPath = { afterPoiId: string | null; dayId: string | null; coords: LatLng[] };
 
 const R = 6_371_000; // earth radius (m)
 const toRad = (d: number) => (d * Math.PI) / 180;

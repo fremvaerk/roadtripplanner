@@ -57,6 +57,7 @@ export const updateDaySchema = z.object({
 
 export const addViaSchema = z.object({
   afterPoiId: z.string().nullable(),
+  dayId: z.string().nullable().optional(),
   lat: z.number(),
   lng: z.number(),
 });
