@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
-import { useUpdateNight } from "@/hooks/use-night-mutations";
+import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { useMapPick } from "@/components/map-pick-context";
+import { useTrip } from "@/hooks/use-trip";
+import { followingDayIds, followingDayCount } from "@/lib/itinerary/night-repeat";
 import type { DayNight } from "@/lib/api/trips";
 
 export function NightEditor({
@@ -22,6 +24,10 @@ export function NightEditor({
   onClose: () => void;
 }) {
   const updateNight = useUpdateNight(tripId);
+  const setNight = useSetNight(tripId);
+  const { data: trip } = useTrip(tripId);
+  const days = trip?.days ?? [];
+  const maxRepeat = followingDayCount(days, dayId);
   const mapPick = useMapPick();
   const pickId = `night-move:${dayId}`;
   const picking = mapPick?.armedId === pickId;
@@ -37,6 +43,10 @@ export function NightEditor({
   const [locLabel, setLocLabel] = useState(
     night.title ?? `${night.lat.toFixed(4)}, ${night.lng.toFixed(4)}`,
   );
+  // "Repeat this night for the next N days" — applies the same location/details
+  // to consecutive days, which collapse into one multi-night marker on the map.
+  const [repeat, setRepeat] = useState(0);
+  const clampedRepeat = Math.max(0, Math.min(repeat, maxRepeat));
 
   // Escape closes the popup — but NOT while picking (then Escape is the map-pick
   // context's cancel, which clears `armedId` and un-hides this popup).
@@ -57,18 +67,21 @@ export function NightEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function save() {
-    updateNight.mutate(
-      {
-        dayId,
-        title: title.trim() || null,
-        url: url.trim() || null,
-        notes: notes.trim() || null,
-        lat,
-        lng,
-      },
-      { onSuccess: () => onClose() },
-    );
+  async function save() {
+    const payload = {
+      title: title.trim() || null,
+      url: url.trim() || null,
+      notes: notes.trim() || null,
+      lat,
+      lng,
+    };
+    await updateNight.mutateAsync({ dayId, ...payload });
+    if (clampedRepeat > 0) {
+      // Upsert the same night onto the next N days so they group into one stay.
+      const targets = followingDayIds(days, dayId, clampedRepeat);
+      await Promise.all(targets.map((id) => setNight.mutateAsync({ dayId: id, ...payload })));
+    }
+    onClose();
   }
 
   const link = url.trim();
@@ -137,10 +150,33 @@ export function NightEditor({
                 }}
               />
             </div>
+            {maxRepeat > 0 ? (
+              <div>
+                <Label htmlFor={`${uid}-repeat`} className="text-xs">
+                  Repeat for the next nights
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={`${uid}-repeat`}
+                    type="number"
+                    min={0}
+                    max={maxRepeat}
+                    value={clampedRepeat}
+                    onChange={(e) => setRepeat(Number(e.target.value) || 0)}
+                    className="h-8 w-16 text-sm"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {clampedRepeat > 0
+                      ? `also sets the next ${clampedRepeat} night${clampedRepeat > 1 ? "s" : ""} to this place`
+                      : `up to ${maxRepeat} more (same hotel for several nights)`}
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="mt-3 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={save} disabled={updateNight.isPending}>Save</Button>
+            <Button size="sm" onClick={save} disabled={updateNight.isPending || setNight.isPending}>Save</Button>
           </div>
         </div>
       </div>
