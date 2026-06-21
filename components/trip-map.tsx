@@ -565,8 +565,7 @@ function NightMarker({
   const first = sorted[0]?.date;
   const last = sorted[sorted.length - 1]?.date;
   const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
-  const base = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
-  const tip = canEdit ? `${base} (drag to move where you sleep)` : base;
+  const tip = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
 
   return (
     <AdvancedMarker
