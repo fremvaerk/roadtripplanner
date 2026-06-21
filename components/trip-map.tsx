@@ -286,61 +286,9 @@ export function TripMap({
         </AdvancedMarker>
       ))}
 
-      {nightGroups.map((g) => {
-        const sorted = [...g.entries].sort((a, b) => a.number - b.number);
-        const label = formatNightLabel(sorted.map((e) => e.number));
-        const many = sorted.length > 1;
-        // Date hint: a single date, or first–last for a multi-night stay.
-        const first = sorted[0]?.date;
-        const last = sorted[sorted.length - 1]?.date;
-        const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
-        const base = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
-        const tip = canEdit ? `${base} (drag to move where you sleep)` : base;
-        return (
-          <AdvancedMarker
-            key={g.dayIds.join("-")}
-            position={{ lat: g.lat, lng: g.lng }}
-            draggable={canEdit}
-            onDragEnd={(e) => {
-              if (!canEdit) return;
-              const lat = e.latLng?.lat();
-              const lng = e.latLng?.lng();
-              if (lat != null && lng != null && onMoveNight) {
-                // Drag moves every night sharing this spot together.
-                for (const dayId of g.dayIds) onMoveNight(dayId, lat, lng);
-              }
-            }}
-            title={tip}
-          >
-            {/* title on the inner element too: Advanced Markers with custom HTML
-                content surface the browser tooltip from the content, not the
-                marker wrapper. */}
-            <div
-              title={tip}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: 22,
-                height: 22,
-                padding: "0 6px",
-                borderRadius: 9999,
-                background: "#4f46e5",
-                color: "#fff",
-                fontSize: 12,
-                fontWeight: 700,
-                lineHeight: "22px",
-                border: "2px solid #fff",
-                boxShadow: "0 1px 3px rgba(0,0,0,.45)",
-                cursor: canEdit ? "grab" : "default",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {label}
-            </div>
-          </AdvancedMarker>
-        );
-      })}
+      {nightGroups.map((g) => (
+        <NightMarker key={g.dayIds.join("-")} group={g} canEdit={canEdit} onMoveNight={onMoveNight} />
+      ))}
 
       {preview && (
         <InfoWindow position={preview.position} onCloseClick={() => onPreviewClose?.()}>
@@ -591,6 +539,102 @@ function RouteLegs({
   }, [map, geometry, legs, dayColors]);
 
   return null;
+}
+
+type NightGroup = { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null }[] };
+
+/**
+ * A night marker (one stay; may cover several consecutive nights at one spot).
+ * Uses a custom hover tooltip rather than the native `title` — Advanced Markers
+ * don't reliably surface a browser tooltip from their custom HTML content.
+ */
+function NightMarker({
+  group,
+  canEdit,
+  onMoveNight,
+}: {
+  group: NightGroup;
+  canEdit: boolean;
+  onMoveNight?: (dayId: string, lat: number, lng: number) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const sorted = [...group.entries].sort((a, b) => a.number - b.number);
+  const label = formatNightLabel(sorted.map((e) => e.number));
+  const many = sorted.length > 1;
+  // Date hint: a single date, or first–last for a multi-night stay.
+  const first = sorted[0]?.date;
+  const last = sorted[sorted.length - 1]?.date;
+  const dateStr = first ? (many && last && last !== first ? `${first} – ${last}` : first) : null;
+  const base = `${many ? "Nights" : "Night"} ${label}${dateStr ? ` · ${dateStr}` : ""}`;
+  const tip = canEdit ? `${base} (drag to move where you sleep)` : base;
+
+  return (
+    <AdvancedMarker
+      position={{ lat: group.lat, lng: group.lng }}
+      draggable={canEdit}
+      onDragEnd={(e) => {
+        if (!canEdit) return;
+        const lat = e.latLng?.lat();
+        const lng = e.latLng?.lng();
+        if (lat != null && lng != null && onMoveNight) {
+          // Drag moves every night sharing this spot together.
+          for (const dayId of group.dayIds) onMoveNight(dayId, lat, lng);
+        }
+      }}
+    >
+      <div
+        style={{ position: "relative", display: "flex" }}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
+        {hover && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 6px)",
+              left: "50%",
+              transform: "translateX(-50%)",
+              padding: "4px 8px",
+              borderRadius: 6,
+              background: "rgba(17,24,39,.95)",
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 500,
+              lineHeight: 1.3,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              boxShadow: "0 2px 8px rgba(0,0,0,.35)",
+              zIndex: 1000,
+            }}
+          >
+            {tip}
+          </div>
+        )}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: 22,
+            height: 22,
+            padding: "0 6px",
+            borderRadius: 9999,
+            background: "#4f46e5",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: "22px",
+            border: "2px solid #fff",
+            boxShadow: "0 1px 3px rgba(0,0,0,.45)",
+            cursor: canEdit ? "grab" : "default",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </div>
+      </div>
+    </AdvancedMarker>
+  );
 }
 
 function FitBounds({ points }: { points: MapPoint[] }) {
