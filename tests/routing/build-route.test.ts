@@ -58,13 +58,51 @@ describe("buildDayRouteRequests", () => {
       ],
       pois: [poi("a", "d1", 0, 0, 2)],
     });
-    const vias: TripVia[] = [{ id: "v1", afterPoiId: "a", lat: 0, lng: 3, seq: 0 }];
+    const vias: TripVia[] = [{ id: "v1", dayId: "d1", afterPoiId: "a", lat: 0, lng: 3, seq: 0 }];
     const segs = buildDayRouteRequests(t, vias);
     expect(segs[0].waypoints.map((w) => [w.lng, !!w.via])).toEqual([
       [0, false], [2, false], [3, true], [5, false],
     ]);
     expect(segs[0].legDayId).toEqual(["d1", "d1"]);
     expect(segs[0].legAfterPoiId).toEqual([null, "a"]);
+  });
+
+  test("an entry via (afterPoiId null) lands on its day's leg, not day 1", () => {
+    const t = trip({
+      endLat: 0, endLng: 10,
+      days: [
+        { id: "d1", dayIndex: 0, color: null, pois: [], night: night("n1", 0, 5) },
+        { id: "d2", dayIndex: 1, color: null, pois: [], night: null },
+      ],
+      pois: [poi("a", "d1", 0, 0, 2), poi("b", "d2", 0, 0, 7)],
+    });
+    const vias: TripVia[] = [{ id: "v2", dayId: "d2", afterPoiId: null, lat: 0, lng: 6, seq: 0 }];
+    const segs = buildDayRouteRequests(t, vias);
+    // seg 0 (day 1) is unchanged: start, a, night.
+    expect(segs[0].waypoints.map((w) => [w.lng, !!w.via])).toEqual([
+      [0, false], [2, false], [5, false],
+    ]);
+    // seg 1 (day 2): the via sits between the night and d2's first stop.
+    expect(segs[1].waypoints.map((w) => [w.lng, !!w.via])).toEqual([
+      [5, false], [6, true], [7, false], [10, false],
+    ]);
+    expect(segs[1].legDayId).toEqual(["d2", "d2"]);
+  });
+
+  test("a legacy entry via (null dayId, null afterPoiId) still attaches at the start", () => {
+    const t = trip({
+      endLat: 0, endLng: 10,
+      days: [
+        { id: "d1", dayIndex: 0, color: null, pois: [], night: night("n1", 0, 5) },
+        { id: "d2", dayIndex: 1, color: null, pois: [], night: null },
+      ],
+      pois: [poi("a", "d1", 0, 0, 2), poi("b", "d2", 0, 0, 7)],
+    });
+    const vias: TripVia[] = [{ id: "v0", dayId: null, afterPoiId: null, lat: 0, lng: 1, seq: 0 }];
+    const segs = buildDayRouteRequests(t, vias);
+    expect(segs[0].waypoints.map((w) => [w.lng, !!w.via])).toEqual([
+      [0, false], [1, true], [2, false], [5, false],
+    ]);
   });
 
   test("round trip terminates back at the start", () => {

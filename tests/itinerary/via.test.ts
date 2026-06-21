@@ -64,6 +64,33 @@ describe("via operations", () => {
     expect(v2.seq).toBe(2); // max(seq)+1, not count (which would collide at 1)
   });
 
+  test("addVia persists dayId and validates the day belongs to the trip", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const v = await addVia(prisma, trip.id, { afterPoiId: null, dayId: trip.days[0].id, lat: 0.4, lng: 0.4 });
+    expect(v.dayId).toBe(trip.days[0].id);
+    expect(v.afterPoiId).toBeNull();
+  });
+
+  test("addVia rejects a dayId from a different trip", async () => {
+    const tripA = await createTrip(prisma, sampleTrip());
+    const tripB = await createTrip(prisma, sampleTrip());
+    await expect(
+      addVia(prisma, tripA.id, { afterPoiId: null, dayId: tripB.days[0].id, lat: 0.3, lng: 0.3 }),
+    ).rejects.toBeInstanceOf(ItineraryError);
+  });
+
+  test("seq is scoped per (afterPoiId, dayId) anchor", async () => {
+    const trip = await createTrip(prisma, sampleTrip());
+    const d0 = trip.days[0].id;
+    // entry vias on the same day increment; a different anchor restarts at 0.
+    const a0 = await addVia(prisma, trip.id, { afterPoiId: null, dayId: d0, lat: 0.1, lng: 0.1 });
+    const a1 = await addVia(prisma, trip.id, { afterPoiId: null, dayId: d0, lat: 0.2, lng: 0.2 });
+    const b0 = await addVia(prisma, trip.id, { afterPoiId: null, dayId: null, lat: 0.3, lng: 0.3 });
+    expect(a0.seq).toBe(0);
+    expect(a1.seq).toBe(1);
+    expect(b0.seq).toBe(0); // distinct anchor (no dayId) → independent sequence
+  });
+
   test("moveVia updates coordinates", async () => {
     const trip = await createTrip(prisma, sampleTrip());
     const v = await addVia(prisma, trip.id, { afterPoiId: null, lat: 0.5, lng: 0.5 });

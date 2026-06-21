@@ -56,7 +56,7 @@ export function TripMap({
   onAddPlace?: (input: AddPoiInput) => void;
   legs?: RouteLegResult[];
   vias?: TripVia[];
-  onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
+  onAddVia?: (afterPoiId: string | null, dayId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
   nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null }[];
@@ -132,6 +132,7 @@ export function TripMap({
       .filter((l) => l.encodedPolyline)
       .map((l) => ({
         afterPoiId: l.afterPoiId,
+        dayId: l.dayId,
         coords: geometryLib.encoding
           .decodePath(l.encodedPolyline as string)
           .map((p) => ({ lat: p.lat(), lng: p.lng() })),
@@ -364,7 +365,7 @@ export function TripMap({
               className="block w-full px-3 py-1.5 text-left hover:bg-accent"
               onClick={() => {
                 const leg = nearestLeg(legPaths, { lat: menu.lat, lng: menu.lng });
-                if (leg && onAddVia) onAddVia(leg.afterPoiId, menu.lat, menu.lng);
+                if (leg && onAddVia) onAddVia(leg.afterPoiId, leg.dayId, menu.lat, menu.lng);
                 setMenu(null);
               }}
             >
@@ -502,7 +503,7 @@ function RouteLegs({
 }: {
   legs: RouteLegResult[];
   dayColors?: Record<string, string>;
-  onAddVia?: (afterPoiId: string | null, lat: number, lng: number) => void;
+  onAddVia?: (afterPoiId: string | null, dayId: string | null, lat: number, lng: number) => void;
 }) {
   const map = useMap();
   const geometry = useMapsLibrary("geometry");
@@ -528,7 +529,7 @@ function RouteLegs({
         });
         line.addListener("click", (e: google.maps.PolyMouseEvent) => {
           if (!e.latLng || !onAddViaRef.current) return;
-          onAddViaRef.current(leg.afterPoiId, e.latLng.lat(), e.latLng.lng());
+          onAddViaRef.current(leg.afterPoiId, leg.dayId, e.latLng.lat(), e.latLng.lng());
         });
         line.setMap(map);
         lines.push(line);

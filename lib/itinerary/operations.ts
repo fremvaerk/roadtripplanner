@@ -293,21 +293,27 @@ export async function moveToGroup(
 export async function addVia(
   prisma: PrismaClient,
   tripId: string,
-  input: { afterPoiId: string | null; lat: number; lng: number },
+  input: { afterPoiId: string | null; dayId?: string | null; lat: number; lng: number },
 ) {
   if (input.afterPoiId) {
     const stop = await prisma.poi.findFirst({ where: { id: input.afterPoiId, tripId } });
     if (!stop) throw new ItineraryError("Anchor stop does not belong to this trip");
   }
+  const dayId = input.dayId ?? null;
+  if (dayId) {
+    const day = await prisma.day.findFirst({ where: { id: dayId, tripId } });
+    if (!day) throw new ItineraryError("Anchor day does not belong to this trip");
+  }
   // max(seq)+1 (not count) so seq stays gap-safe/unique after a delete-then-add.
+  // Scope per anchor (poi, or day-entry) so each leg's vias order independently.
   const last = await prisma.routeVia.findFirst({
-    where: { tripId, afterPoiId: input.afterPoiId ?? null },
+    where: { tripId, afterPoiId: input.afterPoiId ?? null, dayId },
     orderBy: { seq: "desc" },
     select: { seq: true },
   });
   const seq = last ? last.seq + 1 : 0;
   return prisma.routeVia.create({
-    data: { tripId, afterPoiId: input.afterPoiId ?? null, lat: input.lat, lng: input.lng, seq },
+    data: { tripId, afterPoiId: input.afterPoiId ?? null, dayId, lat: input.lat, lng: input.lng, seq },
   });
 }
 
@@ -392,6 +398,9 @@ export async function removeDay(prisma: PrismaClient, dayId: string) {
     const day = await tx.day.findUnique({ where: { id: dayId } });
     if (!day) throw new ItineraryError("Day not found");
     await tx.poi.updateMany({ where: { dayId }, data: { dayId: null, orderInDay: null } });
+    // Entry vias anchored to this day (dayId has no FK) become legacy vias at the
+    // trip start instead of silently orphaned, stale-dayId rows.
+    await tx.routeVia.updateMany({ where: { dayId }, data: { dayId: null } });
     await tx.day.delete({ where: { id: dayId } });
     const remaining = await tx.day.findMany({
       where: { tripId: day.tripId },
