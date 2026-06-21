@@ -5,6 +5,7 @@ import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { NightEditor } from "@/components/night-editor";
 import { useSetNight, useClearNight } from "@/hooks/use-night-mutations";
 import { usePlannerRole } from "@/components/planner-role";
+import { formatNightStay } from "@/lib/itinerary/night-label";
 import type { DayNight as DayNightData } from "@/lib/api/trips";
 
 export function DayNight({
@@ -12,13 +13,16 @@ export function DayNight({
   dayId,
   night,
   dateLabel,
+  checkoutLabel,
   onFocusPlace,
 }: {
   tripId: string;
   dayId: string;
   night: DayNightData | null;
-  /** Formatted date of the day this night belongs to (shown on hover). */
+  /** Formatted date of the day this night belongs to (check-in). */
   dateLabel?: string | null;
+  /** Formatted date of the morning after (check-out). */
+  checkoutLabel?: string | null;
   onFocusPlace?: (lat: number, lng: number) => void;
 }) {
   const setNight = useSetNight(tripId);
@@ -47,14 +51,17 @@ export function DayNight({
     );
   }
 
+  // One night, read as a span: "1 night · 13 Jun → 14 Jun".
+  const stay = formatNightStay([0], dateLabel ?? null, checkoutLabel ?? null);
   return (
     <div className="mt-1 flex items-center gap-2 rounded-md border bg-muted/30 px-2 py-1.5 text-xs">
       <span
-        className="flex-1 cursor-pointer truncate"
-        title={dateLabel ? `Night of ${dateLabel} · click to show on map` : "Show on map"}
+        className="flex min-w-0 flex-1 cursor-pointer flex-col text-left"
+        title={`${stay} · click to show on map`}
         onClick={() => onFocusPlace?.(night.lat, night.lng)}
       >
-        🛏️ {night.title || "Night stop"}
+        <span className="truncate">🛏️ {night.title || "Night stop"}</span>
+        <span className="truncate text-[11px] text-muted-foreground">{stay}</span>
       </span>
       {canEdit ? (
         <button
