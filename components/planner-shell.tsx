@@ -7,6 +7,7 @@ import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
+import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ import { PlannerRoleProvider } from "@/components/planner-role";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceEditor } from "@/components/place-editor";
 import { ShareDialog } from "@/components/share-dialog";
-import { deleteTripRequest } from "@/lib/api/trips";
+import { deleteTripRequest, type TripVia } from "@/lib/api/trips";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { formatDuration, formatKm } from "@/lib/format";
@@ -86,6 +87,10 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const archiveTrip = useArchiveTrip(tripId);
   const { apiKey } = useMapsConfig(); // runtime-provided Google Maps browser key
   const dayCollapse = useCollapsed(`rtp.collapsed.days.${tripId}`);
+  const viaGroups = useMemo(
+    () => (trip ? viasByDay(trip) : new Map<string, TripVia[]>()),
+    [trip],
+  );
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
@@ -551,6 +556,38 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                     {!dayCollapsed ? (
                       <>
                         <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} entryLegLabel={entryLegLabel} onFocusPlace={focusPlace} />
+                        {(() => {
+                          const dayVias = viaGroups.get(day.id) ?? [];
+                          if (dayVias.length === 0) return null;
+                          return (
+                            <div className="mt-1 space-y-0.5">
+                              {dayVias.map((v, vi) => (
+                                <div key={v.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <button
+                                    type="button"
+                                    className="flex min-w-0 flex-1 items-center gap-1 truncate text-left hover:text-foreground"
+                                    title="Route control point · click to show on map"
+                                    onClick={() => focusPlace(v.lat, v.lng)}
+                                  >
+                                    <span className="text-amber-500">◆</span>
+                                    Control point{dayVias.length > 1 ? ` ${vi + 1}` : ""}
+                                  </button>
+                                  {canEdit ? (
+                                    <button
+                                      type="button"
+                                      aria-label="Remove control point"
+                                      className="shrink-0 hover:text-red-600 disabled:opacity-50"
+                                      disabled={removeVia.isPending}
+                                      onClick={() => removeVia.mutate(v.id)}
+                                    >
+                                      ✕
+                                    </button>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         <DayNight
                           tripId={tripId}
                           dayId={day.id}
