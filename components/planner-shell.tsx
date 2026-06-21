@@ -6,6 +6,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
+import { useCollapsed } from "@/hooks/use-collapsed";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const router = useRouter();
   const archiveTrip = useArchiveTrip(tripId);
   const { apiKey } = useMapsConfig(); // runtime-provided Google Maps browser key
+  const dayCollapse = useCollapsed(`rtp.collapsed.days.${tripId}`);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
@@ -447,9 +449,19 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                   });
                   return (
                   <Fragment key={day.id}>
+                  {(() => { const dayCollapsed = dayCollapse.isCollapsed(day.id); return (
                   <div className="rounded-md border p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2 text-sm font-medium">
+                    <div className={`flex items-center justify-between gap-2 text-sm font-medium ${dayCollapsed ? "" : "mb-2"}`}>
                       <span className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          aria-label={dayCollapsed ? `Expand day ${day.dayIndex + 1}` : `Collapse day ${day.dayIndex + 1}`}
+                          aria-expanded={!dayCollapsed}
+                          className="w-3 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => dayCollapse.toggle(day.id)}
+                        >
+                          {dayCollapsed ? "▸" : "▾"}
+                        </button>
                         {canEdit && (
                           <GroupColorPicker
                             color={day.color ?? defaultDayColor(day.dayIndex)}
@@ -462,6 +474,12 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                           {formatDayDate(trip.startDate, day.dayIndex) ? (
                             <span className="ml-1 font-normal text-muted-foreground">
                               · {formatDayDate(trip.startDate, day.dayIndex)}
+                            </span>
+                          ) : null}
+                          {dayCollapsed ? (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              · {byDay(day.id).length} place{byDay(day.id).length === 1 ? "" : "s"}
+                              {day.night ? " · 🛏" : ""}
                             </span>
                           ) : null}
                         </span>
@@ -520,15 +538,20 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                         )}
                       </span>
                     </div>
-                    <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} entryLegLabel={entryLegLabel} onFocusPlace={focusPlace} />
-                    <DayNight
-                      tripId={tripId}
-                      dayId={day.id}
-                      night={day.night}
-                      dateLabel={formatDayDate(trip.startDate, day.dayIndex)}
-                      onFocusPlace={focusPlace}
-                    />
+                    {!dayCollapsed ? (
+                      <>
+                        <PoiContainer id={day.id} pois={byDay(day.id)} tripId={tripId} emptyText="Assign places from the list above." legLabelByAfterPoi={legLabelByAfterPoi} entryLegLabel={entryLegLabel} onFocusPlace={focusPlace} />
+                        <DayNight
+                          tripId={tripId}
+                          dayId={day.id}
+                          night={day.night}
+                          dateLabel={formatDayDate(trip.startDate, day.dayIndex)}
+                          onFocusPlace={focusPlace}
+                        />
+                      </>
+                    ) : null}
                   </div>
+                  ); })()}
                   {canEdit && i < trip.days.length - 1 ? (
                     <div className="flex items-center gap-2 px-2">
                       <span className="h-px flex-1 bg-border" />
