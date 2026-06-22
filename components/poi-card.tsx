@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { Button } from "@/components/ui/button";
 import { PlaceEditor } from "@/components/place-editor";
 import { useMovePoi } from "@/hooks/use-poi-mutations";
 import { usePlannerRole } from "@/components/planner-role";
@@ -40,12 +39,12 @@ export function PoiCard({
 
   return (
     <li ref={ref} className={isDragging ? "opacity-50" : ""}>
-      <div className="flex items-start gap-3 rounded-md border bg-background p-2 text-sm">
+      <div className="group/card flex items-start gap-2.5 rounded-lg border bg-card p-2 text-sm shadow-xs transition-colors hover:border-foreground/15">
         {canEdit ? (
           <span
             ref={handleRef}
             aria-label="Drag to reorder"
-            className="mt-1 cursor-grab select-none px-1 text-muted-foreground"
+            className="mt-0.5 cursor-grab select-none text-base leading-none text-muted-foreground/50 transition-colors hover:text-muted-foreground"
           >
             ⠿
           </span>
@@ -57,13 +56,13 @@ export function PoiCard({
             alt=""
             onError={() => setBrokenUrl(poi.imageUrl)}
             onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
-            className="h-28 w-28 shrink-0 cursor-pointer rounded object-cover"
+            className="h-16 w-16 shrink-0 cursor-pointer rounded-md object-cover"
           />
         ) : (
           <div
             aria-hidden="true"
             onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
-            className="flex h-28 w-28 shrink-0 cursor-pointer items-center justify-center rounded bg-muted text-2xl text-muted-foreground"
+            className="flex h-16 w-16 shrink-0 cursor-pointer items-center justify-center rounded-md bg-muted text-lg text-muted-foreground"
           >
             📍
           </div>
@@ -73,38 +72,38 @@ export function PoiCard({
           title="Show on map"
           onClick={() => onFocusPlace?.(poi.lat, poi.lng)}
         >
-          <p className="truncate font-medium">{poi.name}</p>
+          <p className="line-clamp-2 font-medium leading-snug">{poi.name}</p>
           {poi.category ? (
             <p className="truncate text-xs text-muted-foreground">
               {poi.category}
             </p>
           ) : null}
           {poi.description ? (
-            <p className="line-clamp-2 text-xs text-muted-foreground">
+            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
               {poi.description}
             </p>
           ) : null}
         </div>
         {canEdit ? (
-          <div className="flex shrink-0 items-start">
+          <div className="-mr-0.5 flex shrink-0 items-start text-muted-foreground opacity-60 transition-opacity group-hover/card:opacity-100">
             <button
               type="button"
               aria-label={`Edit ${poi.name}`}
-              className="px-1 text-muted-foreground hover:text-foreground"
+              className="rounded p-1 hover:bg-accent hover:text-foreground"
               onClick={() => setEditing(true)}
             >
               ✎
             </button>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
               aria-label={`Remove ${poi.name} from this day`}
+              className="rounded p-1 hover:bg-accent hover:text-red-600"
               onClick={() =>
                 movePoi.mutate({ poiId: poi.id, dayId: null, orderInDay: 0 })
               }
             >
               ✕
-            </Button>
+            </button>
           </div>
         ) : null}
         {editing ? (

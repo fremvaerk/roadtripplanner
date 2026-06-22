@@ -152,10 +152,10 @@ function TripRow({
     <li className={`relative ${archived ? "opacity-60" : ""}`}>
       <Link
         href={`/trips/${trip.id}`}
-        className="block rounded-md border p-4 pr-12 hover:bg-accent"
+        className="block rounded-lg border bg-card p-4 pr-12 shadow-xs transition-all hover:border-foreground/20 hover:shadow-md"
       >
-        <div className="font-medium">{trip.title}</div>
-        <div className="text-sm text-muted-foreground">{subtitle(trip)}</div>
+        <div className="font-medium tracking-tight">{trip.title}</div>
+        <div className="mt-0.5 text-sm text-muted-foreground">{subtitle(trip)}</div>
       </Link>
       <div className="absolute right-2 top-2">
         <button

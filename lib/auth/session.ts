@@ -39,6 +39,34 @@ export async function readSessionToken(token: string): Promise<Session | null> {
 
 /** Read the current request's session cookie (server components / route handlers). */
 export async function getSession(): Promise<Session | null> {
+  const bypass = await devBypassSession();
+  if (bypass) return bypass;
   const token = (await cookies()).get("session")?.value;
   return token ? readSessionToken(token) : null;
+}
+
+/**
+ * DEV-ONLY auth bypass for local work (design/QA without the Google flow).
+ *
+ * HARD-GATED so it can never affect production:
+ *   - inert unless NODE_ENV !== "production" (the Docker image runs production), AND
+ *   - off unless DEV_AUTH_BYPASS === "1" is explicitly set in the local env.
+ * When on, it signs in as DEV_AUTH_EMAIL (default: first ALLOWED_EMAILS entry),
+ * but only if that user already exists. Never enable these vars in a deployed env.
+ */
+async function devBypassSession(): Promise<Session | null> {
+  if (process.env.NODE_ENV === "production" || process.env.DEV_AUTH_BYPASS !== "1") {
+    return null;
+  }
+  const email = (process.env.DEV_AUTH_EMAIL ?? process.env.ALLOWED_EMAILS ?? "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (!email) return null;
+  const { prisma } = await import("@/lib/db");
+  const u = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, image: true },
+  });
+  return u ? { userId: u.id, email: u.email, name: u.name, image: u.image } : null;
 }

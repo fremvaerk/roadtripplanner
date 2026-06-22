@@ -139,8 +139,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const exportModel = useMemo(() => (trip ? buildExportModel(trip, route) : null), [trip, route]);
 
   const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
-    initial: 320,
-    min: 280,
+    initial: 380,
+    min: 300,
     max: 720,
   });
 
@@ -476,93 +476,96 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                   return (
                   <Fragment key={day.id}>
                   {(() => { const dayCollapsed = dayCollapse.isCollapsed(day.id); return (
-                  <div className="rounded-md border p-3">
-                    <div className={`flex items-center justify-between gap-2 text-sm font-medium ${dayCollapsed ? "" : "mb-2"}`}>
-                      <span className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          aria-label={dayCollapsed ? `Expand day ${day.dayIndex + 1}` : `Collapse day ${day.dayIndex + 1}`}
-                          aria-expanded={!dayCollapsed}
-                          className="w-3 shrink-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => dayCollapse.toggle(day.id)}
-                        >
-                          {dayCollapsed ? "▸" : "▾"}
-                        </button>
-                        {canEdit && (
-                          <GroupColorPicker
-                            color={day.color ?? defaultDayColor(day.dayIndex)}
-                            label={`Day ${day.dayIndex + 1}`}
-                            onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
-                          />
-                        )}
-                        <span>
-                          Day {day.dayIndex + 1}
-                          {formatDayDate(trip.startDate, day.dayIndex) ? (
-                            <span className="ml-1 font-normal text-muted-foreground">
-                              · {formatDayDate(trip.startDate, day.dayIndex)}
-                            </span>
-                          ) : null}
+                  <div className="rounded-lg border bg-card p-3 shadow-xs">
+                    <div className={dayCollapsed ? "" : "mb-2"}>
+                      {/* Row 1 — title + actions */}
+                      <div className="flex items-center justify-between gap-2 text-sm font-medium">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={dayCollapsed ? `Expand day ${day.dayIndex + 1}` : `Collapse day ${day.dayIndex + 1}`}
+                            aria-expanded={!dayCollapsed}
+                            className="w-3 shrink-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => dayCollapse.toggle(day.id)}
+                          >
+                            {dayCollapsed ? "▸" : "▾"}
+                          </button>
+                          {canEdit && (
+                            <GroupColorPicker
+                              color={day.color ?? defaultDayColor(day.dayIndex)}
+                              label={`Day ${day.dayIndex + 1}`}
+                              onChange={(hex) => setDayColor.mutate({ dayId: day.id, color: hex })}
+                            />
+                          )}
+                          <span className="shrink-0">Day {day.dayIndex + 1}</span>
                           {dayCollapsed ? (
-                            <span className="ml-1 font-normal text-muted-foreground">
+                            <span className="truncate font-normal text-muted-foreground">
+                              {formatDayDate(trip.startDate, day.dayIndex) ? `· ${formatDayDate(trip.startDate, day.dayIndex)} ` : ""}
                               · {byDay(day.id).length} place{byDay(day.id).length === 1 ? "" : "s"}
                               {day.night ? " · 🛏" : ""}
                             </span>
                           ) : null}
                         </span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {route?.perDaySeconds[day.id] ? (
-                          <span className="text-xs font-normal text-muted-foreground">
-                            🚗 {formatDuration(route.perDaySeconds[day.id])}
-                            {route.perDayMeters?.[day.id]
-                              ? ` · ${formatKm(route.perDayMeters[day.id])}`
-                              : ""}
-                          </span>
-                        ) : null}
-                        {canEdit && byDay(day.id).length >= 3 ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs font-normal"
-                            disabled={optimizeDay.isPending && optimizeDay.variables === day.id}
-                            onClick={() => optimizeDay.mutate(day.id)}
-                            aria-label={`Optimize order of day ${day.dayIndex + 1}`}
-                          >
-                            {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
-                          </Button>
-                        ) : null}
-                        {byDay(day.id).length > 0 ? (
-                          (() => {
-                            const nav = dayDirectionsUrl(model, i);
-                            return (
-                              <a
-                                href={nav.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs font-normal text-muted-foreground hover:text-foreground"
-                                title={nav.truncated ? "Only the first 9 stops fit a Google Maps link" : "Open turn-by-turn in Google Maps"}
-                                aria-label={`Navigate day ${day.dayIndex + 1} in Google Maps`}
-                              >
-                                ▸ Navigate
-                              </a>
-                            );
-                          })()
-                        ) : null}
-                        {canEdit && (
-                          <button
-                            type="button"
-                            aria-label={`Remove day ${day.dayIndex + 1}`}
-                            className="px-1 text-xs text-muted-foreground hover:text-red-600"
-                            onClick={() => {
-                              if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
-                                removeDay.mutate(day.id);
-                              }
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </span>
+                        <span className="flex shrink-0 items-center gap-1">
+                          {!dayCollapsed && canEdit && byDay(day.id).length >= 3 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs font-normal"
+                              disabled={optimizeDay.isPending && optimizeDay.variables === day.id}
+                              onClick={() => optimizeDay.mutate(day.id)}
+                              aria-label={`Optimize order of day ${day.dayIndex + 1}`}
+                            >
+                              {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
+                            </Button>
+                          ) : null}
+                          {byDay(day.id).length > 0 ? (
+                            (() => {
+                              const nav = dayDirectionsUrl(model, i);
+                              return (
+                                <a
+                                  href={nav.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded px-1.5 py-0.5 text-xs font-normal text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  title={nav.truncated ? "Only the first 9 stops fit a Google Maps link" : "Open turn-by-turn in Google Maps"}
+                                  aria-label={`Navigate day ${day.dayIndex + 1} in Google Maps`}
+                                >
+                                  ▸ Navigate
+                                </a>
+                              );
+                            })()
+                          ) : null}
+                          {canEdit && (
+                            <button
+                              type="button"
+                              aria-label={`Remove day ${day.dayIndex + 1}`}
+                              className="rounded p-1 text-xs text-muted-foreground hover:bg-accent hover:text-red-600"
+                              onClick={() => {
+                                if (window.confirm("Remove this day? Its places go back to the list and its night is discarded.")) {
+                                  removeDay.mutate(day.id);
+                                }
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                      {/* Row 2 — date + day driving total (muted meta) */}
+                      {!dayCollapsed && (formatDayDate(trip.startDate, day.dayIndex) || route?.perDaySeconds[day.id]) ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-5 text-xs font-normal text-muted-foreground">
+                          {formatDayDate(trip.startDate, day.dayIndex) ? (
+                            <span>{formatDayDate(trip.startDate, day.dayIndex)}</span>
+                          ) : null}
+                          {route?.perDaySeconds[day.id] ? (
+                            <span className="tabular-nums">
+                              🚗 {formatDuration(route.perDaySeconds[day.id])}
+                              {route.perDayMeters?.[day.id] ? ` · ${formatKm(route.perDayMeters[day.id])}` : ""}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     {!dayCollapsed ? (
                       <>
