@@ -420,7 +420,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                               {optimizeDay.isPending && optimizeDay.variables === day.id ? "Optimizing…" : "Optimize"}
                             </Button>
                           ) : null}
-                          {byDay(day.id).length > 0 ? (
+                          {byDay(day.id).length > 0 || day.night ? (
                             (() => {
                               const nav = dayDirectionsUrl(model, i);
                               return (
