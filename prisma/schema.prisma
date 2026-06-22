@@ -14,6 +14,57 @@ model User {
   image     String?
   createdAt DateTime @default(now())
   trips     Trip[]
+  oauthCodes         OAuthAuthCode[]
+  oauthRefreshTokens OAuthRefreshToken[]
+}
+
+// --- OAuth 2.1 Authorization Server (for the MCP resource) ---
+// The app issues access tokens for MCP clients (e.g. Claude). User identity
+// comes from the existing Google login; these tables hold the AS state.
+
+model OAuthClient {
+  id                      String   @id @default(cuid()) // client_id
+  name                    String? // client_name from DCR
+  redirectUris            String // JSON array of allowed redirect URIs
+  tokenEndpointAuthMethod String   @default("none") // public client (PKCE)
+  grantTypes              String   @default("authorization_code,refresh_token")
+  createdAt               DateTime @default(now())
+  authCodes               OAuthAuthCode[]
+  refreshTokens           OAuthRefreshToken[]
+}
+
+model OAuthAuthCode {
+  id            String   @id @default(cuid())
+  codeHash      String   @unique // sha256 of the one-time authorization code
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String // PKCE S256 challenge
+  scope         String?
+  resource      String? // RFC 8707 audience the token will be bound to
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([clientId])
+}
+
+model OAuthRefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique // sha256 of the refresh token
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope     String?
+  resource  String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([userId])
 }
 
 model TripShare {

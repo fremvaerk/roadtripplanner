@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
       create: { email, name: claims.name, image: claims.picture },
     });
     const jwt = await signSession({ userId: user.id, email: user.email, name: user.name, image: user.image });
-    const res = NextResponse.redirect(new URL("/", appUrl));
+    // Return to where login started (e.g. the OAuth consent screen), local only.
+    const ret = c.get("oauth_return")?.value;
+    const dest = ret && ret.startsWith("/") ? ret : "/";
+    const res = NextResponse.redirect(new URL(dest, appUrl));
     res.cookies.set("session", jwt, {
       httpOnly: true,
       sameSite: "lax",
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest) {
     });
     res.cookies.delete("oauth_state");
     res.cookies.delete("oauth_nonce");
+    res.cookies.delete("oauth_return");
     return res;
   } catch {
     return fail("auth");

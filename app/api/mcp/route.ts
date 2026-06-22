@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
   const session = await authenticateMcp(req);
-  if (!session) return mcpUnauthorized();
+  if (!session) return mcpUnauthorized(req);
 
   try {
     // Stateless: a fresh server + transport per request (the SDK requires this in

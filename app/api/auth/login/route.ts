@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { buildAuthUrl } from "@/lib/auth/oidc";
 
-export async function GET() {
+export async function GET(req: Request) {
   const state = crypto.randomUUID();
   const nonce = crypto.randomUUID();
+  // Only honour local paths as a post-login destination (no open redirects).
+  const returnTo = new URL(req.url).searchParams.get("returnTo");
+  const safeReturn = returnTo && returnTo.startsWith("/") ? returnTo : null;
 
   const opts = {
     httpOnly: true,
@@ -17,6 +20,7 @@ export async function GET() {
   const c = await cookies();
   c.set("oauth_state", state, opts);
   c.set("oauth_nonce", nonce, opts);
+  if (safeReturn) c.set("oauth_return", safeReturn, opts);
 
   return NextResponse.redirect(buildAuthUrl({ state, nonce }));
 }
