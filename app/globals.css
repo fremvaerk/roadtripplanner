@@ -136,6 +136,9 @@
   html {
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
       "Segoe UI", Roboto, sans-serif;
+    /* Always reserve the scrollbar gutter so toggling content height (e.g.
+       showing archived trips) doesn't shift/resize the centered layout. */
+    scrollbar-gutter: stable;
   }
 }
 

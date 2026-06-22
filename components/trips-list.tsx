@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { archiveTripRequest, deleteTripRequest, exportTripUrl } from "@/lib/api/trips";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ShareDialog } from "@/components/share-dialog";
+import { Chevron } from "@/components/ui/chevron";
 import {
   CarIcon,
   PinIcon,
@@ -99,11 +100,12 @@ export function TripsList({ trips }: { trips: TripListItem[] }) {
         <div className="mt-6">
           <button
             type="button"
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
             onClick={() => setShowArchived((v) => !v)}
             aria-expanded={showArchived}
           >
-            {showArchived ? "▾ Hide archived" : `▸ Show archived (${archived.length})`}
+            <Chevron open={showArchived} />
+            {showArchived ? "Hide archived" : `Show archived (${archived.length})`}
           </button>
           {showArchived && (
             <ul className="mt-2 space-y-2">
