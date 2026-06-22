@@ -154,6 +154,53 @@ export function TripSettingsDialog({
               className="block rounded-md border bg-background px-2 py-1.5 text-sm"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cover image</Label>
+            {trip.pois.some((p) => p.imageUrl) ? (
+              <>
+                <div className="grid grid-cols-4 gap-2">
+                  {trip.pois
+                    .filter((p) => p.imageUrl)
+                    .map((p) => {
+                      const selected = trip.coverImage === p.imageUrl;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          title={p.name}
+                          aria-label={`Use ${p.name} as cover`}
+                          aria-pressed={selected}
+                          onClick={() => updateBase.mutate({ coverImage: p.imageUrl })}
+                          className={`relative aspect-square overflow-hidden rounded-md border-2 transition ${
+                            selected ? "border-ring" : "border-transparent hover:border-foreground/25"
+                          }`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={p.imageUrl!}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="size-full object-cover"
+                          />
+                        </button>
+                      );
+                    })}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateBase.mutate({ coverImage: null })}
+                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Use automatic (first place photo)
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Add places with photos to pick a cover.
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 flex justify-end">

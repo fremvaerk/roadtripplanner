@@ -45,6 +45,7 @@ export type TripDetail = {
   isRoundTrip: boolean;
   startDate: string | null;
   archivedAt: string | null;
+  coverImage: string | null;
   days: DayDetail[];
   pois: PoiDetail[];
   poiGroups: TripGroup[];
@@ -299,6 +300,7 @@ export type TripPlaceInput = { name: string; lat: number; lng: number; placeId: 
 export type TripBasePatch = {
   start?: TripPlaceInput;
   finish?: { mode: "open" | "round" | "place"; place?: TripPlaceInput };
+  coverImage?: string | null;
 };
 
 export async function setTripBaseRequest(tripId: string, patch: TripBasePatch): Promise<void> {

@@ -45,6 +45,8 @@ model Trip {
   description  String
   startDate    DateTime?
   params       String? // serialized JSON
+  // User-chosen cover image (a place photo URL). Null = auto (first place photo).
+  coverImage   String?
   // Cached route summary, refreshed whenever the route is computed (GET /route).
   // Lets the trips list show drive totals without a per-trip Routes API call.
   driveSeconds Int?

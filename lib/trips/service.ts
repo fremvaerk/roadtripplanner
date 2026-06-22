@@ -79,7 +79,7 @@ export async function listTrips(prisma: PrismaClient, session: Session) {
     return {
       ...t,
       role,
-      coverImage: pois[0]?.imageUrl ?? null,
+      coverImage: t.coverImage ?? pois[0]?.imageUrl ?? null,
       dayCount: _count.days,
       poiCount: _count.pois,
     };
@@ -98,6 +98,7 @@ export async function updateTrip(
     start?: TripPlace;
     finish?: { mode: "open" | "round" | "place"; place?: TripPlace };
     archived?: boolean;
+    coverImage?: string | null;
   },
   session: Session,
 ) {
@@ -105,6 +106,7 @@ export async function updateTrip(
   const data: Prisma.TripUpdateInput = {};
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.description !== undefined) data.description = patch.description;
+  if (patch.coverImage !== undefined) data.coverImage = patch.coverImage;
   if (patch.startDate !== undefined) data.startDate = patch.startDate;
   if (patch.archived !== undefined) {
     data.archivedAt = patch.archived ? new Date() : null;
