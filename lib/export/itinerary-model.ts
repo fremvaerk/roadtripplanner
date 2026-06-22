@@ -28,7 +28,7 @@ export type ExportModel = {
   days: ExportDay[];
 };
 
-const LABEL_DATE_FMT = new Intl.DateTimeFormat(undefined, {
+const LABEL_DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   weekday: "short",
   day: "numeric",
   month: "short",

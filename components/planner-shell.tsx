@@ -45,7 +45,7 @@ import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { formatDuration, formatKm } from "@/lib/format";
 
-const DATE_FMT = new Intl.DateTimeFormat(undefined, {
+const DATE_FMT = new Intl.DateTimeFormat("en-GB", {
   weekday: "short",
   day: "numeric",
   month: "short",
@@ -56,7 +56,7 @@ function formatDayDate(startDate: string | null, dayIndex: number): string | nul
   return d ? DATE_FMT.format(d) : null;
 }
 // Compact (no weekday) — for night-stay spans like "11 Jul → 12 Jul".
-const DATE_FMT_SHORT = new Intl.DateTimeFormat(undefined, {
+const DATE_FMT_SHORT = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",
   timeZone: "UTC",
@@ -218,7 +218,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   }
 
   return (
-    <APIProvider apiKey={apiKey}>
+    <APIProvider apiKey={apiKey} language="en">
       <MapPickProvider>
       <PlannerRoleProvider role={trip.role ?? role}>
       <div className="flex h-screen w-full">

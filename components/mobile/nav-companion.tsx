@@ -123,7 +123,7 @@ export function NavCompanion({
       {/* Map */}
       {model && day && (
         <div className="h-[42vh] w-full shrink-0 overflow-hidden rounded-md border">
-          <APIProvider apiKey={apiKey}>
+          <APIProvider apiKey={apiKey} language="en">
             <CompanionMap day={day} start={model.start} focusTarget={focus} />
           </APIProvider>
         </div>
