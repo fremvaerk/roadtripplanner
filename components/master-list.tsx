@@ -10,6 +10,7 @@ import { useCreateGroup, useRenameGroup, useDeleteGroup, useMoveToGroup, useSetG
 import { GroupColorPicker } from "@/components/group-color-picker";
 import { usePlannerRole } from "@/components/planner-role";
 import { useCollapsed } from "@/hooks/use-collapsed";
+import { Chevron } from "@/components/ui/chevron";
 import type { TripDetail, PoiDetail } from "@/lib/api/trips";
 
 const UNGROUPED = "__ungrouped__";
@@ -95,10 +96,10 @@ export function MasterList({
                 type="button"
                 aria-label={groupCollapsed ? `Expand group ${g.name}` : `Collapse group ${g.name}`}
                 aria-expanded={!groupCollapsed}
-                className="w-3 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => collapse.toggle(g.id)}
               >
-                {groupCollapsed ? "▸" : "▾"}
+                <Chevron open={!groupCollapsed} />
               </button>
               {canEdit ? (
                 <GroupColorPicker
@@ -155,10 +156,10 @@ export function MasterList({
                 type="button"
                 aria-label={ungroupedCollapsed ? "Expand ungrouped" : "Collapse ungrouped"}
                 aria-expanded={!ungroupedCollapsed}
-                className="w-3 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => collapse.toggle(UNGROUPED)}
               >
-                {ungroupedCollapsed ? "▸" : "▾"}
+                <Chevron open={!ungroupedCollapsed} />
               </button>
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Ungrouped

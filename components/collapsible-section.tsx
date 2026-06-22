@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Chevron } from "@/components/ui/chevron";
 
 /** A sidebar section with a clickable header (chevron + title + optional count)
  *  that collapses its children. Open state persists to localStorage[storageKey];
@@ -48,9 +49,9 @@ export function CollapsibleSection({
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="mb-2 flex w-full items-center gap-1 text-sm font-medium"
+        className="group mb-2 flex w-full items-center gap-1.5 text-sm font-medium"
       >
-        <span className="w-3 text-xs text-muted-foreground">{open ? "▾" : "▸"}</span>
+        <Chevron open={open} className="text-muted-foreground group-hover:text-foreground" />
         <span>{title}</span>
         {count != null && <span className="font-normal text-muted-foreground">({count})</span>}
       </button>

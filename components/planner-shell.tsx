@@ -7,6 +7,7 @@ import { move } from "@dnd-kit/helpers";
 import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
+import { Chevron } from "@/components/ui/chevron";
 import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
@@ -485,10 +486,10 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                             type="button"
                             aria-label={dayCollapsed ? `Expand day ${day.dayIndex + 1}` : `Collapse day ${day.dayIndex + 1}`}
                             aria-expanded={!dayCollapsed}
-                            className="w-3 shrink-0 text-muted-foreground hover:text-foreground"
+                            className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
                             onClick={() => dayCollapse.toggle(day.id)}
                           >
-                            {dayCollapsed ? "▸" : "▾"}
+                            <Chevron open={!dayCollapsed} />
                           </button>
                           {canEdit && (
                             <GroupColorPicker
