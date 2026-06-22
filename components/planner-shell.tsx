@@ -224,14 +224,18 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
       <div className="flex h-screen w-full">
         <aside
           style={{ width: sidebarWidth }}
-          className="flex shrink-0 flex-col overflow-y-auto border-r p-4"
+          className="flex shrink-0 flex-col overflow-y-auto border-r px-4 pb-4"
         >
-          <Link
-            href="/"
-            className="mb-2 inline-block text-xs text-muted-foreground hover:text-foreground"
-          >
-            ← Trips
-          </Link>
+          {/* Sticky so the way back is always reachable, even when the sidebar
+              is scrolled deep into a long trip. */}
+          <div className="sticky top-0 z-20 -mx-4 mb-2 border-b bg-background px-4 py-2.5">
+            <Link
+              href="/"
+              className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              ← Trips
+            </Link>
+          </div>
           {!canEdit && (
             <div className="mb-2 rounded-md bg-amber-100 px-3 py-1.5 text-xs text-amber-900">
               Read-only — this trip was shared with you.
