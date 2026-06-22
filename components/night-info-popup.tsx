@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { googleMapsUrl } from "@/lib/places/maps-url";
+import { safeHttpUrl } from "@/lib/url";
 
 /**
  * Map popup for a night stop — the night-marker analogue of PlaceInfoPopup.
@@ -32,7 +33,7 @@ export function NightInfoPopup({
   onEdit: (dayId: string) => void;
   onRemove: (dayIds: string[]) => void;
 }) {
-  const link = url?.trim() || null;
+  const link = safeHttpUrl(url); // only http(s) — blocks javascript:/data: hrefs
   return (
     <div className="w-60 text-sm text-foreground">
       <div className="flex items-center gap-1 font-medium">

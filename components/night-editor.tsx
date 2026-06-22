@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
 import { useMapPick } from "@/components/map-pick-context";
+import { safeHttpUrl } from "@/lib/url";
 import { useTrip } from "@/hooks/use-trip";
 import { followingDayIds, followingDayCount } from "@/lib/itinerary/night-repeat";
 import type { DayNight } from "@/lib/api/trips";
@@ -84,7 +85,7 @@ export function NightEditor({
     onClose();
   }
 
-  const link = url.trim();
+  const link = safeHttpUrl(url); // only http(s) — blocks javascript:/data: hrefs
 
   return (
     <>
