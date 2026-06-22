@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { archiveTripRequest, deleteTripRequest, exportTripUrl } from "@/lib/api/trips";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ShareDialog } from "@/components/share-dialog";
+import { TripSettingsDialogById } from "@/components/trip-settings-dialog";
 import { Chevron } from "@/components/ui/chevron";
 import {
   CarIcon,
@@ -170,6 +171,7 @@ function TripRow({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const canEdit = trip.role !== "viewer";
   const isOwner = trip.role === "owner";
   return (
@@ -216,7 +218,7 @@ function TripRow({
                   icon={<SettingsIcon />}
                   onClick={() => {
                     setOpen(false);
-                    router.push(`/trips/${trip.id}?settings=1`);
+                    setSettingsOpen(true);
                   }}
                 />
               )}
@@ -271,6 +273,15 @@ function TripRow({
         )}
       </div>
       {sharing && <ShareDialog tripId={trip.id} onClose={() => setSharing(false)} />}
+      {settingsOpen && (
+        <TripSettingsDialogById
+          tripId={trip.id}
+          onClose={() => {
+            setSettingsOpen(false);
+            router.refresh(); // list is a server component — reflect title/cover edits
+          }}
+        />
+      )}
     </li>
   );
 }

@@ -7,8 +7,34 @@ import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateTripBase, useSetTripTitle } from "@/hooks/use-trip-mutations";
 import { useSetStartDate } from "@/hooks/use-day-mutations";
+import { useTrip } from "@/hooks/use-trip";
 import { safeHttpUrl } from "@/lib/url";
 import type { TripDetail } from "@/lib/api/trips";
+
+/** Loads the full trip by id, then renders the settings dialog. Lets surfaces
+ *  that only hold a trip summary (e.g. the trips list) open Settings inline. */
+export function TripSettingsDialogById({
+  tripId,
+  onClose,
+}: {
+  tripId: string;
+  onClose: () => void;
+}) {
+  const { data: trip, isLoading } = useTrip(tripId);
+  if (isLoading || !trip) {
+    return (
+      <div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+        onClick={onClose}
+      >
+        <div className="rounded-xl border bg-card px-6 py-5 text-sm text-muted-foreground shadow-lg">
+          Loading…
+        </div>
+      </div>
+    );
+  }
+  return <TripSettingsDialog trip={trip} onClose={onClose} />;
+}
 
 /** Edit a trip's name, start, finish, and start date in a modal (replaces the
  *  inline Settings section + the editable title in the planner header). */

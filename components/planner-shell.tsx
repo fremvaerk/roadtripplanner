@@ -32,7 +32,7 @@ import { GroupColorPicker } from "@/components/group-color-picker";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useArchiveTrip } from "@/hooks/use-trip-mutations";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
 import { darken, UNGROUPED_COLOR, defaultDayColor } from "@/lib/places/group-colors";
 import { MapPickProvider } from "@/components/map-pick-context";
@@ -118,15 +118,6 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
-  // Deep link from the trips-list "Settings" menu item (/trips/:id?settings=1):
-  // open the dialog, then strip the param so closing/reloading won't reopen.
-  const searchParams = useSearchParams();
-  useEffect(() => {
-    if (searchParams.get("settings") === "1") {
-      setSettingsOpen(true);
-      router.replace(`/trips/${tripId}`);
-    }
-  }, [searchParams, router, tripId]);
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
   >(null);
