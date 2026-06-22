@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { buildAuthUrl } from "@/lib/auth/oidc";
+import { safeLocalPath } from "@/lib/url";
 
 export async function GET(req: Request) {
   const state = crypto.randomUUID();
   const nonce = crypto.randomUUID();
   // Only honour local paths as a post-login destination (no open redirects).
-  const returnTo = new URL(req.url).searchParams.get("returnTo");
-  const safeReturn = returnTo && returnTo.startsWith("/") ? returnTo : null;
+  const safeReturn = safeLocalPath(new URL(req.url).searchParams.get("returnTo"));
 
   const opts = {
     httpOnly: true,

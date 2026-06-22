@@ -4,6 +4,7 @@ import { exchangeCode, verifyIdToken } from "@/lib/auth/oidc";
 import { isAllowedEmail } from "@/lib/auth/allowlist";
 import { signSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { safeLocalPath } from "@/lib/url";
 
 export async function GET(req: NextRequest) {
   const appUrl = process.env.APP_URL ?? new URL(req.url).origin;
@@ -27,8 +28,7 @@ export async function GET(req: NextRequest) {
     });
     const jwt = await signSession({ userId: user.id, email: user.email, name: user.name, image: user.image });
     // Return to where login started (e.g. the OAuth consent screen), local only.
-    const ret = c.get("oauth_return")?.value;
-    const dest = ret && ret.startsWith("/") ? ret : "/";
+    const dest = safeLocalPath(c.get("oauth_return")?.value) ?? "/";
     const res = NextResponse.redirect(new URL(dest, appUrl));
     res.cookies.set("session", jwt, {
       httpOnly: true,
