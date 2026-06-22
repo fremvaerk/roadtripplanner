@@ -21,6 +21,24 @@ export function formatNightStay(
   return noun;
 }
 
+/**
+ * Night-marker hover label: "Night 3 - 11.07 - 12.07" / "Nights 3–5 - 11.07 - 14.07"
+ * (checkIn = first night's date, checkOut = morning after the last night).
+ * Falls back to just the number label when dates are missing or the group is
+ * non-contiguous (a single from-to span would misrepresent the stay).
+ */
+export function formatNightHover(
+  numbers: number[],
+  checkIn: string | null,
+  checkOut: string | null,
+): string {
+  const sorted = [...numbers].sort((a, b) => a - b);
+  const head = `${sorted.length > 1 ? "Nights" : "Night"} ${formatNightLabel(numbers)}`;
+  const contiguous = sorted[sorted.length - 1] - sorted[0] === sorted.length - 1;
+  if (checkIn && checkOut && contiguous) return `${head} - ${checkIn} - ${checkOut}`;
+  return head;
+}
+
 /** Compress night numbers into a compact label: [3,4,5] → "3–5", [3,6] → "3, 6", [3,4,6] → "3–4, 6". */
 export function formatNightLabel(numbers: number[]): string {
   const sorted = [...numbers].sort((a, b) => a - b);
