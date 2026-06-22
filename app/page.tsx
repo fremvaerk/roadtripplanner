@@ -23,6 +23,11 @@ export default async function HomePage() {
     isRoundTrip: t.isRoundTrip,
     archivedAt: t.archivedAt ? t.archivedAt.toISOString() : null,
     role: t.role,
+    coverImage: t.coverImage,
+    dayCount: t.dayCount,
+    poiCount: t.poiCount,
+    driveSeconds: t.driveSeconds ?? null,
+    driveMeters: t.driveMeters ?? null,
   }));
 
   return (

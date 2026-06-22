@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveTripRequest, deleteTripRequest, exportTripUrl } from "@/lib/api/trips";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { CarIcon, PinIcon } from "@/components/ui/icons";
+import { formatDuration, formatKm } from "@/lib/format";
 
 export type TripListItem = {
   id: string;
@@ -14,6 +16,11 @@ export type TripListItem = {
   isRoundTrip: boolean;
   archivedAt: string | null;
   role?: "owner" | "editor" | "viewer";
+  coverImage?: string | null;
+  dayCount?: number;
+  poiCount?: number;
+  driveSeconds?: number | null;
+  driveMeters?: number | null;
 };
 
 function subtitle(t: TripListItem): string {
@@ -152,10 +159,23 @@ function TripRow({
     <li className={`relative ${archived ? "opacity-60" : ""}`}>
       <Link
         href={`/trips/${trip.id}`}
-        className="block rounded-lg border bg-card p-4 pr-12 shadow-xs transition-all hover:border-foreground/20 hover:shadow-md"
+        className="flex gap-4 overflow-hidden rounded-xl border bg-card pr-12 shadow-xs transition-all hover:border-foreground/20 hover:shadow-md"
       >
-        <div className="font-medium tracking-tight">{trip.title}</div>
-        <div className="mt-0.5 text-sm text-muted-foreground">{subtitle(trip)}</div>
+        <TripCover trip={trip} />
+        <div className="min-w-0 flex-1 py-3 pr-1">
+          <div className="truncate font-medium tracking-tight">{trip.title}</div>
+          <div className="mt-0.5 truncate text-sm text-muted-foreground">{subtitle(trip)}</div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {trip.dayCount ? <span>{trip.dayCount} {trip.dayCount === 1 ? "day" : "days"}</span> : null}
+            {trip.poiCount ? <span>{trip.poiCount} {trip.poiCount === 1 ? "place" : "places"}</span> : null}
+            {trip.driveSeconds ? (
+              <span className="inline-flex items-center gap-1">
+                <CarIcon /> {formatDuration(trip.driveSeconds)}
+                {trip.driveMeters ? ` · ${formatKm(trip.driveMeters)}` : ""}
+              </span>
+            ) : null}
+          </div>
+        </div>
       </Link>
       <div className="absolute right-2 top-2">
         <button
@@ -210,6 +230,30 @@ function TripRow({
         )}
       </div>
     </li>
+  );
+}
+
+/** Trip cover: a representative place photo, or a map-tinted placeholder. */
+function TripCover({ trip }: { trip: TripListItem }) {
+  const [broken, setBroken] = useState(false);
+  const showImg = trip.coverImage && !broken;
+  return (
+    <div className="relative w-24 shrink-0 self-stretch overflow-hidden bg-gradient-to-br from-muted to-[oklch(0.6_0.094_215/0.14)] sm:w-32">
+      {showImg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={trip.coverImage!}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+          className="absolute inset-0 size-full object-cover"
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center text-[oklch(0.6_0.094_215)]/40">
+          <PinIcon className="size-8" />
+        </div>
+      )}
+    </div>
   );
 }
 

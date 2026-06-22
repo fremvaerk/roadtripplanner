@@ -58,14 +58,31 @@ export async function listTrips(prisma: PrismaClient, session: Session) {
       OR: [{ userId: session.userId }, { shares: { some: { email } } }],
     },
     orderBy: { updatedAt: "desc" },
-    include: { shares: { where: { email }, select: { role: true } } },
+    include: {
+      shares: { where: { email }, select: { role: true } },
+      _count: { select: { days: true, pois: true } },
+      // One representative photo for the list cover (places enrich lazily, so
+      // many trips have none — the card falls back to a placeholder).
+      pois: {
+        where: { imageUrl: { not: null } },
+        select: { imageUrl: true },
+        take: 1,
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
-  return trips.map(({ shares, ...t }) => {
+  return trips.map(({ shares, pois, _count, ...t }) => {
     const role: Role =
       t.userId === session.userId
         ? "owner"
         : ((shares[0]?.role as Role) ?? "viewer");
-    return { ...t, role };
+    return {
+      ...t,
+      role,
+      coverImage: pois[0]?.imageUrl ?? null,
+      dayCount: _count.days,
+      poiCount: _count.pois,
+    };
   });
 }
 

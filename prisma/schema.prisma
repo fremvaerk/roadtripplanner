@@ -45,6 +45,10 @@ model Trip {
   description  String
   startDate    DateTime?
   params       String? // serialized JSON
+  // Cached route summary, refreshed whenever the route is computed (GET /route).
+  // Lets the trips list show drive totals without a per-trip Routes API call.
+  driveSeconds Int?
+  driveMeters  Int?
   archivedAt   DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

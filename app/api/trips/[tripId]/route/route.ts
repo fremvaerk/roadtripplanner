@@ -71,6 +71,17 @@ export async function GET(_req: Request, { params }: Ctx) {
     legDayIdAll, legSeconds, legMeters,
   );
 
+  // Cache the totals on the trip so the trips list can show drive time/distance
+  // without its own (paid) Routes calls. Raw UPDATE on purpose: a Prisma update()
+  // would bump @updatedAt and re-sort the trips list just from viewing a route.
+  // Awaited so it flushes before the response ends; wrapped so a write failure
+  // never breaks routing.
+  try {
+    await prisma.$executeRaw`UPDATE "Trip" SET "driveSeconds" = ${totalSeconds}, "driveMeters" = ${totalMeters} WHERE "id" = ${tripId}`;
+  } catch {
+    // best-effort cache; ignore
+  }
+
   return NextResponse.json({
     legs, perDaySeconds, perDayMeters, totalSeconds, totalMeters,
     failedDayIds: [...failed],

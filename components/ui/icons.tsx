@@ -1,3 +1,23 @@
+/** Map-pin glyph, for placeholders (e.g. a trip cover with no photo). */
+export function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className={`inline-block shrink-0 ${className ?? ""}`}
+    >
+      <path
+        d="M12 21s6.5-5.8 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 15.2 12 21 12 21Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="10.5" r="2.4" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 /** Navigation arrow for "Navigate" / open-in-Maps links. */
 export function NavigateIcon({ className }: { className?: string }) {
   return (
