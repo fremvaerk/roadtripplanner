@@ -19,6 +19,7 @@ import { formatNightLabel, formatNightHover } from "@/lib/itinerary/night-label"
 import { PlacePreview } from "@/components/place-preview";
 import { useMapsConfig } from "@/components/maps-config";
 import { PlaceInfoPopup } from "@/components/place-info-popup";
+import { NightInfoPopup } from "@/components/night-info-popup";
 import { useMapPick } from "@/components/map-pick-context";
 import type { PlacePick } from "@/components/place-autocomplete";
 
@@ -36,6 +37,8 @@ export function TripMap({
   onRemoveVia,
   nights = [],
   onMoveNight,
+  onEditNight,
+  onClearNight,
   dayChoices = [],
   onSetNight,
   preview = null,
@@ -59,8 +62,10 @@ export function TripMap({
   onAddVia?: (afterPoiId: string | null, dayId: string | null, lat: number, lng: number) => void;
   onMoveVia?: (viaId: string, lat: number, lng: number) => void;
   onRemoveVia?: (viaId: string) => void;
-  nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null; checkoutDate?: string | null }[];
+  nights?: { dayId: string; lat: number; lng: number; nightNumber: number; date?: string | null; checkoutDate?: string | null; title?: string | null; url?: string | null; notes?: string | null }[];
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
+  onEditNight?: (dayId: string) => void;
+  onClearNight?: (dayIds: string[]) => void;
   dayChoices?: { id: string; label: string }[];
   onSetNight?: (dayId: string, lat: number, lng: number) => void;
   preview?: { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null;
@@ -84,6 +89,7 @@ export function TripMap({
   const [menu, setMenu] = useState<{ x: number; y: number; lat: number; lng: number; placeId: string | null } | null>(null);
   const [poiMenu, setPoiMenu] = useState<{ x: number; y: number; poiId: string; name: string } | null>(null);
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
+  const [selectedNightKey, setSelectedNightKey] = useState<string | null>(null);
 
   // Resolve a clicked point to a named place: a Google place (placeId) → its
   // details; an empty point → reverse-geocoded address (fallback: coordinates).
@@ -172,13 +178,13 @@ export function TripMap({
     // Keyed by rounded coords. `Map` is shadowed by the vis.gl import, so use a plain object.
     const byLocation: Record<
       string,
-      { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null }[] }
+      { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null; title?: string | null; url?: string | null; notes?: string | null }[] }
     > = {};
     for (const n of nights ?? []) {
       const key = `${n.lat.toFixed(5)},${n.lng.toFixed(5)}`;
       const g = byLocation[key] ?? { lat: n.lat, lng: n.lng, dayIds: [], entries: [] };
       g.dayIds.push(n.dayId);
-      g.entries.push({ number: n.nightNumber, date: n.date, checkoutDate: n.checkoutDate });
+      g.entries.push({ number: n.nightNumber, date: n.date, checkoutDate: n.checkoutDate, title: n.title, url: n.url, notes: n.notes });
       byLocation[key] = g;
     }
     return Object.values(byLocation);
@@ -288,8 +294,49 @@ export function TripMap({
       ))}
 
       {nightGroups.map((g) => (
-        <NightMarker key={g.dayIds.join("-")} group={g} canEdit={canEdit} onMoveNight={onMoveNight} />
+        <NightMarker
+          key={g.dayIds.join("-")}
+          group={g}
+          canEdit={canEdit}
+          onMoveNight={onMoveNight}
+          onSelect={() => {
+            setSelectedNightKey(g.dayIds.join("-"));
+            setSelectedPoiId(null);
+            onPreviewClose?.();
+          }}
+        />
       ))}
+
+      {(() => {
+        const g = selectedNightKey
+          ? nightGroups.find((x) => x.dayIds.join("-") === selectedNightKey)
+          : null;
+        if (!g) return null;
+        const sorted = [...g.entries].sort((a, b) => a.number - b.number);
+        const stayLabel = formatNightHover(
+          sorted.map((e) => e.number),
+          sorted[0]?.date ?? null,
+          sorted[sorted.length - 1]?.checkoutDate ?? null,
+        );
+        // dayIds aligned with sorted entries so Edit targets the first night.
+        const orderedDayIds = sorted.map((e) => g.dayIds[g.entries.indexOf(e)]);
+        return (
+          <InfoWindow position={{ lat: g.lat, lng: g.lng }} onCloseClick={() => setSelectedNightKey(null)}>
+            <NightInfoPopup
+              title={sorted[0]?.title ?? null}
+              stayLabel={stayLabel}
+              url={sorted[0]?.url ?? null}
+              notes={sorted[0]?.notes ?? null}
+              lat={g.lat}
+              lng={g.lng}
+              dayIds={orderedDayIds}
+              canEdit={canEdit}
+              onEdit={(dayId) => { onEditNight?.(dayId); setSelectedNightKey(null); }}
+              onRemove={(dayIds) => { onClearNight?.(dayIds); setSelectedNightKey(null); }}
+            />
+          </InfoWindow>
+        );
+      })()}
 
       {preview && (
         <InfoWindow position={preview.position} onCloseClick={() => onPreviewClose?.()}>
@@ -542,21 +589,24 @@ function RouteLegs({
   return null;
 }
 
-type NightGroup = { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null }[] };
+type NightGroup = { lat: number; lng: number; dayIds: string[]; entries: { number: number; date?: string | null; checkoutDate?: string | null; title?: string | null; url?: string | null; notes?: string | null }[] };
 
 /**
  * A night marker (one stay; may cover several consecutive nights at one spot).
  * Uses a custom hover tooltip rather than the native `title` — Advanced Markers
  * don't reliably surface a browser tooltip from their custom HTML content.
+ * Clicking the pill opens the night popup (onSelect).
  */
 function NightMarker({
   group,
   canEdit,
   onMoveNight,
+  onSelect,
 }: {
   group: NightGroup;
   canEdit: boolean;
   onMoveNight?: (dayId: string, lat: number, lng: number) => void;
+  onSelect?: () => void;
 }) {
   const [hover, setHover] = useState(false);
   const sorted = [...group.entries].sort((a, b) => a.number - b.number);
@@ -610,6 +660,7 @@ function NightMarker({
           </div>
         )}
         <div
+          onClick={() => onSelect?.()}
           style={{
             display: "flex",
             alignItems: "center",
@@ -625,7 +676,7 @@ function NightMarker({
             lineHeight: "22px",
             border: "2px solid #fff",
             boxShadow: "0 1px 3px rgba(0,0,0,.45)",
-            cursor: canEdit ? "grab" : "default",
+            cursor: "pointer",
             whiteSpace: "nowrap",
           }}
         >
