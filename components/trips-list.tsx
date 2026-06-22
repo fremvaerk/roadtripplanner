@@ -5,8 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { archiveTripRequest, deleteTripRequest, exportTripUrl } from "@/lib/api/trips";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { CarIcon, PinIcon } from "@/components/ui/icons";
+import { ShareDialog } from "@/components/share-dialog";
+import {
+  CarIcon,
+  PinIcon,
+  SettingsIcon,
+  ShareIcon,
+  DownloadIcon,
+  ArchiveIcon,
+  RestoreIcon,
+  TrashIcon,
+} from "@/components/ui/icons";
 import { formatDuration, formatKm } from "@/lib/format";
+import type { ReactNode } from "react";
 
 export type TripListItem = {
   id: string;
@@ -154,7 +165,11 @@ function TripRow({
   onRestore?: () => void;
   onRemove: () => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const canEdit = trip.role !== "viewer";
+  const isOwner = trip.role === "owner";
   return (
     <li className={`relative ${archived ? "opacity-60" : ""}`}>
       <Link
@@ -192,9 +207,30 @@ function TripRow({
         {open && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <div role="menu" className="absolute right-0 z-20 mt-1 w-32 rounded-md border bg-background py-1 shadow-md">
+            <div role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-md border bg-popover py-1 shadow-md">
+              {canEdit && (
+                <MenuItem
+                  label="Settings"
+                  icon={<SettingsIcon />}
+                  onClick={() => {
+                    setOpen(false);
+                    router.push(`/trips/${trip.id}?settings=1`);
+                  }}
+                />
+              )}
+              {isOwner && (
+                <MenuItem
+                  label="Share"
+                  icon={<ShareIcon />}
+                  onClick={() => {
+                    setOpen(false);
+                    setSharing(true);
+                  }}
+                />
+              )}
               <MenuItem
-                label="Export"
+                label="Export backup"
+                icon={<DownloadIcon />}
                 onClick={() => {
                   setOpen(false);
                   downloadExport(trip.id);
@@ -203,6 +239,7 @@ function TripRow({
               {archived ? (
                 <MenuItem
                   label="Restore"
+                  icon={<RestoreIcon />}
                   onClick={() => {
                     setOpen(false);
                     onRestore?.();
@@ -211,6 +248,7 @@ function TripRow({
               ) : (
                 <MenuItem
                   label="Archive"
+                  icon={<ArchiveIcon />}
                   onClick={() => {
                     setOpen(false);
                     onArchive?.();
@@ -219,6 +257,7 @@ function TripRow({
               )}
               <MenuItem
                 label="Remove"
+                icon={<TrashIcon />}
                 destructive
                 onClick={() => {
                   setOpen(false);
@@ -229,6 +268,7 @@ function TripRow({
           </>
         )}
       </div>
+      {sharing && <ShareDialog tripId={trip.id} onClose={() => setSharing(false)} />}
     </li>
   );
 }
@@ -259,10 +299,12 @@ function TripCover({ trip }: { trip: TripListItem }) {
 
 function MenuItem({
   label,
+  icon,
   destructive = false,
   onClick,
 }: {
   label: string;
+  icon?: ReactNode;
   destructive?: boolean;
   onClick: () => void;
 }) {
@@ -270,11 +312,12 @@ function MenuItem({
     <button
       type="button"
       role="menuitem"
-      className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-accent ${
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent ${
         destructive ? "text-red-600" : ""
       }`}
       onClick={onClick}
     >
+      {icon}
       {label}
     </button>
   );
