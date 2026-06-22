@@ -8,7 +8,8 @@ import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
 import { Chevron } from "@/components/ui/chevron";
-import { CarIcon } from "@/components/ui/icons";
+import { CarIcon, SettingsIcon } from "@/components/ui/icons";
+import { TripSettingsDialog } from "@/components/trip-settings-dialog";
 import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
@@ -26,10 +27,10 @@ import { dayDirectionsUrl } from "@/lib/export/maps-links";
 import { buildKml } from "@/lib/export/kml";
 import { buildGpx } from "@/lib/export/gpx";
 import { downloadText, slugify } from "@/lib/export/download";
-import { useAddDay, useInsertDayAfter, useRemoveDay, useSetStartDate, useSetDayColor } from "@/hooks/use-day-mutations";
+import { useAddDay, useInsertDayAfter, useRemoveDay, useSetDayColor } from "@/hooks/use-day-mutations";
 import { GroupColorPicker } from "@/components/group-color-picker";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
-import { useUpdateTripBase, useSetTripTitle, useArchiveTrip } from "@/hooks/use-trip-mutations";
+import { useArchiveTrip } from "@/hooks/use-trip-mutations";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AddPoiInput } from "@/lib/itinerary/operations";
@@ -91,10 +92,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const addDay = useAddDay(tripId);
   const insertDay = useInsertDayAfter(tripId);
   const removeDay = useRemoveDay(tripId);
-  const setStartDate = useSetStartDate(tripId);
   const setDayColor = useSetDayColor(tripId);
-  const updateBase = useUpdateTripBase(tripId);
-  const setTitle = useSetTripTitle(tripId);
   const router = useRouter();
   const archiveTrip = useArchiveTrip(tripId);
   const { apiKey } = useMapsConfig(); // runtime-provided Google Maps browser key
@@ -118,7 +116,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
       setRemoving(false);
     }
   }
-  const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
   >(null);
@@ -146,11 +144,6 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
     max: 720,
   });
 
-  // Drop the optimistic override once the server reflects the new finish.
-  useEffect(() => {
-    setPendingMode(null);
-  }, [trip?.endLat, trip?.endLng, trip?.isRoundTrip]);
-
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
@@ -176,7 +169,6 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const model = exportModel!;
   const finishMode: "open" | "round" | "place" =
     trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
-  const activeFinish = pendingMode ?? finishMode;
   const groupColorById = new Map(trip.poiGroups.map((g) => [g.id, g.color]));
   const poiPoints: MapPoint[] = trip.pois.map((p) => {
     const bg = (p.groupId && groupColorById.get(p.groupId)) || UNGROUPED_COLOR;
@@ -289,28 +281,24 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               </button>
             )}
           </div>
-          {canEdit ? (
-            <input
-              key={trip.title}
-              defaultValue={trip.title}
-              aria-label="Trip name"
-              className="mb-1 w-full rounded bg-transparent text-lg font-semibold outline-none hover:bg-muted/40 focus:bg-muted/40"
-              onBlur={(e) => {
-                const v = e.target.value.trim();
-                if (v && v !== trip.title) setTitle.mutate(v);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-            />
-          ) : (
-            <h1 className="mb-1 w-full text-lg font-semibold">{trip.title}</h1>
-          )}
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <h1 className="text-lg font-semibold tracking-tight">{trip.title}</h1>
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 shrink-0 gap-1 px-2 text-xs"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingsIcon /> Settings
+              </Button>
+            )}
+          </div>
           <p className="mb-2 text-sm text-muted-foreground">
             {trip.startName}
-            {activeFinish === "place"
+            {finishMode === "place"
               ? ` → ${trip.endName ?? "destination…"}`
-              : activeFinish === "round"
+              : finishMode === "round"
                 ? " ↺ round trip"
                 : " → (open)"}
           </p>
@@ -320,95 +308,6 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
             </p>
           )}
 
-          {canEdit && (
-          <CollapsibleSection title="Settings" storageKey="rtp.section.settings">
-            <div className="mb-3 space-y-2">
-              <div>
-                <div className="mb-1 text-xs text-muted-foreground">
-                  Start: <span className="text-foreground">{trip.startName}</span>
-                </div>
-                <PlaceAutocomplete
-                  placeholder="Change start…"
-                  pickId="start"
-                  onPick={(p) =>
-                    updateBase.mutate({
-                      start: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
-                    })
-                  }
-                />
-              </div>
-
-              <div>
-                <div className="mb-1 text-xs text-muted-foreground">Finish</div>
-                <div role="group" aria-label="Finish mode" className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant={activeFinish === "open" ? "default" : "outline"}
-                    aria-pressed={activeFinish === "open"}
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      setPendingMode("open");
-                      updateBase.mutate({ finish: { mode: "open" } });
-                    }}
-                  >
-                    Open
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={activeFinish === "round" ? "default" : "outline"}
-                    aria-pressed={activeFinish === "round"}
-                    className="h-7 px-2 text-xs"
-                    onClick={() => {
-                      setPendingMode("round");
-                      updateBase.mutate({ finish: { mode: "round" } });
-                    }}
-                  >
-                    Round trip
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={activeFinish === "place" ? "default" : "outline"}
-                    aria-pressed={activeFinish === "place"}
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setPendingMode("place")}
-                  >
-                    Place
-                  </Button>
-                </div>
-                {activeFinish === "place" && !updateBase.isPending && (
-                  <div className="mt-1">
-                    {trip.endName ? (
-                      <div className="mb-1 text-xs text-muted-foreground">
-                        Ends at: <span className="text-foreground">{trip.endName}</span>
-                      </div>
-                    ) : null}
-                    <PlaceAutocomplete
-                      placeholder="Search destination…"
-                      pickId="finish"
-                      onPick={(p) =>
-                        updateBase.mutate({
-                          finish: {
-                            mode: "place",
-                            place: { name: p.name, lat: p.lat, lng: p.lng, placeId: p.placeId },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>Start date</span>
-              <input
-                type="date"
-                value={trip.startDate ? trip.startDate.slice(0, 10) : ""}
-                onChange={(e) => setStartDate.mutate(e.target.value || null)}
-                className="rounded border bg-background px-1 py-0.5 text-xs"
-              />
-            </label>
-          </CollapsibleSection>
-          )}
 
           <CollapsibleSection title="Places" count={trip.pois.length} storageKey="rtp.section.places">
             {canEdit && (
@@ -763,6 +662,9 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
       })()}
       {sharing && (
         <ShareDialog tripId={tripId} onClose={() => setSharing(false)} />
+      )}
+      {settingsOpen && canEdit && (
+        <TripSettingsDialog trip={trip} onClose={() => setSettingsOpen(false)} />
       )}
       </PlannerRoleProvider>
       </MapPickProvider>
