@@ -16,7 +16,8 @@ import { useRoute } from "@/hooks/use-route";
 import { useAddPoi, useMovePoi, useRemovePoi, useOptimizeDay, useBuildSplit, useResplit } from "@/hooks/use-poi-mutations";
 import { useAddVia, useMoveVia, useRemoveVia } from "@/hooks/use-via-mutations";
 import { DayNight } from "@/components/day-night";
-import { useUpdateNight, useSetNight } from "@/hooks/use-night-mutations";
+import { useUpdateNight, useSetNight, useClearNight } from "@/hooks/use-night-mutations";
+import { NightEditor } from "@/components/night-editor";
 import { dayDate } from "@/lib/dates";
 import { buildExportModel } from "@/lib/export/itinerary-model";
 import { dayDirectionsUrl } from "@/lib/export/maps-links";
@@ -84,6 +85,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const removeVia = useRemoveVia(tripId);
   const updateNight = useUpdateNight(tripId);
   const setNight = useSetNight(tripId);
+  const clearNight = useClearNight(tripId);
   const addDay = useAddDay(tripId);
   const insertDay = useInsertDayAfter(tripId);
   const removeDay = useRemoveDay(tripId);
@@ -102,6 +104,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
+  const [editingNightDayId, setEditingNightDayId] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   async function removeTrip() {
     setRemoving(true);
@@ -689,8 +692,10 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               onAddVia={(afterPoiId, dayId, lat, lng) => addVia.mutate({ afterPoiId, dayId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
-              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDateNumeric(trip.startDate, d.dayIndex), checkoutDate: formatDayDateNumeric(trip.startDate, d.dayIndex + 1) }))}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDateNumeric(trip.startDate, d.dayIndex), checkoutDate: formatDayDateNumeric(trip.startDate, d.dayIndex + 1), title: d.night!.title, url: d.night!.url, notes: d.night!.notes }))}
               onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
+              onEditNight={(dayId) => setEditingNightDayId(dayId)}
+              onClearNight={(dayIds) => dayIds.forEach((id) => clearNight.mutate(id))}
               dayChoices={trip.days.map((d) => ({
                 id: d.id,
                 label: formatDayDate(trip.startDate, d.dayIndex)
@@ -742,6 +747,13 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
         const editingPoi = editingPoiId ? trip.pois.find((p) => p.id === editingPoiId) : null;
         return editingPoi ? (
           <PlaceEditor poi={editingPoi} tripId={tripId} onClose={() => setEditingPoiId(null)} />
+        ) : null;
+      })()}
+      {(() => {
+        // Night editor opened from the map popup (sidebar has its own per-day one).
+        const d = editingNightDayId ? trip.days.find((x) => x.id === editingNightDayId) : null;
+        return d?.night ? (
+          <NightEditor tripId={tripId} dayId={d.id} night={d.night} onClose={() => setEditingNightDayId(null)} />
         ) : null;
       })()}
       {sharing && (
