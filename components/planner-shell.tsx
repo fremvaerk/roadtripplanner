@@ -139,8 +139,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
   const exportModel = useMemo(() => (trip ? buildExportModel(trip, route) : null), [trip, route]);
 
   const { width: sidebarWidth, onHandleMouseDown } = useResizableWidth("rtp.sidebarWidth", {
-    initial: 320,
-    min: 280,
+    initial: 380,
+    min: 300,
     max: 720,
   });
 
