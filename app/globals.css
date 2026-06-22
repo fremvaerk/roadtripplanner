@@ -129,8 +129,13 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Set the family DIRECTLY from the next/font runtime variable. Going through
+     the Tailwind theme token (`@apply font-sans` → var(--font-sans)) doesn't
+     work here: --font-geist-sans is injected at runtime on <html>, so the
+     build-time @theme can't resolve it and --font-sans ends up empty (serif). */
   html {
-    @apply font-sans;
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, sans-serif;
   }
 }
 
