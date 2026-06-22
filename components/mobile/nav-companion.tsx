@@ -83,10 +83,10 @@ export function NavCompanion({
   const day = model?.days[dayIndex] ?? null;
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col gap-3 p-3">
+    <div className="mx-auto flex min-h-screen w-full min-w-0 max-w-md flex-col gap-3 p-3">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate font-semibold">{trip.title}</span>
+        <span className="min-w-0 truncate font-semibold">{trip.title}</span>
         <span className="flex shrink-0 items-center gap-3">
           <a
             href={`/trips/${tripId}`}
@@ -102,7 +102,7 @@ export function NavCompanion({
 
       {/* Day chips */}
       {model && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
           {model.days.map((d, i) => (
             <button
               key={d.index}
