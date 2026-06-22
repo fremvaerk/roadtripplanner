@@ -10,6 +10,7 @@ import { todayDayIndex } from "@/lib/dates";
 import { formatDuration, formatKm } from "@/lib/format";
 import { CompanionMap } from "@/components/mobile/companion-map";
 import { useMapsConfig } from "@/components/maps-config";
+import { CarIcon } from "@/components/ui/icons";
 
 /**
  * Mobile-first, read-only trip view focused on launching turn-by-turn
@@ -64,7 +65,7 @@ export function NavCompanion({
     for (const leg of route?.legs ?? []) {
       if (leg.dayId !== dayId) continue;
       if (!(leg.durationSeconds > 0 || leg.distanceMeters > 0)) continue;
-      const label = `🚗 ${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
+      const label = `${formatDuration(leg.durationSeconds)} · ${formatKm(leg.distanceMeters)}`;
       if (leg.afterPoiId) out[leg.afterPoiId] = label;
       else if (entry === null) entry = label; // the day's first (arrival) leg
     }
@@ -147,7 +148,9 @@ export function NavCompanion({
             Start: {day.origin?.name ?? model.start.name}
           </p>
           {entryLeg && (
-            <p className="-mt-1 pl-1 text-xs text-muted-foreground">{entryLeg}</p>
+            <p className="-mt-1 flex items-center gap-1 pl-1 text-xs text-muted-foreground">
+              <CarIcon /> {entryLeg}
+            </p>
           )}
 
           {day.stops.map((stop, i) => (
@@ -242,7 +245,9 @@ function StopCard({
       </button>
 
       {legLabel ? (
-        <p className="mt-1 text-xs text-muted-foreground">{legLabel}</p>
+        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <CarIcon /> {legLabel}
+        </p>
       ) : null}
 
       <a

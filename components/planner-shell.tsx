@@ -8,6 +8,7 @@ import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
 import { Chevron } from "@/components/ui/chevron";
+import { CarIcon } from "@/components/ui/icons";
 import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
 import { MasterList } from "@/components/master-list";
@@ -560,8 +561,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                             <span>{formatDayDate(trip.startDate, day.dayIndex)}</span>
                           ) : null}
                           {route?.perDaySeconds[day.id] ? (
-                            <span className="tabular-nums">
-                              🚗 {formatDuration(route.perDaySeconds[day.id])}
+                            <span className="inline-flex items-center gap-1 tabular-nums">
+                              <CarIcon /> {formatDuration(route.perDaySeconds[day.id])}
                               {route.perDayMeters?.[day.id] ? ` · ${formatKm(route.perDayMeters[day.id])}` : ""}
                             </span>
                           ) : null}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { PlaceEditor } from "@/components/place-editor";
+import { CarIcon } from "@/components/ui/icons";
 import { useMovePoi } from "@/hooks/use-poi-mutations";
 import { usePlannerRole } from "@/components/planner-role";
 import type { PoiDetail } from "@/lib/api/trips";
@@ -120,7 +121,7 @@ export function PoiCard({
           className="flex items-center gap-1.5 pl-7 pt-1 text-xs text-muted-foreground"
         >
           <span className="text-muted-foreground/40">│</span>
-          <span>🚗 {legBelow}</span>
+          <span className="inline-flex items-center gap-1"><CarIcon /> {legBelow}</span>
         </div>
       ) : null}
     </li>

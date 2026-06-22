@@ -2,6 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/react";
 import { PoiCard } from "@/components/poi-card";
+import { CarIcon } from "@/components/ui/icons";
 import type { PoiDetail } from "@/lib/api/trips";
 
 export function PoiContainer({
@@ -35,7 +36,7 @@ export function PoiContainer({
               className="flex items-center gap-1.5 pl-7 text-xs text-muted-foreground"
             >
               <span className="text-muted-foreground/40">│</span>
-              <span>🚗 {entryLegLabel}</span>
+              <span className="inline-flex items-center gap-1"><CarIcon /> {entryLegLabel}</span>
             </li>
           ) : null}
           {pois.map((p, i) => (
