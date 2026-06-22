@@ -91,6 +91,26 @@ export function TripMap({
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [selectedNightKey, setSelectedNightKey] = useState<string | null>(null);
 
+  // Remember the user's map type (roadmap/satellite/…) across trips & sessions.
+  useEffect(() => {
+    if (!map) return;
+    try {
+      const saved = localStorage.getItem("rtp.mapTypeId");
+      if (saved) map.setMapTypeId(saved);
+    } catch {
+      // ignore (private mode etc.)
+    }
+    const listener = map.addListener("maptypeid_changed", () => {
+      try {
+        const id = map.getMapTypeId();
+        if (id) localStorage.setItem("rtp.mapTypeId", id);
+      } catch {
+        // ignore
+      }
+    });
+    return () => listener.remove();
+  }, [map]);
+
   // Resolve a clicked point to a named place: a Google place (placeId) → its
   // details; an empty point → reverse-geocoded address (fallback: coordinates).
   async function resolvePlace(placeId: string | null, lat: number, lng: number): Promise<PlacePick> {
