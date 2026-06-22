@@ -8,7 +8,7 @@ import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
 import { Chevron } from "@/components/ui/chevron";
-import { CarIcon, SettingsIcon, NavigateIcon } from "@/components/ui/icons";
+import { CarIcon, SettingsIcon, NavigateIcon, ShareIcon, DownloadIcon, ArchiveIcon, RestoreIcon, TrashIcon } from "@/components/ui/icons";
 import { TripSettingsDialog } from "@/components/trip-settings-dialog";
 import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
@@ -271,23 +271,27 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                     {role === "owner" && (
                       <HeaderMenuItem
                         label="Share"
+                        icon={<ShareIcon />}
                         onClick={() => { setHeaderMenuOpen(false); setSharing(true); }}
                       />
                     )}
                     <HeaderMenuItem
                       label="Export backup"
+                      icon={<DownloadIcon />}
                       onClick={() => { setHeaderMenuOpen(false); downloadTripExport(tripId); }}
                     />
                     {canEdit &&
                       (trip.archivedAt ? (
                         <HeaderMenuItem
                           label="Restore"
+                          icon={<RestoreIcon />}
                           disabled={archiveTrip.isPending}
                           onClick={() => { setHeaderMenuOpen(false); archiveTrip.mutate(false); }}
                         />
                       ) : (
                         <HeaderMenuItem
                           label="Archive"
+                          icon={<ArchiveIcon />}
                           disabled={archiveTrip.isPending}
                           onClick={() => { setHeaderMenuOpen(false); archiveTrip.mutate(true); }}
                         />
@@ -295,6 +299,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                     {canEdit && (
                       <HeaderMenuItem
                         label="Remove"
+                        icon={<TrashIcon />}
                         destructive
                         disabled={removing}
                         onClick={() => { setHeaderMenuOpen(false); setConfirmingRemove(true); }}

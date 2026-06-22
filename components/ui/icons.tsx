@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /** Map-pin glyph, for placeholders (e.g. a trip cover with no photo). */
 export function PinIcon({ className }: { className?: string }) {
   return (
@@ -40,25 +42,88 @@ export function NavigateIcon({ className }: { className?: string }) {
   );
 }
 
-/** Gear icon for the trip-settings button. */
-export function SettingsIcon({ className }: { className?: string }) {
+/** Shared wrapper so all the menu/action glyphs share size + stroke style. */
+function Glyph({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <svg
-      width="14"
-      height="14"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
       className={`inline-block shrink-0 ${className ?? ""}`}
     >
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M12 2.5l1.2 2.2 2.5-.5.4 2.5 2.3 1-.9 2.4 1.7 1.9-1.7 1.9.9 2.4-2.3 1-.4 2.5-2.5-.5L12 21.5l-1.2-2.2-2.5.5-.4-2.5-2.3-1 .9-2.4L4.8 12l1.7-1.9-.9-2.4 2.3-1 .4-2.5 2.5.5z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
+      {children}
     </svg>
+  );
+}
+
+/** Gear icon for trip settings. */
+export function SettingsIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </Glyph>
+  );
+}
+
+/** Share (node graph). */
+export function ShareIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="M8.2 10.7l7.6-4.4M8.2 13.3l7.6 4.4" />
+    </Glyph>
+  );
+}
+
+/** Download / export. */
+export function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <path d="M12 3v12" />
+      <path d="M7 11l5 5 5-5" />
+      <path d="M5 20h14" />
+    </Glyph>
+  );
+}
+
+/** Archive box. */
+export function ArchiveIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+      <path d="M10 12h4" />
+    </Glyph>
+  );
+}
+
+/** Restore (counter-clockwise arrow). */
+export function RestoreIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <path d="M3 8a9 9 0 1 1-1.6 5" />
+      <path d="M3 3v5h5" />
+    </Glyph>
+  );
+}
+
+/** Trash / remove. */
+export function TrashIcon({ className }: { className?: string }) {
+  return (
+    <Glyph className={className}>
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
+    </Glyph>
   );
 }
 
