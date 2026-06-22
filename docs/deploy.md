@@ -46,7 +46,7 @@ visibility under the org's *Packages* settings if you want it pullable.
 | `GOOGLE_MAPS_SERVER_KEY` | Geocoding/Places/Routes (server-side). Restrict by IP/API. |
 | `ALLOWED_EMAILS` | Comma-separated allow-list; empty = open sign-up. |
 | `MCP_OWNER_EMAIL` | Owner the MCP server acts as (defaults to first `ALLOWED_EMAILS`). |
-| `MCP_AUTH_TOKEN` | Bearer token enabling `POST /api/mcp`. **Unset ⇒ the MCP endpoint is disabled (401).** |
+| `MCP_AUTH_TOKEN` | Bearer token enabling `POST /mcp`. **Unset ⇒ the MCP endpoint is disabled (401).** |
 
 The container runs `docker-entrypoint.sh`, which syncs the schema (`prisma db push`)
 into the volume DB on start, then serves on `:3000`. Mount a volume at `/data` to

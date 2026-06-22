@@ -4,7 +4,7 @@
 // identity comes from the existing Google login; see lib/oauth/* + app/oauth/*.
 
 /** The MCP resource lives here; access tokens are audience-bound to it. */
-export const MCP_RESOURCE_PATH = "/api/mcp";
+export const MCP_RESOURCE_PATH = "/mcp";
 
 /** Scopes we issue. Kept minimal — one scope granting MCP tool access. */
 export const SCOPES_SUPPORTED = ["mcp"] as const;

@@ -1,4 +1,4 @@
-// In-process smoke for the HTTP MCP endpoint (app/api/mcp/route.ts).
+// In-process smoke for the HTTP MCP endpoint (app/mcp/route.ts).
 //
 // Drives the route handler directly — no network. Env must be set BEFORE the
 // route module is imported, because mcp/auth.ts reads MCP_AUTH_TOKEN and the
@@ -21,7 +21,7 @@ if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.length < 32) {
 // `export {}` makes this a module so the top-level await above is allowed.
 export {};
 
-const { POST } = await import("@/app/api/mcp/route");
+const { POST } = await import("@/app/mcp/route");
 
 const EXPECTED_TOOLS = [
   "list_trips",
@@ -46,7 +46,7 @@ const NO_AUTH = Symbol("no-auth");
 
 function mcpReq(body: unknown, token: string | undefined | typeof NO_AUTH = process.env.MCP_AUTH_TOKEN) {
   const bearer = token === NO_AUTH ? undefined : token;
-  return new Request("http://local/api/mcp", {
+  return new Request("http://local/mcp", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

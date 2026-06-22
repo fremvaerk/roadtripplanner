@@ -5,7 +5,7 @@ import { signAccessToken, verifyAccessToken } from "@/lib/oauth/tokens";
 import { signSession } from "@/lib/auth/session";
 
 const ISS = "https://app.example";
-const RES = "https://app.example/api/mcp";
+const RES = "https://app.example/mcp";
 
 async function mint(over: Partial<Parameters<typeof signAccessToken>[0]> = {}) {
   return signAccessToken({

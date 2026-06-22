@@ -12,18 +12,18 @@ them. There is no per-request auth — it acts as one configured user.
 
 There are two ways to run it:
 
-- **HTTP (deployed)** — `app/api/mcp/route.ts`, served by the Next app. Use this
+- **HTTP (deployed)** — `app/mcp/route.ts`, served by the Next app. Use this
   for remote clients (see below).
 - **stdio (local dev)** — `mcp/server.ts`, registered via `.mcp.json`. No auth.
 
 ## HTTP (deployed)
 
-The HTTP transport ships as part of the Next app: `POST /api/mcp`. It deploys
+The HTTP transport ships as part of the Next app: `POST /mcp`. It deploys
 with the same Docker image and shares the same database, so a remote Claude
 client can plan trips against your live data.
 
 ```
-POST https://<your-host>/api/mcp
+POST https://<your-host>/mcp
 ```
 
 ### Auth
@@ -48,7 +48,7 @@ Point Claude Code or Claude Desktop at the HTTP endpoint with the bearer header:
   "mcpServers": {
     "roadtrip": {
       "type": "http",
-      "url": "https://<your-host>/api/mcp",
+      "url": "https://<your-host>/mcp",
       "headers": { "Authorization": "Bearer <MCP_AUTH_TOKEN>" }
     }
   }
@@ -58,7 +58,7 @@ Point Claude Code or Claude Desktop at the HTTP endpoint with the bearer header:
 ### Smoke test
 
 ```bash
-curl -s -XPOST https://<host>/api/mcp \
+curl -s -XPOST https://<host>/mcp \
   -H "Authorization: Bearer $MCP_AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
@@ -84,7 +84,7 @@ when run directly):
 | `AUTH_SECRET`            | ≥32 chars; imported transitively via `lib/db` → session.      |
 | `GOOGLE_MAPS_SERVER_KEY` | Geocoding/Places/Routes — needed for search, geocode, routing.|
 | `MCP_OWNER_EMAIL`        | Owner the server acts as. Defaults to first `ALLOWED_EMAILS`. |
-| `MCP_AUTH_TOKEN`         | HTTP only: bearer token for `POST /api/mcp`. Unset ⇒ 401 for all. |
+| `MCP_AUTH_TOKEN`         | HTTP only: bearer token for `POST /mcp`. Unset ⇒ 401 for all. |
 
 ## Registering with Claude Code (local, stdio)
 
