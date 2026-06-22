@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, Fragment, type ReactNode } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { DragDropProvider } from "@dnd-kit/react";
 import { move } from "@dnd-kit/helpers";
@@ -40,7 +40,7 @@ import { PlannerRoleProvider } from "@/components/planner-role";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PlaceEditor } from "@/components/place-editor";
 import { ShareDialog } from "@/components/share-dialog";
-import { deleteTripRequest, type TripVia } from "@/lib/api/trips";
+import { deleteTripRequest, exportTripUrl, type TripVia } from "@/lib/api/trips";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { formatDuration, formatKm } from "@/lib/format";
@@ -117,6 +117,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
     }
   }
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [preview, setPreview] = useState<
     { placeId: string; position: { lat: number; lng: number }; source: "map" | "search" } | null
   >(null);
@@ -236,63 +237,73 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               Read-only — this trip was shared with you.
             </div>
           )}
-          <div className="mb-2 flex items-center gap-2">
-            {trip.archivedAt && (
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Archived
-              </span>
-            )}
-            {canEdit && (trip.archivedAt ? (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                disabled={archiveTrip.isPending}
-                onClick={() => archiveTrip.mutate(false)}
-              >
-                Restore
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
-                disabled={archiveTrip.isPending}
-                onClick={() => archiveTrip.mutate(true)}
-              >
-                Archive
-              </button>
-            ))}
-            {canEdit && (
-              <button
-                type="button"
-                className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
-                disabled={removing}
-                onClick={() => setConfirmingRemove(true)}
-              >
-                Remove
-              </button>
-            )}
-            {role === "owner" && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => setSharing(true)}
-              >
-                Share
-              </button>
-            )}
-          </div>
           <div className="mb-1 flex items-start justify-between gap-2">
-            <h1 className="text-lg font-semibold tracking-tight">{trip.title}</h1>
-            {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 shrink-0 gap-1 px-2 text-xs"
-                onClick={() => setSettingsOpen(true)}
+            <div className="min-w-0">
+              {trip.archivedAt && (
+                <span className="mb-1 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Archived
+                </span>
+              )}
+              <h1 className="text-lg font-semibold tracking-tight">{trip.title}</h1>
+            </div>
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-label="Trip actions"
+                aria-haspopup="menu"
+                aria-expanded={headerMenuOpen}
+                className="flex size-8 items-center justify-center rounded-md text-lg leading-none text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => setHeaderMenuOpen((v) => !v)}
               >
-                <SettingsIcon /> Settings
-              </Button>
-            )}
+                ⋮
+              </button>
+              {headerMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setHeaderMenuOpen(false)} />
+                  <div role="menu" className="absolute right-0 z-20 mt-1 w-44 rounded-md border bg-popover py-1 shadow-md">
+                    {canEdit && (
+                      <HeaderMenuItem
+                        label="Settings"
+                        icon={<SettingsIcon />}
+                        onClick={() => { setHeaderMenuOpen(false); setSettingsOpen(true); }}
+                      />
+                    )}
+                    {role === "owner" && (
+                      <HeaderMenuItem
+                        label="Share"
+                        onClick={() => { setHeaderMenuOpen(false); setSharing(true); }}
+                      />
+                    )}
+                    <HeaderMenuItem
+                      label="Export backup"
+                      onClick={() => { setHeaderMenuOpen(false); downloadTripExport(tripId); }}
+                    />
+                    {canEdit &&
+                      (trip.archivedAt ? (
+                        <HeaderMenuItem
+                          label="Restore"
+                          disabled={archiveTrip.isPending}
+                          onClick={() => { setHeaderMenuOpen(false); archiveTrip.mutate(false); }}
+                        />
+                      ) : (
+                        <HeaderMenuItem
+                          label="Archive"
+                          disabled={archiveTrip.isPending}
+                          onClick={() => { setHeaderMenuOpen(false); archiveTrip.mutate(true); }}
+                        />
+                      ))}
+                    {canEdit && (
+                      <HeaderMenuItem
+                        label="Remove"
+                        destructive
+                        disabled={removing}
+                        onClick={() => { setHeaderMenuOpen(false); setConfirmingRemove(true); }}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
           <p className="mb-2 text-sm text-muted-foreground">
             {trip.startName}
@@ -303,8 +314,8 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                 : " → (open)"}
           </p>
           {route && route.totalSeconds > 0 && (
-            <p className="mb-4 text-xs text-muted-foreground">
-              Total driving: {formatDuration(route.totalSeconds)} · {formatKm(route.totalMeters)}
+            <p className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CarIcon /> Total driving: {formatDuration(route.totalSeconds)} · {formatKm(route.totalMeters)}
             </p>
           )}
 
@@ -669,5 +680,44 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
       </PlannerRoleProvider>
       </MapPickProvider>
     </APIProvider>
+  );
+}
+
+/** Downloads the trip's JSON backup (same as the trips-list Export). */
+function downloadTripExport(id: string) {
+  const a = document.createElement("a");
+  a.href = exportTripUrl(id);
+  a.download = ""; // let the server's Content-Disposition filename win
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function HeaderMenuItem({
+  label,
+  icon,
+  destructive = false,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  icon?: ReactNode;
+  destructive?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-50 ${
+        destructive ? "text-red-600" : ""
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

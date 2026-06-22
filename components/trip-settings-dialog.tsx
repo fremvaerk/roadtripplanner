@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/components/place-autocomplete";
 import { useUpdateTripBase, useSetTripTitle } from "@/hooks/use-trip-mutations";
 import { useSetStartDate } from "@/hooks/use-day-mutations";
+import { safeHttpUrl } from "@/lib/url";
 import type { TripDetail } from "@/lib/api/trips";
 
 /** Edit a trip's name, start, finish, and start date in a modal (replaces the
@@ -22,6 +23,7 @@ export function TripSettingsDialog({
   const setTitle = useSetTripTitle(trip.id);
   const setStartDate = useSetStartDate(trip.id);
 
+  const [coverUrl, setCoverUrl] = useState("");
   const [pendingMode, setPendingMode] = useState<null | "open" | "round" | "place">(null);
   const finishMode: "open" | "round" | "place" =
     trip.endLat != null ? "place" : trip.isRoundTrip ? "round" : "open";
@@ -155,51 +157,73 @@ export function TripSettingsDialog({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label className="text-xs">Cover image</Label>
-            {trip.pois.some((p) => p.imageUrl) ? (
-              <>
-                <div className="grid grid-cols-4 gap-2">
-                  {trip.pois
-                    .filter((p) => p.imageUrl)
-                    .map((p) => {
-                      const selected = trip.coverImage === p.imageUrl;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          title={p.name}
-                          aria-label={`Use ${p.name} as cover`}
-                          aria-pressed={selected}
-                          onClick={() => updateBase.mutate({ coverImage: p.imageUrl })}
-                          className={`relative aspect-square overflow-hidden rounded-md border-2 transition ${
-                            selected ? "border-ring" : "border-transparent hover:border-foreground/25"
-                          }`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={p.imageUrl!}
-                            alt=""
-                            referrerPolicy="no-referrer"
-                            className="size-full object-cover"
-                          />
-                        </button>
-                      );
-                    })}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => updateBase.mutate({ coverImage: null })}
-                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                >
-                  Use automatic (first place photo)
-                </button>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Add places with photos to pick a cover.
-              </p>
+            {trip.pois.some((p) => p.imageUrl) && (
+              <div className="grid grid-cols-4 gap-2">
+                {trip.pois
+                  .filter((p) => p.imageUrl)
+                  .map((p) => {
+                    const selected = trip.coverImage === p.imageUrl;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        title={p.name}
+                        aria-label={`Use ${p.name} as cover`}
+                        aria-pressed={selected}
+                        onClick={() => updateBase.mutate({ coverImage: p.imageUrl })}
+                        className={`relative aspect-square overflow-hidden rounded-md border-2 transition ${
+                          selected ? "border-ring" : "border-transparent hover:border-foreground/25"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={p.imageUrl!}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="size-full object-cover"
+                        />
+                      </button>
+                    );
+                  })}
+              </div>
             )}
+            <form
+              className="flex gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const u = safeHttpUrl(coverUrl);
+                if (u) {
+                  updateBase.mutate({ coverImage: u });
+                  setCoverUrl("");
+                }
+              }}
+            >
+              <Input
+                value={coverUrl}
+                onChange={(e) => setCoverUrl(e.target.value)}
+                placeholder="…or paste an image URL"
+                aria-label="Custom cover image URL"
+                className="h-8 text-xs"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0"
+                disabled={!safeHttpUrl(coverUrl)}
+              >
+                Set
+              </Button>
+            </form>
+            <button
+              type="button"
+              onClick={() => updateBase.mutate({ coverImage: null })}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Use automatic (first place photo)
+            </button>
           </div>
         </div>
 
