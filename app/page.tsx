@@ -27,16 +27,18 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto max-w-3xl p-4 sm:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-8 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Your road trips</h1>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <UserMenu session={session} />
+        <div className="flex items-center gap-2">
           <ImportTripButton />
           <Button asChild>
             <Link href="/trips/new">New trip</Link>
           </Button>
+          <div className="ml-1">
+            <UserMenu session={session} />
+          </div>
         </div>
-      </div>
+      </header>
 
       <TripsList trips={items} />
     </main>
