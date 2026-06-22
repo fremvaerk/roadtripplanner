@@ -10,7 +10,7 @@ import { todayDayIndex } from "@/lib/dates";
 import { formatDuration, formatKm } from "@/lib/format";
 import { CompanionMap } from "@/components/mobile/companion-map";
 import { useMapsConfig } from "@/components/maps-config";
-import { CarIcon } from "@/components/ui/icons";
+import { CarIcon, NavigateIcon } from "@/components/ui/icons";
 
 /**
  * Mobile-first, read-only trip view focused on launching turn-by-turn
@@ -135,9 +135,9 @@ export function NavCompanion({
           href={dayDirectionsUrl(model, dayIndex).url}
           target="_blank"
           rel="noreferrer"
-          className="block rounded-md bg-primary px-3 py-2 text-center text-sm font-medium text-primary-foreground"
+          className="flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
         >
-          ▶ Navigate this day
+          <NavigateIcon /> Navigate this day
         </a>
       )}
 
@@ -176,9 +176,9 @@ export function NavCompanion({
                 href={stopDirectionsUrl(day.night)}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-2 block rounded-md border px-3 py-2 text-center text-sm font-medium"
+                className="mt-2 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium"
               >
-                ▶ Navigate
+                <NavigateIcon /> Navigate
               </a>
             </div>
           )}
@@ -254,9 +254,9 @@ function StopCard({
         href={stopDirectionsUrl(stop)}
         target="_blank"
         rel="noreferrer"
-        className="mt-2 block rounded-md border px-3 py-2 text-center text-sm font-medium"
+        className="mt-2 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium"
       >
-        ▶ Navigate
+        <NavigateIcon /> Navigate
       </a>
     </div>
   );

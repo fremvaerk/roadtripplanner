@@ -1,3 +1,25 @@
+/** Navigation arrow for "Navigate" / open-in-Maps links. */
+export function NavigateIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      className={`inline-block shrink-0 ${className ?? ""}`}
+    >
+      <path
+        d="M21 3 3 10.5l7.3 2.2L12.5 20 21 3Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Gear icon for the trip-settings button. */
 export function SettingsIcon({ className }: { className?: string }) {
   return (

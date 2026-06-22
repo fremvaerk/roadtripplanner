@@ -8,7 +8,7 @@ import { TripMap, type MapPoint } from "@/components/trip-map";
 import { useMapsConfig } from "@/components/maps-config";
 import { useCollapsed } from "@/hooks/use-collapsed";
 import { Chevron } from "@/components/ui/chevron";
-import { CarIcon, SettingsIcon } from "@/components/ui/icons";
+import { CarIcon, SettingsIcon, NavigateIcon } from "@/components/ui/icons";
 import { TripSettingsDialog } from "@/components/trip-settings-dialog";
 import { viasByDay } from "@/lib/itinerary/vias-by-day";
 import { PoiContainer } from "@/components/poi-container";
@@ -428,11 +428,11 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                                   href={nav.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded px-1.5 py-0.5 text-xs font-normal text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-normal text-muted-foreground hover:bg-accent hover:text-foreground"
                                   title={nav.truncated ? "Only the first 9 stops fit a Google Maps link" : "Open turn-by-turn in Google Maps"}
                                   aria-label={`Navigate day ${day.dayIndex + 1} in Google Maps`}
                                 >
-                                  ▸ Navigate
+                                  <NavigateIcon /> Navigate
                                 </a>
                               );
                             })()
