@@ -609,6 +609,9 @@ function NightMarker({
   onSelect?: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  // A draggable Advanced Marker emits a click on mouseup after a drag, which
+  // would spuriously open the info popup. Ignore clicks just after a drag.
+  const lastDragEnd = useRef(0);
   const sorted = [...group.entries].sort((a, b) => a.number - b.number);
   const label = formatNightLabel(sorted.map((e) => e.number));
   // Hover: "Night 3 - 11.07 - 12.07" / "Nights 3–5 - 11.07 - 14.07".
@@ -623,6 +626,7 @@ function NightMarker({
       draggable={canEdit}
       onDragEnd={(e) => {
         if (!canEdit) return;
+        lastDragEnd.current = Date.now();
         const lat = e.latLng?.lat();
         const lng = e.latLng?.lng();
         if (lat != null && lng != null && onMoveNight) {
@@ -660,7 +664,11 @@ function NightMarker({
           </div>
         )}
         <div
-          onClick={() => onSelect?.()}
+          onClick={() => {
+            // Swallow the click that fires immediately after a drag.
+            if (Date.now() - lastDragEnd.current < 300) return;
+            onSelect?.();
+          }}
           style={{
             display: "flex",
             alignItems: "center",
