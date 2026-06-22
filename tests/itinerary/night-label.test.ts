@@ -1,5 +1,5 @@
 import { test, expect, describe } from "bun:test";
-import { formatNightLabel, formatNightStay } from "@/lib/itinerary/night-label";
+import { formatNightLabel, formatNightStay, formatNightHover } from "@/lib/itinerary/night-label";
 
 describe("formatNightLabel", () => {
   test("a single night is just its number", () => {
@@ -40,5 +40,20 @@ describe("formatNightStay", () => {
   });
   test("non-contiguous group falls back to the number label", () => {
     expect(formatNightStay([3, 6], "13 Jun", "17 Jun")).toBe("2 nights (nights 3, 6)");
+  });
+});
+
+describe("formatNightHover", () => {
+  test("single night: 'Night N - checkIn - checkOut'", () => {
+    expect(formatNightHover([3], "11.07", "12.07")).toBe("Night 3 - 11.07 - 12.07");
+  });
+  test("contiguous multi-night uses the range + full span", () => {
+    expect(formatNightHover([3, 4, 5], "11.07", "14.07")).toBe("Nights 3–5 - 11.07 - 14.07");
+  });
+  test("no dates → just the number label", () => {
+    expect(formatNightHover([3], null, null)).toBe("Night 3");
+  });
+  test("non-contiguous group drops the span", () => {
+    expect(formatNightHover([3, 6], "11.07", "15.07")).toBe("Nights 3, 6");
   });
 });

@@ -61,6 +61,14 @@ function formatDayDateShort(startDate: string | null, dayIndex: number): string 
   const d = dayDate(startDate, dayIndex);
   return d ? DATE_FMT_SHORT.format(d) : null;
 }
+// Numeric DD.MM — for the night-marker hover ("Night 3 - 11.07 - 12.07").
+function formatDayDateNumeric(startDate: string | null, dayIndex: number): string | null {
+  const d = dayDate(startDate, dayIndex);
+  if (!d) return null;
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${dd}.${mm}`;
+}
 
 export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" | "editor" | "viewer" }) {
   const { data: trip, isLoading, isError } = useTrip(tripId);
@@ -681,7 +689,7 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
               onAddVia={(afterPoiId, dayId, lat, lng) => addVia.mutate({ afterPoiId, dayId, lat, lng })}
               onMoveVia={(viaId, lat, lng) => moveVia.mutate({ viaId, lat, lng })}
               onRemoveVia={(viaId) => removeVia.mutate(viaId)}
-              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDateShort(trip.startDate, d.dayIndex), checkoutDate: formatDayDateShort(trip.startDate, d.dayIndex + 1) }))}
+              nights={trip.days.filter((d) => d.night).map((d) => ({ dayId: d.id, lat: d.night!.lat, lng: d.night!.lng, nightNumber: d.dayIndex + 1, date: formatDayDateNumeric(trip.startDate, d.dayIndex), checkoutDate: formatDayDateNumeric(trip.startDate, d.dayIndex + 1) }))}
               onMoveNight={(dayId, lat, lng) => updateNight.mutate({ dayId, lat, lng })}
               dayChoices={trip.days.map((d) => ({
                 id: d.id,

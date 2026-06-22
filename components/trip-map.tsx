@@ -15,7 +15,7 @@ import { categoryFromTypes } from "@/lib/places/category";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
 import type { RouteLegResult, TripVia, PoiDetail } from "@/lib/api/trips";
 import { nearestLeg, type LegPath } from "@/lib/routing/nearest-leg";
-import { formatNightLabel, formatNightStay } from "@/lib/itinerary/night-label";
+import { formatNightLabel, formatNightHover } from "@/lib/itinerary/night-label";
 import { PlacePreview } from "@/components/place-preview";
 import { useMapsConfig } from "@/components/maps-config";
 import { PlaceInfoPopup } from "@/components/place-info-popup";
@@ -561,11 +561,11 @@ function NightMarker({
   const [hover, setHover] = useState(false);
   const sorted = [...group.entries].sort((a, b) => a.number - b.number);
   const label = formatNightLabel(sorted.map((e) => e.number));
-  // Read the stay as a span: "1 night · 13 Jun → 14 Jun" / "3 nights · 13 Jun → 16 Jun".
+  // Hover: "Night 3 - 11.07 - 12.07" / "Nights 3–5 - 11.07 - 14.07".
   // checkIn = first night's date; checkOut = the morning after the last night.
   const checkIn = sorted[0]?.date ?? null;
   const checkOut = sorted[sorted.length - 1]?.checkoutDate ?? null;
-  const tip = formatNightStay(sorted.map((e) => e.number), checkIn, checkOut);
+  const tip = formatNightHover(sorted.map((e) => e.number), checkIn, checkOut);
 
   return (
     <AdvancedMarker
