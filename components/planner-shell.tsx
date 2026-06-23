@@ -420,10 +420,16 @@ export function PlannerShell({ tripId, role }: { tripId: string; role?: "owner" 
                           )}
                           <span className="shrink-0">Day {day.dayIndex + 1}</span>
                           {dayCollapsed ? (
-                            <span className="truncate font-normal text-muted-foreground">
-                              {formatDayDate(trip.startDate, day.dayIndex) ? `· ${formatDayDate(trip.startDate, day.dayIndex)} ` : ""}
-                              · {byDay(day.id).length} place{byDay(day.id).length === 1 ? "" : "s"}
-                              {day.night ? " · 🛏" : ""}
+                            <span className="flex min-w-0 items-center gap-1.5 truncate font-normal text-muted-foreground">
+                              {formatDayDate(trip.startDate, day.dayIndex) ? (
+                                <span className="shrink-0">· {formatDayDate(trip.startDate, day.dayIndex)}</span>
+                              ) : null}
+                              {route?.perDaySeconds[day.id] ? (
+                                <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                                  · <CarIcon /> {formatDuration(route.perDaySeconds[day.id])}
+                                  {route.perDayMeters?.[day.id] ? ` · ${formatKm(route.perDayMeters[day.id])}` : ""}
+                                </span>
+                              ) : null}
                             </span>
                           ) : null}
                         </span>
