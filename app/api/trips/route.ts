@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createTripSchema } from "@/lib/trips/schema";
 import { createTrip, listTrips } from "@/lib/trips/service";
-import { geocodePlace, GeocodeError } from "@/lib/geocode";
 import { getSession } from "@/lib/auth/session";
 
 export async function GET() {
@@ -22,21 +21,14 @@ export async function POST(req: Request) {
   }
   const input = parsed.data;
 
-  try {
-    const start = await geocodePlace(input.startName);
-
-    const trip = await createTrip(prisma, {
-      title: input.title,
-      description: input.description ?? "",
-      startDate: input.startDate ? new Date(input.startDate) : null,
-      dayCount: input.dayCount,
-      start,
-    }, session.userId);
-    return NextResponse.json(trip, { status: 201 });
-  } catch (e) {
-    if (e instanceof GeocodeError) {
-      return NextResponse.json({ error: e.message }, { status: 422 });
-    }
-    throw e;
-  }
+  const trip = await createTrip(prisma, {
+    title: input.title,
+    description: input.description ?? "",
+    startDate: input.startDate ? new Date(input.startDate) : null,
+    dayCount: input.dayCount,
+    start: input.start,
+    finish: input.finish,
+    coverImage: input.coverImage ?? null,
+  }, session.userId);
+  return NextResponse.json(trip, { status: 201 });
 }

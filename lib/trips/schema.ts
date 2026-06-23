@@ -11,9 +11,17 @@ const placeInput = z.object({
 
 export const createTripSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  startName: z.string().min(1, "Start location is required"),
+  start: placeInput,
+  startDate: isoDate.nullable().optional(),
+  finish: z
+    .object({ mode: z.enum(["open", "round", "place"]), place: placeInput.optional() })
+    .refine((f) => f.mode !== "place" || !!f.place, {
+      message: "A place is required for a specific finish",
+      path: ["place"],
+    })
+    .optional(),
+  coverImage: z.string().url().nullable().optional(),
   description: z.string().optional(),
-  startDate: isoDate.optional(),
   dayCount: z.coerce.number().int().min(1).max(60).default(1),
 });
 
@@ -52,4 +60,6 @@ export type CreateTripData = {
   startDate: Date | null;
   dayCount: number;
   start: ResolvedLocation;
+  finish?: { mode: "open" | "round" | "place"; place?: ResolvedLocation };
+  coverImage?: string | null;
 };

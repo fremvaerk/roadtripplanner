@@ -4,28 +4,37 @@ import { createTripSchema, updateTripSchema } from "@/lib/trips/schema";
 describe("createTripSchema", () => {
   const base = {
     title: "Tuscany Loop",
-    startName: "Florence, Italy",
+    start: { name: "Florence, Italy", lat: 43.77, lng: 11.25, placeId: "abc" },
   };
 
-  test("accepts a start-only trip (no end, no description)", () => {
+  test("accepts a start-only trip (defaults to 1 day, no finish)", () => {
     const r = createTripSchema.safeParse(base);
     expect(r.success).toBe(true);
     expect(r.success && r.data.dayCount).toBe(1);
   });
 
-  test("accepts an optional description", () => {
-    const r = createTripSchema.safeParse({ ...base, description: "A relaxed week." });
+  test("accepts finish + cover + start date", () => {
+    const r = createTripSchema.safeParse({
+      ...base,
+      startDate: "2026-06-09",
+      finish: { mode: "place", place: { name: "Rome", lat: 41.9, lng: 12.5, placeId: null } },
+      coverImage: "https://example.com/c.jpg",
+    });
     expect(r.success).toBe(true);
   });
 
-  test("rejects a missing title", () => {
-    const r = createTripSchema.safeParse({ ...base, title: "" });
+  test("rejects finish place without a place", () => {
+    const r = createTripSchema.safeParse({ ...base, finish: { mode: "place" } });
     expect(r.success).toBe(false);
   });
 
-  test("rejects a missing start location", () => {
-    const r = createTripSchema.safeParse({ title: "X" });
-    expect(r.success).toBe(false);
+  test("rejects a missing title", () => {
+    expect(createTripSchema.safeParse({ ...base, title: "" }).success).toBe(false);
+  });
+
+  test("rejects a missing/invalid start", () => {
+    expect(createTripSchema.safeParse({ title: "X" }).success).toBe(false);
+    expect(createTripSchema.safeParse({ title: "X", start: "Florence" }).success).toBe(false);
   });
 });
 

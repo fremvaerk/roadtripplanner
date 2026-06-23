@@ -6,21 +6,23 @@ import { effectiveRole, type Role } from "@/lib/auth/access";
 import { requireWrite, requireOwner } from "@/lib/auth/guards";
 
 export async function createTrip(prisma: PrismaClient, data: CreateTripData, userId?: string | null) {
+  const end = data.finish?.mode === "place" ? data.finish.place : null;
   return prisma.trip.create({
     data: {
       userId: userId ?? undefined,
       title: data.title,
       description: data.description,
-      isRoundTrip: false,
+      isRoundTrip: data.finish?.mode === "round",
+      coverImage: data.coverImage ?? null,
       startDate: data.startDate,
       startName: data.start.name,
       startLat: data.start.lat,
       startLng: data.start.lng,
       startPlaceId: data.start.placeId,
-      endName: null,
-      endLat: null,
-      endLng: null,
-      endPlaceId: null,
+      endName: end?.name ?? null,
+      endLat: end?.lat ?? null,
+      endLng: end?.lng ?? null,
+      endPlaceId: end?.placeId ?? null,
       days: {
         create: Array.from({ length: data.dayCount }, (_, i) => ({ dayIndex: i })),
       },

@@ -1,12 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { listTrips } from "@/lib/trips/service";
 import { getSession } from "@/lib/auth/session";
-import { Button } from "@/components/ui/button";
 import { TripsList, type TripListItem } from "@/components/trips-list";
 import { UserMenu } from "@/components/auth/user-menu";
 import { ImportTripButton } from "@/components/import-trip-button";
+import { NewTripButton } from "@/components/new-trip-button";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +35,7 @@ export default async function HomePage() {
         <h1 className="text-2xl font-semibold tracking-tight">Your road trips</h1>
         <div className="flex items-center gap-2">
           <ImportTripButton />
-          <Button asChild>
-            <Link href="/trips/new">New trip</Link>
-          </Button>
+          <NewTripButton />
           <div className="ml-1">
             <UserMenu session={session} />
           </div>
