@@ -7,6 +7,8 @@ import { useMapPick } from "@/components/map-pick-context";
 import { parseCoordinates } from "@/lib/places/coordinates";
 import { reverseGeocode } from "@/lib/places/reverse-geocode";
 
+const SEARCH_ERROR = "Location search is unavailable right now. Try again later.";
+
 export type PlacePick = {
   name: string;
   lat: number;
@@ -41,6 +43,7 @@ export function PlaceAutocomplete({
   const [value, setValue] = useState("");
   const [predictions, setPredictions] = useState<google.maps.places.PlacePrediction[]>([]);
   const [coord, setCoord] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchError, setSearchError] = useState(false);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const reqId = useRef(0);
 
@@ -48,35 +51,53 @@ export function PlaceAutocomplete({
     setValue(input);
     const c = parseCoordinates(input);
     if (c) {
+      reqId.current++; // drop any in-flight search response
       setCoord(c);
       setPredictions([]);
+      setSearchError(false);
       return;
     }
     setCoord(null);
     if (!placesLib || input.trim().length < 2) {
+      reqId.current++; // drop any in-flight search response
       setPredictions([]);
+      setSearchError(false);
       return;
     }
     if (!sessionToken.current) {
       sessionToken.current = new placesLib.AutocompleteSessionToken();
     }
     const id = ++reqId.current;
-    const { suggestions } =
-      await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-        input,
-        sessionToken: sessionToken.current,
-      });
-    if (id !== reqId.current) return; // a newer keystroke superseded this response
-    setPredictions(
-      suggestions
-        .map((s) => s.placePrediction)
-        .filter((p): p is google.maps.places.PlacePrediction => p != null),
-    );
+    try {
+      const { suggestions } =
+        await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input,
+          sessionToken: sessionToken.current,
+        });
+      if (id !== reqId.current) return; // a newer keystroke superseded this response
+      setSearchError(false);
+      setPredictions(
+        suggestions
+          .map((s) => s.placePrediction)
+          .filter((p): p is google.maps.places.PlacePrediction => p != null),
+      );
+    } catch (err) {
+      if (id !== reqId.current) return;
+      console.error("Place autocomplete failed", err);
+      setPredictions([]);
+      setSearchError(true);
+    }
   }
 
   async function pick(prediction: google.maps.places.PlacePrediction) {
     const place = prediction.toPlace();
-    await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+    try {
+      await place.fetchFields({ fields: ["location", "displayName", "id", "types"] });
+    } catch (err) {
+      console.error("Place details lookup failed", err);
+      setSearchError(true);
+      return;
+    }
     const loc = place.location;
     if (!loc) return;
     onPick({
@@ -90,6 +111,7 @@ export function PlaceAutocomplete({
     setValue("");
     setPredictions([]);
     setCoord(null);
+    setSearchError(false);
     sessionToken.current = null;
   }
 
@@ -146,6 +168,7 @@ export function PlaceAutocomplete({
       {armed && !coord && predictions.length === 0 && (
         <p className="mt-1 text-xs text-blue-600">Click the map to set this location · Esc to cancel.</p>
       )}
+      {searchError && <p className="mt-1 text-xs text-red-600">{SEARCH_ERROR}</p>}
       {coord && (
         <ul className="absolute z-10 mt-1 w-full overflow-auto rounded-md border bg-background shadow">
           <li>
